@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algorithm & Data Structure Visualizers</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-600/30">
+          &lt;/&gt;
+        </div>
+        <div>
+          <h1 class="text-lg font-semibold text-white tracking-tight">CS Visualizers</h1>
+          <p class="text-xs text-slate-400">Interactive learning tools for programming concepts</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-5xl mx-auto px-6 py-12 flex-1 w-full">
+    <div class="mb-10 text-center sm:text-left">
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2">Available Modules</h2>
+      <p class="text-slate-400 text-sm sm:text-base">Select a module below to launch its interactive visualizer.</p>
+    </div>
+
+    <!-- Cards Grid -->
+    <div id="visualizer-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Dynamic list loaded from the config array below -->
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-5xl mx-auto px-6">
+      Hosted on GitHub Pages &bull; Accessible across all devices
+    </div>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // Visualizer Registry:
+    // To add a new topic in the future, simply append one object to this list!
+    // =========================================================================
+    const visualizers = [
+      {
+        title: "Recursion & Call Stack Visualizer",
+        description: "Explore recursive branching, base case evaluation, call stack memory, and unwinding with Java syntax across classic algorithms like Fibonacci, Factorial, and Tower of Hanoi.",
+        file: "recursion.html",
+        icon: `<svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`
+      },
+      {
+        title: "Binary Search Tree (BST) Visualizer",
+        description: "Step through binary search tree algorithms in Java, including recursive node search, node insertion, and pointer re-assignment during unwinding.",
+        file: "bst.html",
+        icon: `<svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5l3-3m-3 3l-3-3m10 5.5V14m0-2.5l3-3m-3 3l-3-3M12 4v4m0 0l3 3m-3-3l-3 3"/></svg>`
+      }
+    ];
+
+    // Render cards to the page
+    const container = document.getElementById("visualizer-grid");
+
+    container.innerHTML = visualizers.map(item => `
+      <a href="${item.file}" class="group relative flex flex-col justify-between p-6 rounded-xl border border-slate-800 bg-slate-900/40 hover:bg-slate-900/80 hover:border-slate-700 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40">
+        <div>
+          <div class="w-12 h-12 rounded-lg bg-slate-800/80 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+            ${item.icon}
+          </div>
+          <h3 class="text-lg font-semibold text-slate-100 group-hover:text-indigo-400 transition-colors mb-2">
+            ${item.title}
+          </h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            ${item.description}
+          </p>
+        </div>
+
+        <div class="mt-6 flex items-center gap-2 text-sm font-medium text-indigo-400 group-hover:text-indigo-300">
+          <span>Launch visualizer</span>
+          <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+        </div>
+      </a>
+    `).join("");
+  </script>
+</body>
+</html>

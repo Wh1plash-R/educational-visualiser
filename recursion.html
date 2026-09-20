@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recursio - Java Recursion & Data Structures Visualizer</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              300: '#a5b4fc',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.6);
+    }
+
+    /* Node tree glowing transitions */
+    .tree-node {
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), fill 0.25s, stroke 0.25s, opacity 0.25s;
+    }
+    .tree-edge {
+      transition: stroke 0.3s, stroke-width 0.3s;
+    }
+
+    /* Stack frame entry & bounce */
+    .stack-frame-enter {
+      animation: stackSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes stackSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    @keyframes pulseActiveGlow {
+      0%, 100% { box-shadow: 0 0 14px rgba(99, 102, 241, 0.5); }
+      50% { box-shadow: 0 0 24px rgba(99, 102, 241, 0.85); }
+    }
+    .active-frame {
+      animation: pulseActiveGlow 2s infinite ease-in-out;
+    }
+
+    /* Code line highlight styling */
+    .code-line-active {
+      background: rgba(99, 102, 241, 0.22);
+      border-left: 3px solid #6366f1;
+    }
+
+    /* Java syntax coloring */
+    .hl-kw { color: #f472b6; font-weight: 600; }     /* public, class, if, return, int, void */
+    .hl-type { color: #38bdf8; }                     /* Node, boolean, HashMap, int[] */
+    .hl-fn { color: #818cf8; font-weight: 600; }     /* method names */
+    .hl-num { color: #fbbf24; }                      /* literals */
+    .hl-cmt { color: #64748b; font-style: italic; }  /* comments */
+    .hl-str { color: #34d399; }                      /* strings */
+    .hl-var { color: #e2e8f0; }
+
+    /* Canvas pan cursor */
+    .draggable-canvas {
+      cursor: grab;
+    }
+    .draggable-canvas:active {
+      cursor: grabbing;
+    }
+    .hanoi-disc {
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white overflow-x-hidden">
+
+  <header class="border-b border-slate-800/80 bg-slate-900/85 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <i data-lucide="coffee" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-amber-300 bg-clip-text text-transparent">
+            Recursio <span class="text-xs font-mono font-normal text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">Java Edition</span>
+          </h1>
+          <span class="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hidden sm:inline-block">
+            Call Stack & Unwinding
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">Interactive Recursion, Call Trees & Binary Search Trees in Java</p>
+      </div>
+    </div>
+
+    <!-- Algorithm Select & Tools -->
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <div class="relative">
+        <select id="algoSelect" class="bg-slate-800 border border-slate-700 text-xs sm:text-sm text-slate-200 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer font-medium appearance-none">
+          <option value="bst_search">BST: Recursive Search (Java)</option>
+          <option value="bst_insert">BST: Recursive Insert (Java)</option>
+          <option value="fib">Fibonacci: fib(int n)</option>
+          <option value="fact">Factorial: fact(int n)</option>
+          <option value="hanoi">Tower of Hanoi: solveHanoi()</option>
+          <option value="binsearch">Binary Search: binarySearch()</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+          <i data-lucide="chevron-down" class="w-4 h-4"></i>
+        </div>
+      </div>
+
+      <!-- Memoization Toggle for Fib -->
+      <div id="memoContainer" class="hidden items-center gap-2 bg-slate-800/80 border border-slate-700/80 px-2.5 py-1 rounded-lg text-xs">
+        <label for="memoToggle" class="cursor-pointer text-slate-300 font-medium flex items-center gap-1.5 select-none">
+          <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Memoize (HashMap)</span>
+        </label>
+        <input type="checkbox" id="memoToggle" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 cursor-pointer">
+      </div>
+
+      <!-- Quick Info / Help Guide Modal -->
+      <button id="btnInfoModal" class="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition" title="Recursion Mental Model Guide">
+        <i data-lucide="help-circle" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col p-3 md:p-4 gap-4 max-w-[1750px] w-full mx-auto">
+    <!-- Top Parameters Toolbar -->
+    <section class="bg-slate-900/70 border border-slate-800 rounded-xl p-3 sm:p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-md">
+      <div class="flex flex-wrap items-center gap-4 text-xs sm:text-sm" id="paramsContainer">
+        <!-- Injected dynamically based on algorithm -->
+      </div>
+
+      <!-- Key Concept Visual Legend -->
+      <div class="flex items-center gap-2 flex-wrap text-xs">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-300">
+          <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> Active Call
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Base Case / Return
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/15 border border-purple-500/30 text-purple-300">
+          <span class="w-2 h-2 rounded-full bg-purple-400"></span> Cached Hit
+        </span>
+      </div>
+    </section>
+
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[570px]">
+
+      <!-- Left / Center: Interactive Graph Canvas (8 cols) -->
+      <div class="lg:col-span-8 flex flex-col bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden relative shadow-lg">
+        
+        <!-- Canvas Header Bar with view modes -->
+        <div class="border-b border-slate-800 bg-slate-900/90 px-3.5 py-2.5 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 font-medium text-slate-200">
+            <i data-lucide="git-commit" class="w-4 h-4 text-indigo-400"></i>
+            <span id="canvasTitle">Recursive Call Tree Graph</span>
+          </div>
+
+          <!-- Zoom & Pan Controls -->
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <button id="btnZoomIn" class="p-1 hover:bg-slate-800 hover:text-white rounded" title="Zoom In">
+              <i data-lucide="zoom-in" class="w-4 h-4"></i>
+            </button>
+            <button id="btnZoomOut" class="p-1 hover:bg-slate-800 hover:text-white rounded" title="Zoom Out">
+              <i data-lucide="zoom-out" class="w-4 h-4"></i>
+            </button>
+            <button id="btnResetView" class="p-1 hover:bg-slate-800 hover:text-white rounded" title="Reset Viewport">
+              <i data-lucide="maximize-2" class="w-4 h-4"></i>
+            </button>
+            <span class="text-slate-600">|</span>
+            <span class="text-[11px] text-slate-400 hidden sm:inline">Drag to pan • Wheel to zoom</span>
+          </div>
+        </div>
+
+        <!-- SVG Tree Container -->
+        <div id="treeContainer" class="flex-1 relative overflow-hidden bg-gradient-to-b from-slate-950/70 to-slate-900/50 min-h-[380px]">
+          <svg id="treeSvg" class="w-full h-full draggable-canvas select-none">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+              </marker>
+              <marker id="arrow-active" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#818cf8" />
+              </marker>
+              <marker id="arrow-return" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399" />
+              </marker>
+              <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="#334155" opacity="0.3" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+            <g id="treeWorldTransform">
+              <g id="edgesGroup"></g>
+              <g id="nodesGroup"></g>
+            </g>
+          </svg>
+
+          <div id="bstOverlay" class="absolute top-3 right-3 bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 shadow-xl backdrop-blur-md hidden flex-col max-w-[280px] z-20">
+            <div class="flex items-center justify-between text-xs text-slate-300 font-semibold border-b border-slate-800 pb-1.5 mb-2">
+              <span class="flex items-center gap-1.5 text-amber-400">
+                <i data-lucide="binary" class="w-3.5 h-3.5"></i> Actual BST Data Structure
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono" id="bstNodeCount">N=7</span>
+            </div>
+            <div class="w-[250px] h-[160px] relative overflow-hidden bg-slate-950/60 rounded-lg border border-slate-800" id="bstSvgContainer">
+              <svg id="bstDomainSvg" class="w-full h-full"></svg>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1.5 flex items-center justify-between">
+              <span>Target: <span id="bstTargetBadge" class="font-mono text-amber-300 font-bold">-</span></span>
+              <span id="bstStatusBadge" class="text-indigo-300">Traversing...</span>
+            </div>
+          </div>
+
+          <!-- Hanoi Pegs Overlay Visualizer -->
+          <div id="hanoiOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm p-4 hidden flex-col justify-between z-20">
+            <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2">
+              <span class="font-medium text-slate-200 flex items-center gap-1.5">
+                <i data-lucide="layers" class="w-4 h-4 text-pink-400"></i> Tower of Hanoi Physical Peg State
+              </span>
+              <span id="hanoiMoveCounter" class="bg-slate-800 text-pink-300 font-mono px-2 py-0.5 rounded">Move: 0</span>
+            </div>
+            
+            <div class="flex-1 flex items-end justify-around py-8 px-4 gap-4">
+              <!-- Peg A -->
+              <div class="flex-1 flex flex-col items-center">
+                <div class="relative w-full flex flex-col items-center justify-end h-52">
+                  <div class="w-3 bg-slate-700 h-full rounded-t-md absolute"></div>
+                  <div id="pegA-discs" class="w-full flex flex-col-reverse items-center z-10 gap-1 mb-1"></div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-700 rounded-md mt-1"></div>
+                <span class="text-xs font-bold text-slate-300 mt-2 font-mono">Peg A (source)</span>
+              </div>
+              <!-- Peg B -->
+              <div class="flex-1 flex flex-col items-center">
+                <div class="relative w-full flex flex-col items-center justify-end h-52">
+                  <div class="w-3 bg-slate-700 h-full rounded-t-md absolute"></div>
+                  <div id="pegB-discs" class="w-full flex flex-col-reverse items-center z-10 gap-1 mb-1"></div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-700 rounded-md mt-1"></div>
+                <span class="text-xs font-bold text-slate-300 mt-2 font-mono">Peg B (aux)</span>
+              </div>
+              <!-- Peg C -->
+              <div class="flex-1 flex flex-col items-center">
+                <div class="relative w-full flex flex-col items-center justify-end h-52">
+                  <div class="w-3 bg-slate-700 h-full rounded-t-md absolute"></div>
+                  <div id="pegC-discs" class="w-full flex flex-col-reverse items-center z-10 gap-1 mb-1"></div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-700 rounded-md mt-1"></div>
+                <span class="text-xs font-bold text-slate-300 mt-2 font-mono">Peg C (target)</span>
+              </div>
+            </div>
+
+            <div class="text-center text-xs text-slate-400 bg-slate-900/80 py-2 rounded-lg border border-slate-800">
+              <span id="hanoiActionText">Move top disk from peg to peg</span>
+            </div>
+          </div>
+
+          <!-- Floating Node Details Tooltip -->
+          <div id="nodeDetailTooltip" class="absolute hidden bottom-4 left-4 bg-slate-900/95 border border-indigo-500/40 rounded-xl p-3 shadow-2xl max-w-xs backdrop-blur-md text-xs z-30 pointer-events-none">
+            <div class="font-bold text-indigo-300 mb-1 flex items-center gap-1.5" id="tooltipCallSignature">
+              call()
+            </div>
+            <div class="space-y-1 text-slate-300" id="tooltipBody">
+              <!-- Content -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Natural Language Step Explanation Banner -->
+        <div class="bg-slate-900/90 border-t border-slate-800 px-4 py-2.5 flex items-start gap-3">
+          <div class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 mt-0.5 shrink-0">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-[10px] uppercase tracking-wider font-semibold text-indigo-400">Current Execution Event</div>
+            <p id="stepExplanation" class="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed">
+              Select an algorithm and click Step Forward or Play to begin tracing recursion.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Call Stack & Java Code (4 cols) -->
+      <div class="lg:col-span-4 flex flex-col gap-4">
+
+        <!-- Real-Time Call Stack Memory Rack -->
+        <div class="flex-1 flex flex-col bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-lg min-h-[260px]">
+          <div class="border-b border-slate-800 bg-slate-900/90 px-3.5 py-2 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-xs font-medium text-slate-200">
+              <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+              <span>JVM Call Stack (Thread Memory)</span>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono">
+              Depth: <span id="stackDepthBadge" class="text-indigo-400 font-bold">0</span> frames
+            </div>
+          </div>
+
+          <!-- Stack Frame Rack -->
+          <div id="stackContainer" class="flex-1 p-3 overflow-y-auto flex flex-col-reverse justify-start gap-2 bg-slate-950/50 relative max-h-[300px]">
+            <div id="emptyStackNotice" class="text-xs text-slate-500 italic text-center my-auto py-8">
+              Call stack is currently empty.
+            </div>
+          </div>
+
+          <!-- Call Stack Footer Legend -->
+          <div class="px-3 py-1.5 bg-slate-900/70 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Stack Base: <span class="font-mono text-slate-300">main()</span></span>
+            <span class="text-emerald-400 font-mono font-medium">Top = Active Activation Record</span>
+          </div>
+        </div>
+
+        <!-- Java Code Display & Execution Tracker -->
+        <div class="flex-1 flex flex-col bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-lg min-h-[270px]">
+          <div class="border-b border-slate-800 bg-slate-900/90 px-3.5 py-2 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-xs font-medium text-slate-200">
+              <i data-lucide="file-code" class="w-4 h-4 text-amber-400"></i>
+              <span id="codeFileTitle">Solution.java</span>
+            </div>
+            <span class="text-[10px] text-amber-300/80 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded font-mono">
+              Java 17+
+            </span>
+          </div>
+
+          <!-- Code Content Container -->
+          <div id="codeContainer" class="flex-1 font-mono text-xs p-2 overflow-y-auto bg-slate-950/70 select-none max-h-[320px]">
+            <!-- Injected line-by-line with Java syntax styling -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Playback Controls & Timeline -->
+    <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 sm:p-4 shadow-xl flex flex-col gap-3">
+      <!-- Scrubbing Slider and Progress -->
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-mono text-slate-400 min-w-[55px]">
+          Step <span id="currentStepNum" class="text-indigo-400 font-bold">0</span>/<span id="totalStepNum">0</span>
+        </span>
+        <div class="relative flex-1 flex items-center">
+          <input type="range" id="timelineSlider" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        </div>
+        <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+          <i data-lucide="gauge" class="w-3.5 h-3.5"></i>
+          <span>Speed</span>
+          <input type="range" id="speedSlider" min="200" max="1800" value="850" step="50" class="w-20 sm:w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+      </div>
+
+      <!-- Action Buttons Row -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <!-- Reset / Restart -->
+          <button id="btnReset" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Restart</span>
+          </button>
+
+          <!-- Step Back -->
+          <button id="btnStepBack" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+            <i data-lucide="skip-back" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Back</span>
+          </button>
+
+          <!-- Play / Pause -->
+          <button id="btnPlayPause" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-600/30 transition">
+            <i data-lucide="play" class="w-3.5 h-3.5 fill-white" id="playIcon"></i>
+            <span id="playBtnLabel">Auto Play</span>
+          </button>
+
+          <!-- Step Forward -->
+          <button id="btnStepForward" class="px-3.5 py-1.5 bg-indigo-600/20 border border-indigo-500/40 hover:bg-indigo-600/30 active:scale-95 text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+            <span>Next Step</span>
+            <i data-lucide="skip-forward" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- Explanations & Modals -->
+        <div class="flex items-center gap-2 text-xs">
+          <button id="btnExplainBaseCase" class="px-2.5 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-300 flex items-center gap-1 transition">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Base Case & Overflow</span>
+          </button>
+          <button id="btnExplainBst" class="px-2.5 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-300 flex items-center gap-1 transition">
+            <i data-lucide="git-branch" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>BST Invariant</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Educational Guide Modal -->
+  <div id="conceptModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl relative space-y-4">
+      <button id="btnCloseModal" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2.5 text-indigo-400">
+        <i data-lucide="book-open" class="w-6 h-6"></i>
+        <h3 class="text-base sm:text-lg font-bold text-white" id="modalTitle">Recursion Concept Guide</h3>
+      </div>
+
+      <div class="text-xs sm:text-sm text-slate-300 space-y-3 leading-relaxed" id="modalContent"></div>
+
+      <div class="pt-2 flex justify-end">
+        <button id="btnModalAcknowledge" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold">
+          Got it!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      selectedAlgo: 'bst_search',
+      params: {
+        n: 4,
+        target: 12,
+        bstKey: 15,
+        arr: [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+      },
+      memoize: false,
+      steps: [],
+      currentStepIndex: 0,
+      isPlaying: false,
+      playTimer: null,
+      speedMs: 750,
+      nodes: {},
+      edges: [],
+      pan: { x: 0, y: 0 },
+      zoom: 1,
+      isDragging: false,
+      dragStart: { x: 0, y: 0 },
+      bstTreeData: null
+    };
+
+    // Pre-built static Binary Search Tree for demonstrations
+    const SAMPLE_BST = {
+      val: 20,
+      left: {
+        val: 10,
+        left: { val: 5, left: null, right: null },
+        right: { val: 15, left: null, right: null }
+      },
+      right: {
+        val: 30,
+        left: { val: 25, left: null, right: null },
+        right: { val: 35, left: null, right: null }
+      }
+    };
+
+    // Java Code Snippets for each algorithm
+    const JAVA_SNIPPETS = {
+      bst_search: [
+        { line: 1, html: `<span class="hl-kw">public boolean</span> <span class="hl-fn">search</span>(<span class="hl-type">Node</span> root, <span class="hl-kw">int</span> target) {` },
+        { line: 2, html: `    <span class="hl-cmt">// 1. Base Case: empty subtree -> target not found</span>` },
+        { line: 3, html: `    <span class="hl-kw">if</span> (root == <span class="hl-kw">null</span>) <span class="hl-kw">return false</span>;` },
+        { line: 4, html: `    <span class="hl-cmt">// 2. Base Case: target matches current node value</span>` },
+        { line: 5, html: `    <span class="hl-kw">if</span> (root.val == target) <span class="hl-kw">return true</span>;` },
+        { line: 6, html: `    <span class="hl-cmt">// 3. Recursive Branching using BST Ordering Property</span>` },
+        { line: 7, html: `    <span class="hl-kw">if</span> (target &lt; root.val) {` },
+        { line: 8, html: `        <span class="hl-kw">return</span> <span class="hl-fn">search</span>(root.left, target);  <span class="hl-cmt">// Search left subtree</span>` },
+        { line: 9, html: `    } <span class="hl-kw">else</span> {` },
+        { line: 10, html: `        <span class="hl-kw">return</span> <span class="hl-fn">search</span>(root.right, target); <span class="hl-cmt">// Search right subtree</span>` },
+        { line: 11, html: `    }` },
+        { line: 12, html: `}` }
+      ],
+      bst_insert: [
+        { line: 1, html: `<span class="hl-kw">public</span> <span class="hl-type">Node</span> <span class="hl-fn">insert</span>(<span class="hl-type">Node</span> root, <span class="hl-kw">int</span> key) {` },
+        { line: 2, html: `    <span class="hl-cmt">// Base Case: Found insertion spot (null spot)</span>` },
+        { line: 3, html: `    <span class="hl-kw">if</span> (root == <span class="hl-kw">null</span>) {` },
+        { line: 4, html: `        <span class="hl-kw">return new</span> <span class="hl-type">Node</span>(key);` },
+        { line: 5, html: `    }` },
+        { line: 6, html: `    <span class="hl-cmt">// Recursive Leap: insert into left or right subtree</span>` },
+        { line: 7, html: `    <span class="hl-kw">if</span> (key &lt; root.val) {` },
+        { line: 8, html: `        root.left = <span class="hl-fn">insert</span>(root.left, key);` },
+        { line: 9, html: `    } <span class="hl-kw">else if</span> (key &gt; root.val) {` },
+        { line: 10, html: `        root.right = <span class="hl-fn">insert</span>(root.right, key);` },
+        { line: 11, html: `    }` },
+        { line: 12, html: `    <span class="hl-kw">return</span> root; <span class="hl-cmt">// Unwind and reconnect pointers</span>` },
+        { line: 13, html: `}` }
+      ],
+      fib: [
+        { line: 1, html: `<span class="hl-kw">public int</span> <span class="hl-fn">fib</span>(<span class="hl-kw">int</span> n) {` },
+        { line: 2, html: `    <span class="hl-cmt">// 1. Base Cases: anchor conditions</span>` },
+        { line: 3, html: `    <span class="hl-kw">if</span> (n &lt;= <span class="hl-num">0</span>) <span class="hl-kw">return</span> <span class="hl-num">0</span>;` },
+        { line: 4, html: `    <span class="hl-kw">if</span> (n == <span class="hl-num">1</span>) <span class="hl-kw">return</span> <span class="hl-num">1</span>;` },
+        { line: 5, html: `    <span class="hl-cmt">// 2. Recursive Step: divide into two subproblems</span>` },
+        { line: 6, html: `    <span class="hl-kw">int</span> left = <span class="hl-fn">fib</span>(n - <span class="hl-num">1</span>);` },
+        { line: 7, html: `    <span class="hl-kw">int</span> right = <span class="hl-fn">fib</span>(n - <span class="hl-num">2</span>);` },
+        { line: 8, html: `    <span class="hl-cmt">// 3. Unwind & Combine solutions</span>` },
+        { line: 9, html: `    <span class="hl-kw">return</span> left + right;` },
+        { line: 10, html: `}` }
+      ],
+      fact: [
+        { line: 1, html: `<span class="hl-kw">public long</span> <span class="hl-fn">fact</span>(<span class="hl-kw">int</span> n) {` },
+        { line: 2, html: `    <span class="hl-cmt">// Base Case: 0! = 1, 1! = 1</span>` },
+        { line: 3, html: `    <span class="hl-kw">if</span> (n &lt;= <span class="hl-num">1</span>) {` },
+        { line: 4, html: `        <span class="hl-kw">return</span> <span class="hl-num">1L</span>;` },
+        { line: 5, html: `    }` },
+        { line: 6, html: `    <span class="hl-cmt">// Recursive Step: n * fact(n - 1)</span>` },
+        { line: 7, html: `    <span class="hl-kw">long</span> sub = <span class="hl-fn">fact</span>(n - <span class="hl-num">1</span>);` },
+        { line: 8, html: `    <span class="hl-cmt">// Unwinding and multiplication</span>` },
+        { line: 9, html: `    <span class="hl-kw">return</span> n * sub;` },
+        { line: 10, html: `}` }
+      ],
+      hanoi: [
+        { line: 1, html: `<span class="hl-kw">public void</span> <span class="hl-fn">solveHanoi</span>(<span class="hl-kw">int</span> n, <span class="hl-type">char</span> src, <span class="hl-type">char</span> aux, <span class="hl-type">char</span> tgt) {` },
+        { line: 2, html: `    <span class="hl-kw">if</span> (n == <span class="hl-num">1</span>) {` },
+        { line: 3, html: `        <span class="hl-fn">moveDisk</span>(<span class="hl-num">1</span>, src, tgt);` },
+        { line: 4, html: `        <span class="hl-kw">return</span>;` },
+        { line: 5, html: `    }` },
+        { line: 6, html: `    <span class="hl-cmt">// 1. Move n - 1 disks from src to aux</span>` },
+        { line: 7, html: `    <span class="hl-fn">solveHanoi</span>(n - <span class="hl-num">1</span>, src, tgt, aux);` },
+        { line: 8, html: `    <span class="hl-cmt">// 2. Move largest disk from src to tgt</span>` },
+        { line: 9, html: `    <span class="hl-fn">moveDisk</span>(n, src, tgt);` },
+        { line: 10, html: `    <span class="hl-cmt">// 3. Move n - 1 disks from aux to tgt</span>` },
+        { line: 11, html: `    <span class="hl-fn">solveHanoi</span>(n - <span class="hl-num">1</span>, aux, src, tgt);` },
+        { line: 12, html: `}` }
+      ],
+      binsearch: [
+        { line: 1, html: `<span class="hl-kw">public int</span> <span class="hl-fn">binarySearch</span>(<span class="hl-kw">int</span>[] arr, <span class="hl-kw">int</span> target, <span class="hl-kw">int</span> low, <span class="hl-kw">int</span> high) {` },
+        { line: 2, html: `    <span class="hl-cmt">// Base Case 1: Search interval is empty</span>` },
+        { line: 3, html: `    <span class="hl-kw">if</span> (low &gt; high) <span class="hl-kw">return</span> -<span class="hl-num">1</span>;` },
+        { line: 4, html: `    <span class="hl-kw">int</span> mid = low + (high - low) / <span class="hl-num">2</span>;` },
+        { line: 5, html: `    <span class="hl-cmt">// Base Case 2: Target found</span>` },
+        { line: 6, html: `    <span class="hl-kw">if</span> (arr[mid] == target) <span class="hl-kw">return</span> mid;` },
+        { line: 7, html: `    <span class="hl-kw">if</span> (arr[mid] &gt; target) {` },
+        { line: 8, html: `        <span class="hl-kw">return</span> <span class="hl-fn">binarySearch</span>(arr, target, low, mid - <span class="hl-num">1</span>);` },
+        { line: 9, html: `    } <span class="hl-kw">else</span> {` },
+        { line: 10, html: `        <span class="hl-kw">return</span> <span class="hl-fn">binarySearch</span>(arr, target, mid + <span class="hl-num">1</span>, high);` },
+        { line: 11, html: `    }` },
+        { line: 12, html: `}` }
+      ]
+    };
+
+    function generateBstSearchSteps(target) {
+      const steps = [];
+      let callCounter = 0;
+
+      function recurse(currNode, parentId = null, branchLabel = '') {
+        const nodeId = `node_${++callCounter}`;
+        const nodeValStr = currNode ? `${currNode.val}` : 'null';
+        const callSig = `search(${currNode ? `Node(${currNode.val})` : 'null'}, ${target})`;
+
+        steps.push({
+          type: 'call',
+          nodeId,
+          parentId,
+          name: 'search',
+          args: { root: nodeValStr, target },
+          callSig,
+          branchLabel,
+          currNodeVal: currNode ? currNode.val : null,
+          line: 1,
+          desc: `Invoking Java method: ${callSig}. Pushing new Activation Record (Frame) onto JVM stack.`
+        });
+
+        // Base case 1: null check
+        if (!currNode) {
+          steps.push({
+            type: 'eval_base',
+            nodeId,
+            callSig,
+            currNodeVal: null,
+            line: 3,
+            desc: `Base Case Check: root == null is TRUE. Reached leaf boundary without finding ${target}.`
+          });
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            currNodeVal: null,
+            returnValue: 'false',
+            line: 3,
+            desc: `Returning false. Popping stack frame from JVM stack.`
+          });
+          return false;
+        }
+
+        // Base case 2: match
+        steps.push({
+          type: 'eval_base',
+          nodeId,
+          callSig,
+          currNodeVal: currNode.val,
+          line: 5,
+          desc: `Checking root.val (${currNode.val}) == target (${target}): ${currNode.val === target ? 'MATCH!' : 'Not a match'}.`
+        });
+
+        if (currNode.val === target) {
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            returnValue: 'true',
+            line: 5,
+            desc: `Base Case Met: Found target value ${target} at Node(${currNode.val})! Returning true and unwinding stack.`
+          });
+          return true;
+        }
+
+        // Recursive branching
+        if (target < currNode.val) {
+          steps.push({
+            type: 'branch_left',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            line: 8,
+            desc: `target (${target}) < node.val (${currNode.val}). By BST invariant, target must be in left subtree. Calling search(root.left, ${target}).`
+          });
+          const res = recurse(currNode.left, nodeId, 'left (val < root)');
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            returnValue: res ? 'true' : 'false',
+            line: 8,
+            desc: `Unwinding: Left recursive call returned ${res}. Passing result upward.`
+          });
+          return res;
+        } else {
+          steps.push({
+            type: 'branch_right',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            line: 10,
+            desc: `target (${target}) > node.val (${currNode.val}). By BST invariant, target must be in right subtree. Calling search(root.right, ${target}).`
+          });
+          const res = recurse(currNode.right, nodeId, 'right (val > root)');
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            returnValue: res ? 'true' : 'false',
+            line: 10,
+            desc: `Unwinding: Right recursive call returned ${res}. Passing result upward.`
+          });
+          return res;
+        }
+      }
+
+      recurse(SAMPLE_BST);
+      return steps;
+    }
+
+    function generateBstInsertSteps(key) {
+      const steps = [];
+      let callCounter = 0;
+
+      function recurse(currNode, parentId = null, branchLabel = '') {
+        const nodeId = `node_${++callCounter}`;
+        const nodeValStr = currNode ? `${currNode.val}` : 'null';
+        const callSig = `insert(${currNode ? `Node(${currNode.val})` : 'null'}, ${key})`;
+
+        steps.push({
+          type: 'call',
+          nodeId,
+          parentId,
+          name: 'insert',
+          args: { root: nodeValStr, key },
+          callSig,
+          branchLabel,
+          currNodeVal: currNode ? currNode.val : null,
+          line: 1,
+          desc: `Calling ${callSig}. Allocating new Activation Frame in JVM memory.`
+        });
+
+        if (!currNode) {
+          steps.push({
+            type: 'eval_base',
+            nodeId,
+            callSig,
+            currNodeVal: null,
+            line: 3,
+            desc: `Base Case reached: root == null. Found valid insertion position for new Node(${key})!`
+          });
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            currNodeVal: null,
+            returnValue: `Node(${key})`,
+            line: 4,
+            desc: `Constructed 'new Node(${key})' and returning reference to caller to link tree pointers.`
+          });
+          return { val: key, left: null, right: null };
+        }
+
+        if (key < currNode.val) {
+          steps.push({
+            type: 'branch_left',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            line: 8,
+            desc: `key (${key}) < root.val (${currNode.val}). Traversal moves left: root.left = insert(root.left, ${key}).`
+          });
+          recurse(currNode.left, nodeId, 'insert left');
+        } else if (key > currNode.val) {
+          steps.push({
+            type: 'branch_right',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            line: 10,
+            desc: `key (${key}) > root.val (${currNode.val}). Traversal moves right: root.right = insert(root.right, ${key}).`
+          });
+          recurse(currNode.right, nodeId, 'insert right');
+        } else {
+          steps.push({
+            type: 'eval_base',
+            nodeId,
+            callSig,
+            currNodeVal: currNode.val,
+            line: 12,
+            desc: `key (${key}) already exists in BST! Skipping duplicate insertion.`
+          });
+        }
+
+        steps.push({
+          type: 'return',
+          nodeId,
+          callSig,
+          currNodeVal: currNode.val,
+          returnValue: `Node(${currNode.val})`,
+          line: 12,
+          desc: `Unwinding: Reconnecting node reference root.left/root.right. Returning Node(${currNode.val}).`
+        });
+      }
+
+      recurse(SAMPLE_BST);
+      return steps;
+    }
+
+    function generateFibonacciSteps(n, memoize = false) {
+      const steps = [];
+      let callCounter = 0;
+      const memo = {};
+
+      function recurse(val, parentId = null, branchLabel = '') {
+        const nodeId = `node_${++callCounter}`;
+        const callSig = `fib(${val})`;
+
+        steps.push({
+          type: 'call',
+          nodeId,
+          parentId,
+          name: 'fib',
+          args: { n: val },
+          callSig,
+          branchLabel,
+          line: 1,
+          desc: `Executing Java method: ${callSig}. Pushing stack frame onto JVM stack.`
+        });
+
+        if (memoize && memo[val] !== undefined) {
+          steps.push({
+            type: 'memo_hit',
+            nodeId,
+            callSig,
+            val: memo[val],
+            line: 3,
+            desc: `⚡ Memoization Cache Hit! HashMap contains key ${val} -> value ${memo[val]}. Pruning further recursive branching!`
+          });
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: memo[val],
+            line: 3,
+            desc: `Returning cached value ${memo[val]} for ${callSig}. Frame popped.`
+          });
+          return memo[val];
+        }
+
+        steps.push({
+          type: 'eval_base',
+          nodeId,
+          callSig,
+          line: val <= 0 ? 3 : (val === 1 ? 4 : 5),
+          desc: val <= 1 
+            ? `Checking Base Case: n=${val} <= 1 is TRUE. Anchor condition reached!` 
+            : `Checking Base Case: n=${val} > 1. Proceeding to recursive subproblems.`
+        });
+
+        if (val <= 0) {
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: 0,
+            line: 3,
+            desc: `Base Case: ${callSig} returns 0. Stack frame popped.`
+          });
+          if (memoize) memo[val] = 0;
+          return 0;
+        }
+
+        if (val === 1) {
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: 1,
+            line: 4,
+            desc: `Base Case: ${callSig} returns 1. Stack frame popped.`
+          });
+          if (memoize) memo[val] = 1;
+          return 1;
+        }
+
+        steps.push({
+          type: 'branch_left',
+          nodeId,
+          callSig,
+          line: 6,
+          desc: `${callSig} pauses at line 6 to evaluate left subproblem: int left = fib(${val - 1}).`
+        });
+        const leftVal = recurse(val - 1, nodeId, 'n - 1');
+
+        steps.push({
+          type: 'branch_right',
+          nodeId,
+          callSig,
+          leftVal,
+          line: 7,
+          desc: `Left returned ${leftVal}. ${callSig} now pauses at line 7 to evaluate: int right = fib(${val - 2}).`
+        });
+        const rightVal = recurse(val - 2, nodeId, 'n - 2');
+
+        const total = leftVal + rightVal;
+        if (memoize) memo[val] = total;
+
+        steps.push({
+          type: 'compute_return',
+          nodeId,
+          callSig,
+          leftVal,
+          rightVal,
+          returnValue: total,
+          line: 9,
+          desc: `Unwinding: ${callSig} combines results: left (${leftVal}) + right (${rightVal}) = ${total}.`
+        });
+
+        steps.push({
+          type: 'return',
+          nodeId,
+          callSig,
+          returnValue: total,
+          line: 9,
+          desc: `${callSig} returns ${total}. Activation record destroyed.`
+        });
+
+        return total;
+      }
+
+      recurse(n);
+      return steps;
+    }
+
+    function generateFactorialSteps(n) {
+      const steps = [];
+      let callCounter = 0;
+
+      function recurse(val, parentId = null) {
+        const nodeId = `node_${++callCounter}`;
+        const callSig = `fact(${val})`;
+
+        steps.push({
+          type: 'call',
+          nodeId,
+          parentId,
+          name: 'fact',
+          args: { n: val },
+          callSig,
+          branchLabel: val === n ? 'start' : 'n - 1',
+          line: 1,
+          desc: `Calling ${callSig}. Pushing stack frame.`
+        });
+
+        steps.push({
+          type: 'eval_base',
+          nodeId,
+          callSig,
+          line: val <= 1 ? 3 : 6,
+          desc: val <= 1 ? `Base Case reached: n <= 1 is TRUE.` : `n > 1. Recursive call needed.`
+        });
+
+        if (val <= 1) {
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: 1,
+            line: 4,
+            desc: `Base Case: ${callSig} returns 1L. Unwinding begins.`
+          });
+          return 1;
+        }
+
+        steps.push({
+          type: 'branch_left',
+          nodeId,
+          callSig,
+          line: 7,
+          desc: `${callSig} calls long sub = fact(${val - 1}).`
+        });
+
+        const sub = recurse(val - 1, nodeId);
+        const result = val * sub;
+
+        steps.push({
+          type: 'compute_return',
+          nodeId,
+          callSig,
+          subResult: sub,
+          returnValue: result,
+          line: 9,
+          desc: `Unwinding: ${callSig} calculates ${val} * fact(${val - 1}) [${sub}] = ${result}.`
+        });
+
+        steps.push({
+          type: 'return',
+          nodeId,
+          callSig,
+          returnValue: result,
+          line: 9,
+          desc: `${callSig} returns ${result}L to caller. Popping frame.`
+        });
+
+        return result;
+      }
+
+      recurse(n);
+      return steps;
+    }
+
+    function generateHanoiSteps(n) {
+      const steps = [];
+      let callCounter = 0;
+      let moveCount = 0;
+      let pegs = {
+        A: Array.from({ length: n }, (_, i) => n - i),
+        B: [],
+        C: []
+      };
+
+      function snapshotPegs() {
+        return { A: [...pegs.A], B: [...pegs.B], C: [...pegs.C] };
+      }
+
+      function recurse(disks, src, aux, tgt, parentId = null, label = '') {
+        const nodeId = `node_${++callCounter}`;
+        const callSig = `solveHanoi(${disks}, '${src}', '${tgt}')`;
+
+        steps.push({
+          type: 'call',
+          nodeId,
+          parentId,
+          name: 'solveHanoi',
+          args: { n: disks, src, aux, tgt },
+          callSig,
+          branchLabel: label,
+          pegsState: snapshotPegs(),
+          line: 1,
+          desc: `Invoking ${callSig}: Goal to transfer ${disks} disk(s) from Peg ${src} to Peg ${tgt}.`
+        });
+
+        if (disks === 1) {
+          steps.push({
+            type: 'eval_base',
+            nodeId,
+            callSig,
+            pegsState: snapshotPegs(),
+            line: 2,
+            desc: `Base Case (n == 1): Single disk can be transferred directly.`
+          });
+
+          const disk = pegs[src].pop();
+          pegs[tgt].push(disk);
+          moveCount++;
+
+          steps.push({
+            type: 'hanoi_move',
+            nodeId,
+            callSig,
+            moveCount,
+            disk,
+            src,
+            tgt,
+            pegsState: snapshotPegs(),
+            line: 3,
+            desc: `Action: moveDisk(1, '${src}', '${tgt}').`
+          });
+
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            pegsState: snapshotPegs(),
+            returnValue: 'void',
+            line: 4,
+            desc: `Base case completed. Frame popped.`
+          });
+          return;
+        }
+
+        steps.push({
+          type: 'branch_left',
+          nodeId,
+          callSig,
+          pegsState: snapshotPegs(),
+          line: 7,
+          desc: `Step 1/3: Recursively shift top ${disks - 1} disks from Peg ${src} to Peg ${aux}.`
+        });
+        recurse(disks - 1, src, tgt, aux, nodeId, 'n - 1 to aux');
+
+        const disk = pegs[src].pop();
+        pegs[tgt].push(disk);
+        moveCount++;
+
+        steps.push({
+          type: 'hanoi_move',
+          nodeId,
+          callSig,
+          moveCount,
+          disk,
+          src,
+          tgt,
+          pegsState: snapshotPegs(),
+          line: 9,
+          desc: `Step 2/3: Move largest disk #${disk} directly from Peg ${src} to Peg ${tgt}.`
+        });
+
+        steps.push({
+          type: 'branch_right',
+          nodeId,
+          callSig,
+          pegsState: snapshotPegs(),
+          line: 11,
+          desc: `Step 3/3: Recursively shift ${disks - 1} disks from Peg ${aux} to Peg ${tgt}.`
+        });
+        recurse(disks - 1, aux, src, tgt, nodeId, 'n - 1 to tgt');
+
+        steps.push({
+          type: 'return',
+          nodeId,
+          callSig,
+          pegsState: snapshotPegs(),
+          returnValue: 'void',
+          line: 12,
+          desc: `Finished subproblem ${callSig}. Frame unwound.`
+        });
+      }
+
+      recurse(n, 'A', 'B', 'C');
+      return steps;
+    }
+
+    function generateBinarySearchSteps(arr, target) {
+      const steps = [];
+      let callCounter = 0;
+
+      function recurse(low, high, parentId = null, label = '') {
+        const nodeId = `node_${++callCounter}`;
+        const callSig = `binarySearch([..], ${target}, ${low}, ${high})`;
+
+        steps.push({
+          type: 'call',
+          nodeId,
+          parentId,
+          name: 'binarySearch',
+          args: { low, high, target },
+          callSig,
+          branchLabel: label,
+          line: 1,
+          desc: `Calling ${callSig}: Search interval [${low} .. ${high}].`
+        });
+
+        if (low > high) {
+          steps.push({
+            type: 'eval_base',
+            nodeId,
+            callSig,
+            line: 3,
+            desc: `Base Case 1: low (${low}) > high (${high}). Search interval is empty! Target not present.`
+          });
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: -1,
+            line: 3,
+            desc: `Returning -1. Stack frame popped.`
+          });
+          return -1;
+        }
+
+        const mid = Math.floor((low + high) / 2);
+        const midVal = arr[mid];
+
+        steps.push({
+          type: 'mid_check',
+          nodeId,
+          callSig,
+          mid,
+          midVal,
+          line: 4,
+          desc: `Calculated mid index ${mid} (arr[${mid}] = ${midVal}). Comparing with target ${target}.`
+        });
+
+        if (midVal === target) {
+          steps.push({
+            type: 'eval_base',
+            nodeId,
+            callSig,
+            line: 6,
+            desc: `Base Case 2: arr[${mid}] == target (${target})! Found match at index ${mid}.`
+          });
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: mid,
+            line: 6,
+            desc: `Returning index ${mid}. Unwinding search calls.`
+          });
+          return mid;
+        }
+
+        if (midVal > target) {
+          steps.push({
+            type: 'branch_left',
+            nodeId,
+            callSig,
+            line: 8,
+            desc: `arr[${mid}] (${midVal}) > target (${target}). Search left half: high = ${mid - 1}.`
+          });
+          const res = recurse(low, mid - 1, nodeId, 'left half');
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: res,
+            line: 8,
+            desc: `Left search returned ${res}. Passing result up.`
+          });
+          return res;
+        } else {
+          steps.push({
+            type: 'branch_right',
+            nodeId,
+            callSig,
+            line: 10,
+            desc: `arr[${mid}] (${midVal}) < target (${target}). Search right half: low = ${mid + 1}.`
+          });
+          const res = recurse(mid + 1, high, nodeId, 'right half');
+          steps.push({
+            type: 'return',
+            nodeId,
+            callSig,
+            returnValue: res,
+            line: 10,
+            desc: `Right search returned ${res}. Passing result up.`
+          });
+          return res;
+        }
+      }
+
+      recurse(0, arr.length - 1);
+      return steps;
+    }
+
+    function calculateTreeLayout(steps) {
+      const nodes = {};
+      const edges = [];
+      const rootIds = [];
+
+      for (const step of steps) {
+        if (step.type === 'call') {
+          nodes[step.nodeId] = {
+            id: step.nodeId,
+            parentId: step.parentId,
+            name: step.name,
+            callSig: step.callSig,
+            branchLabel: step.branchLabel || '',
+            children: [],
+            status: 'unreached',
+            returnValue: null,
+            x: 0,
+            y: 0,
+            depth: 0
+          };
+
+          if (step.parentId && nodes[step.parentId]) {
+            nodes[step.parentId].children.push(step.nodeId);
+            edges.push({
+              from: step.parentId,
+              to: step.nodeId,
+              label: step.branchLabel
+            });
+          } else if (!step.parentId) {
+            rootIds.push(step.nodeId);
+          }
+        }
+      }
+
+      function assignDepths(nodeId, depth) {
+        nodes[nodeId].depth = depth;
+        for (const childId of nodes[nodeId].children) {
+          assignDepths(childId, depth + 1);
+        }
+      }
+      rootIds.forEach(id => assignDepths(id, 0));
+
+      let currentX = 50;
+      const HORIZONTAL_GAP = 95;
+      const VERTICAL_GAP = 85;
+
+      function positionSubtree(nodeId) {
+        const node = nodes[nodeId];
+        if (!node.children || node.children.length === 0) {
+          node.x = currentX;
+          node.y = 55 + node.depth * VERTICAL_GAP;
+          currentX += HORIZONTAL_GAP;
+          return;
+        }
+
+        for (const childId of node.children) {
+          positionSubtree(childId);
+        }
+
+        const firstChild = nodes[node.children[0]];
+        const lastChild = nodes[node.children[node.children.length - 1]];
+        node.x = (firstChild.x + lastChild.x) / 2;
+        node.y = 55 + node.depth * VERTICAL_GAP;
+      }
+
+      rootIds.forEach(id => positionSubtree(id));
+      return { nodes, edges };
+    }
+
+    function renderCodePanel() {
+      const codeContainer = document.getElementById('codeContainer');
+      const lines = JAVA_SNIPPETS[state.selectedAlgo] || JAVA_SNIPPETS.fib;
+      codeContainer.innerHTML = '';
+
+      lines.forEach(item => {
+        const div = document.createElement('div');
+        div.id = `codeLine_${item.line}`;
+        div.className = 'flex items-center px-2 py-0.5 rounded transition font-mono text-slate-400';
+        
+        const lineNum = document.createElement('span');
+        lineNum.className = 'w-7 text-right pr-3 select-none text-slate-600 text-[11px] font-mono';
+        lineNum.textContent = item.line;
+
+        const codeText = document.createElement('span');
+        codeText.className = 'flex-1 text-[12px] whitespace-pre';
+        codeText.innerHTML = item.html;
+
+        div.appendChild(lineNum);
+        div.appendChild(codeText);
+        codeContainer.appendChild(div);
+      });
+
+      const fileTitles = {
+        bst_search: 'BinarySearchTree.java (search)',
+        bst_insert: 'BinarySearchTree.java (insert)',
+        fib: 'Fibonacci.java',
+        fact: 'Factorial.java',
+        hanoi: 'TowersOfHanoi.java',
+        binsearch: 'BinarySearch.java'
+      };
+      document.getElementById('codeFileTitle').textContent = fileTitles[state.selectedAlgo] || 'Solution.java';
+    }
+
+    function updateParameterControls() {
+      const container = document.getElementById('paramsContainer');
+      const memoContainer = document.getElementById('memoContainer');
+      const hanoiOverlay = document.getElementById('hanoiOverlay');
+      const bstOverlay = document.getElementById('bstOverlay');
+      
+      container.innerHTML = '';
+      memoContainer.classList.add('hidden');
+      hanoiOverlay.classList.add('hidden');
+      bstOverlay.classList.add('hidden');
+
+      if (state.selectedAlgo === 'bst_search') {
+        bstOverlay.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <label class="text-slate-300 font-semibold flex items-center gap-1.5">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-amber-400"></i> Target Value:
+            </label>
+            <input type="number" id="paramTarget" min="1" max="40" value="${state.params.target}" 
+              class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-amber-300 font-mono text-center font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <div class="flex gap-1">
+              <button class="quick-pick px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300" data-val="15">Pick 15 (Found)</button>
+              <button class="quick-pick px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300" data-val="28">Pick 28 (Missing)</button>
+            </div>
+          </div>
+        `;
+        renderBstDomainView();
+      } else if (state.selectedAlgo === 'bst_insert') {
+        bstOverlay.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <label class="text-slate-300 font-semibold flex items-center gap-1.5">
+              <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-emerald-400"></i> Key to Insert:
+            </label>
+            <input type="number" id="paramBstKey" min="1" max="40" value="${state.params.bstKey}" 
+              class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-emerald-300 font-mono text-center font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <div class="flex gap-1">
+              <button class="quick-pick-key px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300" data-val="7">Insert 7</button>
+              <button class="quick-pick-key px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300" data-val="27">Insert 27</button>
+            </div>
+          </div>
+        `;
+        renderBstDomainView();
+      } else if (state.selectedAlgo === 'fib') {
+        memoContainer.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <label class="text-slate-300 font-medium">Input n:</label>
+            <input type="number" id="paramN" min="1" max="7" value="${state.params.n}" 
+              class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <span class="text-xs text-slate-500">(1 to 7)</span>
+          </div>
+        `;
+      } else if (state.selectedAlgo === 'fact') {
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <label class="text-slate-300 font-medium">Input n:</label>
+            <input type="number" id="paramN" min="1" max="6" value="${Math.min(state.params.n, 6)}" 
+              class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <span class="text-xs text-slate-500">(1 to 6)</span>
+          </div>
+        `;
+      } else if (state.selectedAlgo === 'hanoi') {
+        hanoiOverlay.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="flex items-center gap-2">
+            <label class="text-slate-300 font-medium">Disks (n):</label>
+            <input type="number" id="paramN" min="2" max="4" value="3" 
+              class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <span class="text-xs text-slate-500">(2 to 4 disks)</span>
+          </div>
+        `;
+      } else if (state.selectedAlgo === 'binsearch') {
+        container.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <label class="text-slate-300 font-medium">Target:</label>
+              <input type="number" id="paramTarget" min="1" max="100" value="${state.params.target}" 
+                class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-mono text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+            <div class="text-xs text-slate-400 font-mono bg-slate-800/80 px-2 py-1 rounded">
+              Array: [2, 5, 8, 12, 16, 23, 38, 56, 72, 91]
+            </div>
+          </div>
+        `;
+      }
+
+      // Quick pick buttons handlers
+      document.querySelectorAll('.quick-pick').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = parseInt(btn.dataset.val);
+          state.params.target = val;
+          const input = document.getElementById('paramTarget');
+          if (input) input.value = val;
+          initAlgorithm();
+        });
+      });
+      document.querySelectorAll('.quick-pick-key').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const val = parseInt(btn.dataset.val);
+          state.params.bstKey = val;
+          const input = document.getElementById('paramBstKey');
+          if (input) input.value = val;
+          initAlgorithm();
+        });
+      });
+
+      const paramN = document.getElementById('paramN');
+      if (paramN) {
+        paramN.addEventListener('change', (e) => {
+          let val = parseInt(e.target.value) || 3;
+          val = Math.max(1, Math.min(val, state.selectedAlgo === 'hanoi' ? 4 : 7));
+          e.target.value = val;
+          state.params.n = val;
+          initAlgorithm();
+        });
+      }
+
+      const paramTarget = document.getElementById('paramTarget');
+      if (paramTarget) {
+        paramTarget.addEventListener('change', (e) => {
+          state.params.target = parseInt(e.target.value) || 12;
+          initAlgorithm();
+        });
+      }
+
+      const paramBstKey = document.getElementById('paramBstKey');
+      if (paramBstKey) {
+        paramBstKey.addEventListener('change', (e) => {
+          state.params.bstKey = parseInt(e.target.value) || 15;
+          initAlgorithm();
+        });
+      }
+
+      renderCodePanel();
+      lucide.createIcons();
+    }
+
+    function renderBstDomainView() {
+      const svg = document.getElementById('bstDomainSvg');
+      svg.innerHTML = '';
+
+      document.getElementById('bstTargetBadge').textContent = 
+        state.selectedAlgo === 'bst_search' ? state.params.target : state.params.bstKey;
+
+      // Coordinates for standard 3-level sample tree
+      const bstPositions = {
+        20: { x: 125, y: 25 },
+        10: { x: 65,  y: 70 },
+        30: { x: 185, y: 70 },
+        5:  { x: 35,  y: 125 },
+        15: { x: 95,  y: 125 },
+        25: { x: 155, y: 125 },
+        35: { x: 215, y: 125 }
+      };
+
+      const edges = [
+        [20, 10], [20, 30],
+        [10, 5],  [10, 15],
+        [30, 25], [30, 35]
+      ];
+
+      // Draw edges
+      edges.forEach(([u, v]) => {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', bstPositions[u].x);
+        line.setAttribute('y1', bstPositions[u].y);
+        line.setAttribute('x2', bstPositions[v].x);
+        line.setAttribute('y2', bstPositions[v].y);
+        line.setAttribute('stroke', '#334155');
+        line.setAttribute('stroke-width', '1.5');
+        svg.appendChild(line);
+      });
+
+      // Draw nodes
+      Object.entries(bstPositions).forEach(([valStr, pos]) => {
+        const val = parseInt(valStr);
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', `bst_dom_node_${val}`);
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', pos.x);
+        circle.setAttribute('cy', pos.y);
+        circle.setAttribute('r', '13');
+        circle.setAttribute('fill', '#1e293b');
+        circle.setAttribute('stroke', '#475569');
+        circle.setAttribute('stroke-width', '1.5');
+        circle.setAttribute('id', `bst_dom_circle_${val}`);
+
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', pos.x);
+        txt.setAttribute('y', pos.y + 4);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('fill', '#f1f5f9');
+        txt.setAttribute('font-size', '10');
+        txt.setAttribute('font-weight', 'bold');
+        txt.setAttribute('font-family', 'JetBrains Mono, monospace');
+        txt.textContent = val;
+
+        g.appendChild(circle);
+        g.appendChild(txt);
+        svg.appendChild(g);
+      });
+    }
+
+    function updateBstDomainHighlight(currentVal, stepType) {
+      // Reset all BST nodes
+      document.querySelectorAll('#bstDomainSvg circle').forEach(c => {
+        c.setAttribute('fill', '#1e293b');
+        c.setAttribute('stroke', '#475569');
+        c.setAttribute('stroke-width', '1.5');
+      });
+
+      if (currentVal !== null && currentVal !== undefined) {
+        const circle = document.getElementById(`bst_dom_circle_${currentVal}`);
+        if (circle) {
+          if (stepType === 'eval_base' || stepType === 'return') {
+            circle.setAttribute('fill', '#064e3b');
+            circle.setAttribute('stroke', '#34d399');
+            circle.setAttribute('stroke-width', '3');
+            document.getElementById('bstStatusBadge').textContent = `Inspecting Node(${currentVal})`;
+          } else {
+            circle.setAttribute('fill', '#312e81');
+            circle.setAttribute('stroke', '#818cf8');
+            circle.setAttribute('stroke-width', '2.5');
+            document.getElementById('bstStatusBadge').textContent = `Visited Node(${currentVal})`;
+          }
+        }
+      }
+    }
+
+    function initAlgorithm() {
+      pausePlayback();
+
+      if (state.selectedAlgo === 'bst_search') {
+        state.steps = generateBstSearchSteps(state.params.target);
+      } else if (state.selectedAlgo === 'bst_insert') {
+        state.steps = generateBstInsertSteps(state.params.bstKey);
+      } else if (state.selectedAlgo === 'fib') {
+        state.steps = generateFibonacciSteps(state.params.n, state.memoize);
+      } else if (state.selectedAlgo === 'fact') {
+        state.steps = generateFactorialSteps(state.params.n);
+      } else if (state.selectedAlgo === 'hanoi') {
+        state.steps = generateHanoiSteps(state.params.n);
+      } else if (state.selectedAlgo === 'binsearch') {
+        state.steps = generateBinarySearchSteps(state.params.arr, state.params.target);
+      }
+
+      const layout = calculateTreeLayout(state.steps);
+      state.nodes = layout.nodes;
+      state.edges = layout.edges;
+
+      const slider = document.getElementById('timelineSlider');
+      slider.max = Math.max(0, state.steps.length - 1);
+      slider.value = 0;
+      document.getElementById('totalStepNum').textContent = state.steps.length;
+
+      state.currentStepIndex = 0;
+      resetTreeTransform();
+      renderInitialSvgTree();
+      applyStepToUI(0);
+    }
+
+    function renderInitialSvgTree() {
+      const edgesGroup = document.getElementById('edgesGroup');
+      const nodesGroup = document.getElementById('nodesGroup');
+      edgesGroup.innerHTML = '';
+      nodesGroup.innerHTML = '';
+
+      state.edges.forEach((edge) => {
+        const fromNode = state.nodes[edge.from];
+        const toNode = state.nodes[edge.to];
+        if (!fromNode || !toNode) return;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const d = `M ${fromNode.x} ${fromNode.y} C ${fromNode.x} ${(fromNode.y + toNode.y)/2}, ${toNode.x} ${(fromNode.y + toNode.y)/2}, ${toNode.x} ${toNode.y}`;
+        
+        path.setAttribute('d', d);
+        path.setAttribute('id', `edge_${edge.from}_${edge.to}`);
+        path.setAttribute('class', 'tree-edge');
+        path.setAttribute('stroke', '#334155');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('marker-end', 'url(#arrow)');
+        edgesGroup.appendChild(path);
+
+        if (edge.label) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', (fromNode.x + toNode.x) / 2 + 5);
+          text.setAttribute('y', (fromNode.y + toNode.y) / 2);
+          text.setAttribute('fill', '#64748b');
+          text.setAttribute('font-size', '9');
+          text.setAttribute('font-family', 'JetBrains Mono, monospace');
+          text.textContent = edge.label;
+          edgesGroup.appendChild(text);
+        }
+      });
+
+      Object.values(state.nodes).forEach(node => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', `svg_node_${node.id}`);
+        g.setAttribute('class', 'cursor-pointer tree-node opacity-40');
+        g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', '22');
+        circle.setAttribute('fill', '#1e293b');
+        circle.setAttribute('stroke', '#475569');
+        circle.setAttribute('stroke-width', '2.5');
+        circle.setAttribute('id', `circle_${node.id}`);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dy', '-2');
+        text.setAttribute('fill', '#f1f5f9');
+        text.setAttribute('font-size', '10');
+        text.setAttribute('font-weight', '600');
+        text.setAttribute('font-family', 'JetBrains Mono, monospace');
+        text.textContent = node.callSig.length > 15 ? node.callSig.substring(0, 13) + '..' : node.callSig;
+
+        const retText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        retText.setAttribute('text-anchor', 'middle');
+        retText.setAttribute('dy', '12');
+        retText.setAttribute('fill', '#94a3b8');
+        retText.setAttribute('font-size', '9');
+        retText.setAttribute('font-weight', '500');
+        retText.setAttribute('id', `ret_text_${node.id}`);
+        retText.textContent = '...';
+
+        g.appendChild(circle);
+        g.appendChild(text);
+        g.appendChild(retText);
+        g.addEventListener('click', () => showNodeTooltip(node));
+
+        nodesGroup.appendChild(g);
+      });
+    }
+
+    function applyStepToUI(stepIdx) {
+      if (!state.steps || state.steps.length === 0) return;
+      stepIdx = Math.max(0, Math.min(stepIdx, state.steps.length - 1));
+      state.currentStepIndex = stepIdx;
+
+      document.getElementById('timelineSlider').value = stepIdx;
+      document.getElementById('currentStepNum').textContent = stepIdx + 1;
+
+      const currentStep = state.steps[stepIdx];
+      document.getElementById('stepExplanation').textContent = currentStep.desc;
+
+      // Line highlight
+      document.querySelectorAll('#codeContainer > div').forEach(el => {
+        el.classList.remove('code-line-active', 'text-indigo-300', 'font-semibold');
+      });
+      if (currentStep.line) {
+        const activeLineEl = document.getElementById(`codeLine_${currentStep.line}`);
+        if (activeLineEl) {
+          activeLineEl.classList.add('code-line-active', 'text-indigo-300', 'font-semibold');
+          activeLineEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+
+      // Reconstruct Stack frames
+      const activeStack = [];
+      const nodeStates = {};
+
+      for (let i = 0; i <= stepIdx; i++) {
+        const s = state.steps[i];
+        if (s.type === 'call') {
+          activeStack.push({
+            nodeId: s.nodeId,
+            callSig: s.callSig,
+            args: s.args,
+            name: s.name,
+            line: s.line
+          });
+          nodeStates[s.nodeId] = { status: 'active', retVal: null };
+        } else if (s.type === 'memo_hit') {
+          if (nodeStates[s.nodeId]) {
+            nodeStates[s.nodeId].status = 'memo_hit';
+            nodeStates[s.nodeId].retVal = s.val;
+          }
+        } else if (s.type === 'return') {
+          if (activeStack.length > 0 && activeStack[activeStack.length - 1].nodeId === s.nodeId) {
+            activeStack.pop();
+          }
+          if (nodeStates[s.nodeId]) {
+            if (nodeStates[s.nodeId].status !== 'memo_hit') {
+              nodeStates[s.nodeId].status = 'returned';
+            }
+            nodeStates[s.nodeId].retVal = s.returnValue;
+          }
+        }
+      }
+
+      renderCallStack(activeStack, currentStep);
+      updateSvgTreeVisuals(nodeStates, currentStep);
+
+      // BST domain preview updates
+      if (state.selectedAlgo.startsWith('bst_')) {
+        updateBstDomainHighlight(currentStep.currNodeVal, currentStep.type);
+      }
+
+      // Hanoi peg visualizer updates
+      if (state.selectedAlgo === 'hanoi' && currentStep.pegsState) {
+        renderHanoiPegs(currentStep.pegsState, currentStep);
+      }
+    }
+
+    function renderCallStack(activeStack, currentStep) {
+      const container = document.getElementById('stackContainer');
+      const depthBadge = document.getElementById('stackDepthBadge');
+      depthBadge.textContent = activeStack.length;
+      container.innerHTML = '';
+
+      if (activeStack.length === 0) {
+        container.innerHTML = `
+          <div class="text-xs text-slate-500 italic text-center my-auto py-8">
+            All recursive frames unwound. Call stack returned to main().
+          </div>
+        `;
+        return;
+      }
+
+      activeStack.forEach((frame, idx) => {
+        const isTop = idx === activeStack.length - 1;
+        const frameDiv = document.createElement('div');
+        frameDiv.className = `p-2.5 rounded-lg border text-xs transition-all stack-frame-enter flex flex-col gap-1 ${
+          isTop 
+            ? 'bg-indigo-950/70 border-indigo-500/80 active-frame text-indigo-100 shadow-md' 
+            : 'bg-slate-900/90 border-slate-800 text-slate-300'
+        }`;
+
+        const topRow = document.createElement('div');
+        topRow.className = 'flex items-center justify-between font-mono';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'font-bold text-xs flex items-center gap-1.5';
+        nameSpan.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full ${isTop ? 'bg-amber-400 animate-ping' : 'bg-slate-500'}"></span>
+          ${frame.callSig}
+        `;
+
+        const badge = document.createElement('span');
+        badge.className = `text-[10px] px-1.5 py-0.5 rounded font-sans uppercase font-bold ${
+          isTop ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-400'
+        }`;
+        badge.textContent = isTop ? 'Active Record' : `Frame #${idx + 1}`;
+
+        topRow.appendChild(nameSpan);
+        topRow.appendChild(badge);
+
+        const varsRow = document.createElement('div');
+        varsRow.className = 'text-[11px] text-slate-400 flex flex-wrap gap-x-3 pt-0.5 font-mono';
+        if (frame.args) {
+          Object.entries(frame.args).forEach(([k, v]) => {
+            varsRow.innerHTML += `<span><span class="text-slate-400">${k}:</span> <strong class="text-indigo-300">${v}</strong></span>`;
+          });
+        }
+
+        frameDiv.appendChild(topRow);
+        frameDiv.appendChild(varsRow);
+        container.appendChild(frameDiv);
+      });
+    }
+
+    function updateSvgTreeVisuals(nodeStates, currentStep) {
+      Object.keys(state.nodes).forEach(nodeId => {
+        const g = document.getElementById(`svg_node_${nodeId}`);
+        const circle = document.getElementById(`circle_${nodeId}`);
+        const retText = document.getElementById(`ret_text_${nodeId}`);
+        if (!g || !circle || !retText) return;
+
+        const info = nodeStates[nodeId];
+
+        if (!info) {
+          g.classList.add('opacity-30');
+          circle.setAttribute('fill', '#1e293b');
+          circle.setAttribute('stroke', '#475569');
+          circle.setAttribute('stroke-width', '2');
+          retText.textContent = '...';
+          retText.setAttribute('fill', '#64748b');
+        } else if (info.status === 'active') {
+          g.classList.remove('opacity-30');
+          const isCurrentlyTop = currentStep.nodeId === nodeId;
+          circle.setAttribute('fill', isCurrentlyTop ? '#312e81' : '#1e1b4b');
+          circle.setAttribute('stroke', isCurrentlyTop ? '#818cf8' : '#6366f1');
+          circle.setAttribute('stroke-width', isCurrentlyTop ? '3.5' : '2.5');
+          retText.textContent = 'executing';
+          retText.setAttribute('fill', '#818cf8');
+        } else if (info.status === 'memo_hit') {
+          g.classList.remove('opacity-30');
+          circle.setAttribute('fill', '#4c1d95');
+          circle.setAttribute('stroke', '#a855f7');
+          circle.setAttribute('stroke-width', '3');
+          retText.textContent = `⚡ mem: ${info.retVal}`;
+          retText.setAttribute('fill', '#c084fc');
+        } else if (info.status === 'returned') {
+          g.classList.remove('opacity-30');
+          circle.setAttribute('fill', '#064e3b');
+          circle.setAttribute('stroke', '#10b981');
+          circle.setAttribute('stroke-width', '2.5');
+          retText.textContent = `ret: ${info.retVal !== undefined ? info.retVal : 'void'}`;
+          retText.setAttribute('fill', '#34d399');
+        }
+      });
+
+      state.edges.forEach(edge => {
+        const path = document.getElementById(`edge_${edge.from}_${edge.to}`);
+        if (!path) return;
+
+        const toNodeInfo = nodeStates[edge.to];
+        if (!toNodeInfo) {
+          path.setAttribute('stroke', '#334155');
+          path.setAttribute('stroke-width', '2');
+          path.setAttribute('marker-end', 'url(#arrow)');
+        } else if (toNodeInfo.status === 'active') {
+          path.setAttribute('stroke', '#818cf8');
+          path.setAttribute('stroke-width', '3');
+          path.setAttribute('marker-end', 'url(#arrow-active)');
+        } else if (toNodeInfo.status === 'returned' || toNodeInfo.status === 'memo_hit') {
+          path.setAttribute('stroke', '#34d399');
+          path.setAttribute('stroke-width', '2.5');
+          path.setAttribute('marker-end', 'url(#arrow-return)');
+        }
+      });
+    }
+
+    function renderHanoiPegs(pegsState, currentStep) {
+      const colors = ['bg-pink-500', 'bg-indigo-500', 'bg-purple-500', 'bg-amber-500'];
+      ['A', 'B', 'C'].forEach(peg => {
+        const container = document.getElementById(`peg${peg}-discs`);
+        container.innerHTML = '';
+
+        (pegsState[peg] || []).forEach(diskNum => {
+          const disc = document.createElement('div');
+          const widthClass = diskNum === 1 ? 'w-14' : (diskNum === 2 ? 'w-24' : (diskNum === 3 ? 'w-32' : 'w-40'));
+          const colorClass = colors[(diskNum - 1) % colors.length];
+
+          disc.className = `h-6 rounded-md shadow flex items-center justify-center text-[10px] font-bold text-white hanoi-disc ${widthClass} ${colorClass}`;
+          disc.textContent = `Disk ${diskNum}`;
+          container.appendChild(disc);
+        });
+      });
+
+      if (currentStep.type === 'hanoi_move') {
+        document.getElementById('hanoiMoveCounter').textContent = `Move: ${currentStep.moveCount}`;
+        document.getElementById('hanoiActionText').innerHTML = `
+          Moved Disk <span class="font-bold text-pink-400">#${currentStep.disk}</span> from 
+          <span class="font-bold text-indigo-400">Peg ${currentStep.src}</span> → 
+          <span class="font-bold text-emerald-400">Peg ${currentStep.tgt}</span>
+        `;
+      }
+    }
+
+    function showNodeTooltip(node) {
+      const tooltip = document.getElementById('nodeDetailTooltip');
+      const title = document.getElementById('tooltipCallSignature');
+      const body = document.getElementById('tooltipBody');
+
+      title.innerHTML = `<i data-lucide="info" class="w-3.5 h-3.5 inline"></i> ${node.callSig}`;
+      const hasExecuted = state.steps.slice(0, state.currentStepIndex + 1).some(s => s.nodeId === node.id);
+
+      body.innerHTML = `
+        <div>Depth Level: <span class="font-mono text-indigo-300">${node.depth}</span></div>
+        <div>Children Subcalls: <span class="font-mono text-slate-300">${node.children.length}</span></div>
+        <div>Status: <span class="font-semibold ${hasExecuted ? 'text-emerald-400' : 'text-slate-400'}">
+          ${hasExecuted ? 'Reached in this trace' : 'Unreached'}
+        </span></div>
+      `;
+
+      tooltip.classList.remove('hidden');
+      lucide.createIcons();
+      setTimeout(() => tooltip.classList.add('hidden'), 4500);
+    }
+
+    function setupCanvasPanZoom() {
+      const svg = document.getElementById('treeSvg');
+      const g = document.getElementById('treeWorldTransform');
+
+      function updateTransform() {
+        g.setAttribute('transform', `translate(${state.pan.x}, ${state.pan.y}) scale(${state.zoom})`);
+      }
+
+      svg.addEventListener('mousedown', (e) => {
+        state.isDragging = true;
+        state.dragStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!state.isDragging) return;
+        state.pan.x = e.clientX - state.dragStart.x;
+        state.pan.y = e.clientY - state.dragStart.y;
+        updateTransform();
+      });
+
+      window.addEventListener('mouseup', () => {
+        state.isDragging = false;
+      });
+
+      svg.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        state.zoom = Math.max(0.3, Math.min(2.5, state.zoom * factor));
+        updateTransform();
+      }, { passive: false });
+
+      document.getElementById('btnZoomIn').addEventListener('click', () => {
+        state.zoom = Math.min(2.5, state.zoom * 1.2);
+        updateTransform();
+      });
+
+      document.getElementById('btnZoomOut').addEventListener('click', () => {
+        state.zoom = Math.max(0.3, state.zoom / 1.2);
+        updateTransform();
+      });
+
+      document.getElementById('btnResetView').addEventListener('click', resetTreeTransform);
+    }
+
+    function resetTreeTransform() {
+      const g = document.getElementById('treeWorldTransform');
+      const svg = document.getElementById('treeSvg');
+      const rect = svg.getBoundingClientRect();
+      const rootNode = Object.values(state.nodes)[0];
+
+      if (rootNode) {
+        state.pan.x = (rect.width / 2) - rootNode.x;
+        state.pan.y = 40;
+      } else {
+        state.pan.x = 30;
+        state.pan.y = 30;
+      }
+      state.zoom = 1;
+      g.setAttribute('transform', `translate(${state.pan.x}, ${state.pan.y}) scale(${state.zoom})`);
+    }
+
+    function playNextStep() {
+      if (state.currentStepIndex < state.steps.length - 1) {
+        applyStepToUI(state.currentStepIndex + 1);
+      } else {
+        pausePlayback();
+      }
+    }
+
+    function startPlayback() {
+      if (state.currentStepIndex >= state.steps.length - 1) {
+        state.currentStepIndex = 0;
+        applyStepToUI(0);
+      }
+      state.isPlaying = true;
+      document.getElementById('playBtnLabel').textContent = 'Pause';
+      document.getElementById('playIcon').setAttribute('data-lucide', 'pause');
+      lucide.createIcons();
+      state.playTimer = setInterval(playNextStep, state.speedMs);
+    }
+
+    function pausePlayback() {
+      state.isPlaying = false;
+      if (state.playTimer) clearInterval(state.playTimer);
+      state.playTimer = null;
+      document.getElementById('playBtnLabel').textContent = 'Auto Play';
+      document.getElementById('playIcon').setAttribute('data-lucide', 'play');
+      lucide.createIcons();
+    }
+
+    function setupEventListeners() {
+      document.getElementById('algoSelect').addEventListener('change', (e) => {
+        state.selectedAlgo = e.target.value;
+        const titles = {
+          bst_search: 'BST: Recursive Search Call Tree',
+          bst_insert: 'BST: Recursive Insertion Call Tree',
+          fib: 'Fibonacci Call Tree Graph',
+          fact: 'Factorial Linear Recursion Graph',
+          hanoi: 'Tower of Hanoi Call Tree',
+          binsearch: 'Binary Search Call Tree'
+        };
+        document.getElementById('canvasTitle').textContent = titles[state.selectedAlgo] || 'Recursive Call Tree';
+        updateParameterControls();
+        initAlgorithm();
+      });
+
+      document.getElementById('memoToggle').addEventListener('change', (e) => {
+        state.memoize = e.target.checked;
+        initAlgorithm();
+      });
+
+      document.getElementById('timelineSlider').addEventListener('input', (e) => {
+        pausePlayback();
+        applyStepToUI(parseInt(e.target.value));
+      });
+
+      document.getElementById('speedSlider').addEventListener('input', (e) => {
+        const raw = parseInt(e.target.value);
+        state.speedMs = 2000 - raw;
+        if (state.isPlaying) {
+          pausePlayback();
+          startPlayback();
+        }
+      });
+
+      document.getElementById('btnPlayPause').addEventListener('click', () => {
+        if (state.isPlaying) pausePlayback();
+        else startPlayback();
+      });
+
+      document.getElementById('btnStepForward').addEventListener('click', () => {
+        pausePlayback();
+        if (state.currentStepIndex < state.steps.length - 1) {
+          applyStepToUI(state.currentStepIndex + 1);
+        }
+      });
+
+      document.getElementById('btnStepBack').addEventListener('click', () => {
+        pausePlayback();
+        if (state.currentStepIndex > 0) {
+          applyStepToUI(state.currentStepIndex - 1);
+        }
+      });
+
+      document.getElementById('btnReset').addEventListener('click', () => {
+        pausePlayback();
+        applyStepToUI(0);
+      });
+
+      // Modals
+      const modal = document.getElementById('conceptModal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalContent = document.getElementById('modalContent');
+      const closeModal = () => modal.classList.add('hidden');
+
+      document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+      document.getElementById('btnModalAcknowledge').addEventListener('click', closeModal);
+
+      document.getElementById('btnExplainBaseCase').addEventListener('click', () => {
+        modalTitle.textContent = 'Base Cases & Preventing Stack Overflow';
+        modalContent.innerHTML = `
+          <p>In Java, every method call allocates an <strong>Activation Record (Stack Frame)</strong> on the thread's call stack containing local variables and return pointers.</p>
+          <div class="p-3 bg-slate-800 rounded-lg border border-slate-700 space-y-2">
+            <div class="font-semibold text-emerald-400">1. The Anchor (Base Case)</div>
+            <p class="text-xs text-slate-300">Without a base case condition (like <code>if (root == null)</code> or <code>if (n &lt;= 1)</code>), recursive calls accumulate indefinitely until Java throws a <strong class="text-rose-400 font-mono">java.lang.StackOverflowError</strong>.</p>
+          </div>
+          <div class="p-3 bg-slate-800 rounded-lg border border-slate-700 space-y-2">
+            <div class="font-semibold text-indigo-400">2. The Unwinding Phase</div>
+            <p class="text-xs text-slate-300">Once the base case evaluates, recursion stops cascading downwards and starts <strong>unwinding</strong>, combining child return values as stack frames are popped one by one.</p>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      });
+
+      document.getElementById('btnExplainBst').addEventListener('click', () => {
+        modalTitle.textContent = 'Binary Search Tree (BST) Recursive Invariant';
+        modalContent.innerHTML = `
+          <p>In a Binary Search Tree, for every node <code>X</code>:</p>
+          <ul class="list-disc pl-5 space-y-1 text-slate-300 text-xs font-mono">
+            <li>All nodes in X.left &lt; X.val</li>
+            <li>All nodes in X.right &gt; X.val</li>
+          </ul>
+          <div class="p-3 bg-slate-800 rounded-lg border border-slate-700 space-y-2 mt-2">
+            <div class="font-semibold text-amber-400">Recursive Decisions:</div>
+            <p class="text-xs text-slate-300">Because of this invariant, recursion eliminates half the tree at each step (yielding <strong>O(log n)</strong> time on balanced trees) without needing to inspect both branches!</p>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      });
+
+      document.getElementById('btnInfoModal').addEventListener('click', () => {
+        document.getElementById('btnExplainBaseCase').click();
+      });
+    }
+
+    window.onload = function () {
+      lucide.createIcons();
+      updateParameterControls();
+      setupCanvasPanZoom();
+      setupEventListeners();
+      initAlgorithm();
+    };
+  </script>
+</body>
+</html>

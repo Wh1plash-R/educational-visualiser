@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Binary Tree Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* High-contrast node styling for maximum readability in classroom presentations */
+    .node-base {
+      fill: #ffffff;
+      stroke: #334155;
+      stroke-width: 3px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .node-text {
+      fill: #090d16;
+      font-weight: 800;
+      font-size: 15px;
+      user-select: none;
+      pointer-events: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    /* Active step highlight: vibrant amber/yellow glow with dark sharp text */
+    .node-active circle {
+      fill: #fef08a !important;
+      stroke: #ca8a04 !important;
+      stroke-width: 4.5px !important;
+      filter: drop-shadow(0px 0px 8px rgba(234, 179, 8, 0.8));
+    }
+    .node-active text {
+      fill: #713f12 !important;
+    }
+    /* Visited / outputted node: vibrant bright mint green */
+    .node-visited circle {
+      fill: #bbf7d0 !important;
+      stroke: #16a34a !important;
+      stroke-width: 3.5px !important;
+    }
+    .node-visited text {
+      fill: #14532d !important;
+    }
+    /* Tree branch connectors */
+    .tree-edge {
+      stroke: #94a3b8;
+      stroke-width: 3.5px;
+      stroke-linecap: round;
+      transition: stroke 0.3s ease;
+    }
+    .stack-frame-anim {
+      animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Physical Stack Canister styling */
+    .stack-canister {
+      border-left: 3px solid #475569;
+      border-right: 3px solid #475569;
+      border-bottom: 5px solid #64748b;
+      border-radius: 0 0 10px 10px;
+      background: radial-gradient(circle at top, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%);
+    }
+    .stack-top-opening {
+      border-top: 2px dashed #eab308;
+      background: rgba(234, 179, 8, 0.08);
+    }
+    /* Hide scrollbar for Chrome, Safari and Opera on touch elements */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Custom subtle horizontal scrollbar for tree canvas */
+    .touch-tree-scroll::-webkit-scrollbar {
+      height: 6px;
+    }
+    .touch-tree-scroll::-webkit-scrollbar-track {
+      background: #0f172a;
+      border-radius: 3px;
+    }
+    .touch-tree-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased pb-20 lg:pb-6">
+  <header class="bg-slate-900 border-b border-slate-800 px-3 sm:px-5 py-3 shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-lg sm:text-xl font-black text-amber-400 flex items-center gap-1.5 tracking-tight">
+            <svg class="w-5 h-5 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>BST Visualizer &amp; Reviewer</span>
+          </h1>
+          <p class="text-[11px] text-slate-400 font-medium">DSA Traversal &amp; Call Stack Study Tool</p>
+        </div>
+        <!-- Mobile Reviewer Badge -->
+        <span class="lg:hidden text-[10px] uppercase font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-1 rounded">
+          Mobile Ready
+        </span>
+      </div>
+
+      <!-- Traversal selector with touch target sizing -->
+      <div class="flex items-center gap-2 bg-slate-950 border border-slate-700 px-3 py-1.5 rounded-lg w-full sm:w-auto justify-between sm:justify-start">
+        <label for="traversalSelect" class="text-xs font-bold text-slate-300 uppercase tracking-wider flex-shrink-0">Traversal:</label>
+        <select id="traversalSelect" class="bg-slate-900 text-sky-400 font-bold text-xs sm:text-sm border-none outline-none cursor-pointer focus:ring-0 w-full sm:w-auto">
+          <option value="inorder">Inorder (Left &rarr; Root &rarr; Right)</option>
+          <option value="preorder">Preorder (Root &rarr; Left &rarr; Right)</option>
+          <option value="postorder">Postorder (Left &rarr; Right &rarr; Root)</option>
+          <option value="levelorder">Levelorder (BFS Queue)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tree Customizer & Presets Bar: Flex wrapping for all screen sizes -->
+    <div class="max-w-7xl mx-auto mt-2.5 pt-2.5 border-t border-slate-800 flex flex-col gap-2 text-xs">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center gap-1.5 flex-1 min-w-[220px]">
+          <input 
+            id="customInput" 
+            type="text" 
+            value="10, 5, 15, 2, 7, 12" 
+            placeholder="e.g. 10, 5, 15, 2, 7, 12" 
+            class="bg-slate-950 border border-slate-700 focus:border-amber-400 rounded px-2.5 py-1.5 text-xs text-white font-mono w-full outline-none"
+          />
+          <button id="buildTreeBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded transition shadow flex-shrink-0 active:scale-95">
+            Build
+          </button>
+        </div>
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <input 
+            id="insertValue" 
+            type="number" 
+            placeholder="Val" 
+            class="bg-slate-950 border border-slate-700 focus:border-sky-400 rounded px-2 py-1.5 text-xs text-white font-mono w-14 outline-none"
+          />
+          <button id="insertNodeBtn" class="bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 font-semibold px-2.5 py-1.5 rounded transition active:scale-95">
+            + Insert
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontally scrolling presets for quick mobile tapping -->
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <span class="text-slate-400 font-semibold flex-shrink-0">Presets:</span>
+        <button class="preset-btn bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-300 border border-slate-700 flex-shrink-0 active:bg-slate-600" data-vals="10, 5, 15, 2, 7, 12">Midterm Code</button>
+        <button class="preset-btn bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-300 border border-slate-700 flex-shrink-0 active:bg-slate-600" data-vals="50, 25, 75, 12, 37, 62, 87">Full 3-Level</button>
+        <button class="preset-btn bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-300 border border-slate-700 flex-shrink-0 active:bg-slate-600" data-vals="20, 10, 30, 5, 15">Compact</button>
+        <button id="randomTreeBtn" class="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-amber-300 border border-amber-500/40 flex-shrink-0 active:bg-slate-600">Random</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  <div id="statusToast" class="hidden bg-red-950/90 border border-red-500 text-red-200 text-xs px-4 py-2 mx-auto mt-2 rounded shadow-lg max-w-sm sm:max-w-xl text-center"></div>
+
+  <!-- Mobile Tab Switcher (Visible only on < lg screens) -->
+  <div class="lg:hidden px-3 pt-3 max-w-7xl mx-auto w-full">
+    <div class="grid grid-cols-3 gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-center font-bold text-xs">
+      <button id="tabTreeBtn" class="tab-btn py-2 px-1 rounded-lg bg-sky-600 text-white shadow transition flex items-center justify-center gap-1">
+        <span>🌲 Tree</span>
+      </button>
+      <button id="tabStackBtn" class="tab-btn py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+        <span>📚 Stack</span>
+      </button>
+      <button id="tabReviewBtn" class="tab-btn py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1">
+        <span>📖 Review</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Work Area -->
+  <main class="flex-1 p-3 sm:p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 max-w-7xl mx-auto w-full">
+    <!-- Left Column: High-Contrast Tree Canvas & Output Strip -->
+    <div id="treeSection" class="lg:col-span-7 flex flex-col gap-3 sm:gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow-xl flex flex-col items-center relative">
+        <!-- Legend Bar with high-contrast color indicators -->
+        <div class="w-full flex flex-wrap justify-between items-center text-xs pb-2 border-b border-slate-800 mb-2 gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-slate-300">Tree Canvas</span>
+            <span class="text-[10px] text-slate-500 hidden sm:inline">(Max Depth: 5)</span>
+          </div>
+          <div class="flex items-center gap-3 text-[11px] sm:text-xs">
+            <span class="flex items-center gap-1">
+              <span class="w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-700 inline-block shadow-sm"></span>
+              <span class="text-slate-300 font-semibold">Idle</span>
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="w-3.5 h-3.5 rounded-full bg-yellow-200 border-2 border-yellow-600 inline-block shadow-sm"></span>
+              <span class="text-amber-300 font-bold">Active</span>
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="w-3.5 h-3.5 rounded-full bg-emerald-200 border-2 border-emerald-600 inline-block shadow-sm"></span>
+              <span class="text-emerald-300 font-bold">Output</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Touch-Friendly SVG Viewport with horizontal pan support on mobile -->
+        <div class="w-full flex-1 overflow-x-auto touch-tree-scroll pb-1">
+          <div class="min-w-[520px] sm:min-w-[620px] lg:min-w-0 flex items-center justify-center">
+            <svg id="treeSvg" viewBox="0 0 700 340" class="w-full h-[260px] sm:h-[320px] select-none"></svg>
+          </div>
+        </div>
+        <div class="w-full text-center text-[10px] text-slate-500 sm:hidden mt-1 font-medium">
+          &larr; Swipe tree horizontally to pan &rarr;
+        </div>
+      </div>
+
+      <!-- Desktop Traversal Controls (Hidden on mobile; replaced by mobile sticky bottom bar) -->
+      <div class="hidden lg:flex bg-slate-900 border border-slate-800 rounded-xl p-4 flex-col gap-3 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button id="prevBtn" class="bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold px-3.5 py-1.5 rounded text-sm transition border border-slate-700 active:scale-95">
+              &larr; Prev
+            </button>
+            <button id="nextBtn" class="bg-sky-600 hover:bg-sky-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold px-4 py-1.5 rounded text-sm transition shadow-lg shadow-sky-600/30 active:scale-95">
+              Next Step &rarr;
+            </button>
+            <button id="autoBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3.5 py-1.5 rounded text-sm transition active:scale-95">
+              Auto Play
+            </button>
+            <button id="resetBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3 py-1.5 rounded text-sm transition border border-slate-700 active:scale-95">
+              Restart
+            </button>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="stepCounter" class="text-xs text-amber-400 font-mono font-bold bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+              Step 0 / 0
+            </span>
+          </div>
+        </div>
+
+        <!-- Traversed Output Array -->
+        <div>
+          <div class="flex justify-between items-center text-xs mb-1.5">
+            <span class="uppercase tracking-wider text-slate-300 font-bold">List&lt;Integer&gt; out:</span>
+            <span id="outputCount" class="text-slate-400 font-mono">0 items</span>
+          </div>
+          <div id="outputList" class="flex items-center gap-2 p-2.5 bg-slate-950 border border-slate-800 rounded-lg min-h-[48px] overflow-x-auto no-scrollbar">
+            <span class="text-slate-500 font-normal italic text-xs">Awaiting traversal execution...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Output Strip (Always visible under tree on mobile) -->
+      <div class="lg:hidden bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-md">
+        <div class="flex justify-between items-center text-xs mb-1.5">
+          <span class="uppercase tracking-wider text-slate-300 font-bold text-[11px]">List&lt;Integer&gt; out:</span>
+          <span id="mobileOutputCount" class="text-emerald-400 font-mono text-[11px] font-bold">0 items</span>
+        </div>
+        <div id="mobileOutputList" class="flex items-center gap-1.5 p-2 bg-slate-950 border border-slate-800 rounded-lg min-h-[42px] overflow-x-auto no-scrollbar">
+          <span class="text-slate-500 font-normal italic text-xs">Awaiting execution...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Call Stack / Queue State & Step Explanation -->
+    <div id="stackSection" class="lg:col-span-5 flex flex-col gap-3 sm:gap-4">
+      <!-- Call Stack / Queue Inspection Window -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow-xl flex-1 flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2.5">
+          <h2 id="stackHeader" class="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <span>Call Stack (LIFO)</span>
+          </h2>
+          <span id="stackDepthBadge" class="bg-slate-950 text-[11px] px-2 py-0.5 rounded text-amber-300 border border-amber-500/30 font-mono font-bold">
+            Frames: 0
+          </span>
+        </div>
+
+        <!-- Stack Top / Queue Header Guide -->
+        <div id="stackGuideTop" class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 py-1 px-2 rounded-t mb-1 flex items-center justify-between stack-top-opening">
+          <span>&#9650; TOP OF STACK (LIFO)</span>
+          <span class="text-[10px] text-amber-300/80 font-normal">Push / Pop here</span>
+        </div>
+
+        <!-- Frame items canister with mobile friendly max-height -->
+        <div id="stackList" class="stack-canister flex-1 flex flex-col gap-1.5 overflow-y-auto max-h-[200px] sm:max-h-[250px] p-2">
+          <!-- Stack frame cards generated dynamically -->
+        </div>
+
+        <!-- Stack Base Anchor -->
+        <div id="stackGuideBottom" class="text-[9px] sm:text-[10px] font-bold text-slate-500 py-1 px-2 text-center border-t border-slate-800 mt-1">
+          &#9660; BASE OF STACK (Initial call from main)
+        </div>
+      </div>
+
+      <!-- Execution Trace Details & Code Line -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow-xl flex flex-col gap-2">
+        <h2 class="text-[11px] sm:text-xs font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Current Execution Line
+        </h2>
+        <div id="stepCode" class="text-[11px] sm:text-xs font-mono bg-slate-950 p-2 sm:p-2.5 rounded-lg border border-slate-800 text-yellow-300 font-semibold overflow-x-auto whitespace-nowrap">
+          // Traversal ready to begin
+        </div>
+        <div class="bg-slate-950/60 p-2.5 sm:p-3 rounded-lg border border-slate-800/80">
+          <span class="text-[10px] uppercase text-slate-400 font-bold block mb-1">What is happening:</span>
+          <p id="stepExplanation" class="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal min-h-[50px]">
+            Tap <strong>Next Step</strong> or <strong>Auto Play</strong> below to trace how method frames are pushed and popped.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Reviewer Cheat Sheet Section (Tab 3 on mobile, expandable on desktop) -->
+    <div id="reviewerSection" class="hidden lg:col-span-12 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+      <div class="border-b border-slate-800 pb-2.5 mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+          DSA Traversal Exam Reviewer Cheat Sheet
+        </h2>
+        <span class="text-[11px] font-bold text-slate-400">Quick Recall Card</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <!-- Inorder Card -->
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-sky-400 text-sm">Inorder</span>
+            <span class="px-1.5 py-0.5 rounded bg-sky-950 text-sky-300 font-mono text-[10px]">DFS</span>
+          </div>
+          <p class="text-amber-300 font-mono font-bold text-[11px] mb-1">Left &rarr; Node &rarr; Right</p>
+          <ul class="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+            <li><strong>Always yields sorted order</strong> on any BST.</li>
+            <li>Time: <code class="text-sky-300">O(N)</code></li>
+            <li>Stack Space: <code class="text-sky-300">O(H)</code> (H = height)</li>
+          </ul>
+        </div>
+
+        <!-- Preorder Card -->
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-amber-400 text-sm">Preorder</span>
+            <span class="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 font-mono text-[10px]">DFS</span>
+          </div>
+          <p class="text-amber-300 font-mono font-bold text-[11px] mb-1">Node &rarr; Left &rarr; Right</p>
+          <ul class="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+            <li>Visits root node <strong>immediately</strong> on entry.</li>
+            <li>Ideal for cloning or serializing trees.</li>
+            <li>Time: <code class="text-amber-300">O(N)</code> | Space: <code class="text-amber-300">O(H)</code></li>
+          </ul>
+        </div>
+
+        <!-- Postorder Card -->
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-purple-400 text-sm">Postorder</span>
+            <span class="px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 font-mono text-[10px]">DFS</span>
+          </div>
+          <p class="text-amber-300 font-mono font-bold text-[11px] mb-1">Left &rarr; Right &rarr; Node</p>
+          <ul class="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+            <li>Processes children before parent (bottom-up).</li>
+            <li>Used for tree deletion and directory sizes.</li>
+            <li>Root node is recorded <strong>very last</strong>.</li>
+          </ul>
+        </div>
+
+        <!-- Levelorder Card -->
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-emerald-400 text-sm">Levelorder</span>
+            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[10px]">BFS</span>
+          </div>
+          <p class="text-amber-300 font-mono font-bold text-[11px] mb-1">Top &rarr; Down (Level by level)</p>
+          <ul class="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+            <li>Uses an iterative <strong>Queue (FIFO)</strong>.</li>
+            <li>Dequeues from head, enqueues children to tail.</li>
+            <li>Space: <code class="text-emerald-300">O(W)</code> (W = max width)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Fixed Mobile Bottom Navigation Bar (Always reachable by student's thumb on phones) -->
+  <div class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-2 shadow-2xl flex items-center justify-between gap-2">
+    <button id="mobilePrevBtn" class="bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold px-3 py-2 rounded-lg text-xs transition border border-slate-700 flex items-center gap-1 active:scale-95">
+      &larr; Prev
+    </button>
+    
+    <div class="flex flex-col items-center">
+      <span id="mobileStepCounter" class="text-[11px] text-amber-400 font-mono font-bold">
+        Step 0 / 0
+      </span>
+      <button id="mobileResetBtn" class="text-[10px] text-slate-400 underline hover:text-slate-200">
+        Restart
+      </button>
+    </div>
+
+    <button id="mobileAutoBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-2 rounded-lg text-xs transition active:scale-95">
+      Auto
+    </button>
+
+    <button id="mobileNextBtn" class="bg-sky-600 hover:bg-sky-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-xs transition shadow-lg shadow-sky-600/30 active:scale-95">
+      Next &rarr;
+    </button>
+  </div>
+
+  <script>
+    class TreeNode {
+      constructor(data) {
+        this.data = data;
+        this.left = null;
+        this.right = null;
+        this.x = 0;
+        this.y = 0;
+      }
+    }
+
+    class BinarySearchTree {
+      constructor() {
+        this.root = null;
+      }
+
+      insert(data) {
+        const newNode = new TreeNode(data);
+        if (!this.root) {
+          this.root = newNode;
+          return true;
+        }
+        let curr = this.root;
+        while (true) {
+          if (data === curr.data) {
+            return false; // Skip duplicate values to keep BST clear for learners
+          }
+          if (data < curr.data) {
+            if (!curr.left) {
+              curr.left = newNode;
+              return true;
+            }
+            curr = curr.left;
+          } else {
+            if (!curr.right) {
+              curr.right = newNode;
+              return true;
+            }
+            curr = curr.right;
+          }
+        }
+      }
+
+      getDepth(node = this.root) {
+        if (!node) return 0;
+        return 1 + Math.max(this.getDepth(node.left), this.getDepth(node.right));
+      }
+    }
+
+    function calculateTreeLayout(root, width = 700, height = 360) {
+      if (!root) return [];
+      const nodes = [];
+      const edges = [];
+
+      // Assign in-order indices for balanced horizontal spacing
+      let orderIndex = 0;
+      function assignInorderX(node, depth) {
+        if (!node) return;
+        assignInorderX(node.left, depth + 1);
+        node.inorderIndex = orderIndex++;
+        node.depth = depth;
+        assignInorderX(node.right, depth + 1);
+      }
+      assignInorderX(root, 0);
+
+      const totalNodes = Math.max(orderIndex, 1);
+      const horizontalSpacing = (width - 100) / (totalNodes > 1 ? totalNodes - 1 : 1);
+      const maxDepth = Math.max(...getDepths(root), 1);
+      const verticalSpacing = Math.min(68, (height - 90) / (maxDepth || 1));
+
+      function assignCoordinates(node) {
+        if (!node) return;
+        node.x = 50 + node.inorderIndex * horizontalSpacing;
+        node.y = 45 + node.depth * verticalSpacing;
+        nodes.push(node);
+
+        if (node.left) {
+          assignCoordinates(node.left);
+          edges.push({ from: node, to: node.left });
+        }
+        if (node.right) {
+          assignCoordinates(node.right);
+          edges.push({ from: node, to: node.right });
+        }
+      }
+
+      assignCoordinates(root);
+      return { nodes, edges };
+    }
+
+    function getDepths(node, depth = 0, depths = []) {
+      if (!node) return depths;
+      depths.push(depth);
+      getDepths(node.left, depth + 1, depths);
+      getDepths(node.right, depth + 1, depths);
+      return depths;
+    }
+
+    function generateInorderTrace(root) {
+      const steps = [];
+      const stack = [];
+      const out = [];
+
+      if (!root) {
+        return [{
+          active: null,
+          code: `// Tree is empty`,
+          stack: [],
+          out: [],
+          desc: `Tree is empty. Nothing to traverse.`
+        }];
+      }
+
+      function traverse(n) {
+        if (!n) return;
+        // PUSH current frame onto stack
+        stack.push({ name: `inorder(${n.data})`, node: n.data, state: 'Active' });
+
+        steps.push({
+          active: n.data,
+          code: `inorder(Node n = ${n.data}, out); // Pushed to top of stack`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `Entering <code>inorder(${n.data})</code>. Pushed to the <strong>TOP of the Call Stack</strong>.`
+        });
+
+        // 1. Recurse Left
+        if (n.left) {
+          steps.push({
+            active: n.data,
+            code: `inorder(n.left = ${n.left.data}, out); // Calling left child`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `Node <strong>${n.data}</strong> calls left child <strong>${n.left.data}</strong>. Frame <code>inorder(${n.data})</code> is paused while child executes.`
+          });
+          traverse(n.left);
+        } else {
+          steps.push({
+            active: n.data,
+            code: `if (n.left == null) return; // Left is null, base case`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `Node <strong>${n.data}</strong> has no left child (<code>null</code>). Base case returns immediately.`
+          });
+        }
+
+        // 2. Visit Root (Add to out)
+        out.push(n.data);
+        steps.push({
+          active: n.data,
+          code: `out.add(${n.data}); // Process node value`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `Left subtree of <strong>${n.data}</strong> is finished! Recorded <strong>${n.data}</strong> into the output list.`
+        });
+
+        // 3. Recurse Right
+        if (n.right) {
+          steps.push({
+            active: n.data,
+            code: `inorder(n.right = ${n.right.data}, out); // Calling right child`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `Node <strong>${n.data}</strong> calls right child <strong>${n.right.data}</strong>. Pushing new child frame to top of stack.`
+          });
+          traverse(n.right);
+        } else {
+          steps.push({
+            active: n.data,
+            code: `if (n.right == null) return; // Right is null, base case`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `Node <strong>${n.data}</strong> has no right child (<code>null</code>). Base case returns immediately.`
+          });
+        }
+
+        // POP frame off stack
+        stack.pop();
+        steps.push({
+          active: stack.length > 0 ? stack[stack.length - 1].node : null,
+          code: `return; // inorder(${n.data}) finishes & pops from stack`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `<code>inorder(${n.data})</code> has finished both left and right children. <strong>POPPED off the top of the stack!</strong>` + 
+                (stack.length > 0 ? ` Returning control to paused caller: <code>${stack[stack.length - 1].name}</code>.` : ` Call stack is now empty!`)
+        });
+      }
+
+      traverse(root);
+      steps.push({
+        active: null,
+        code: `// Traversal Complete!`,
+        stack: [],
+        out: [...out],
+        desc: `Inorder traversal complete! All nodes visited in ascending sorted order: <strong>[${out.join(", ")}]</strong>.`
+      });
+      return steps;
+    }
+
+    function generatePreorderTrace(root) {
+      const steps = [];
+      const stack = [];
+      const out = [];
+
+      if (!root) {
+        return [{ active: null, code: `// Tree is empty`, stack: [], out: [], desc: `Tree is empty.` }];
+      }
+
+      function traverse(n) {
+        if (!n) return;
+        stack.push({ name: `preorder(${n.data})`, node: n.data });
+        out.push(n.data);
+
+        steps.push({
+          active: n.data,
+          code: `out.add(${n.data}); // Process node immediately upon arrival`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `Entering <code>preorder(${n.data})</code>. Pushed to <strong>TOP of Call Stack</strong>. In Preorder, we add <strong>${n.data}</strong> immediately.`
+        });
+
+        if (n.left) {
+          steps.push({
+            active: n.data,
+            code: `preorder(n.left = ${n.left.data}, out);`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `Recursing into left child of <strong>${n.data}</strong> &rarr; pushes <code>preorder(${n.left.data})</code> on top.`
+          });
+          traverse(n.left);
+        }
+
+        if (n.right) {
+          steps.push({
+            active: n.data,
+            code: `preorder(n.right = ${n.right.data}, out);`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `Left subtree done for <strong>${n.data}</strong>. Recursing right &rarr; pushes <code>preorder(${n.right.data})</code> on top.`
+          });
+          traverse(n.right);
+        }
+
+        stack.pop();
+        steps.push({
+          active: stack.length > 0 ? stack[stack.length - 1].node : null,
+          code: `return; // preorder(${n.data}) finished & pops`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `<code>preorder(${n.data})</code> completed. <strong>POPPED from the top of the stack</strong>.` +
+                (stack.length > 0 ? ` Resuming caller: <code>${stack[stack.length - 1].name}</code>.` : ``)
+        });
+      }
+
+      traverse(root);
+      steps.push({
+        active: null,
+        code: `// Traversal Complete!`,
+        stack: [],
+        out: [...out],
+        desc: `Preorder traversal complete! Result: <strong>[${out.join(", ")}]</strong>.`
+      });
+      return steps;
+    }
+
+    function generatePostorderTrace(root) {
+      const steps = [];
+      const stack = [];
+      const out = [];
+
+      if (!root) {
+        return [{ active: null, code: `// Tree is empty`, stack: [], out: [], desc: `Tree is empty.` }];
+      }
+
+      function traverse(n) {
+        if (!n) return;
+        stack.push({ name: `postorder(${n.data})`, node: n.data });
+
+        steps.push({
+          active: n.data,
+          code: `postorder(Node n = ${n.data}, out); // Pushed to top`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `Entering <code>postorder(${n.data})</code>. Pushed to <strong>TOP of stack</strong>. Must process children before recording parent.`
+        });
+
+        if (n.left) {
+          steps.push({
+            active: n.data,
+            code: `postorder(n.left = ${n.left.data}, out);`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `From <strong>${n.data}</strong>, traverse left branch first &rarr; calls <code>postorder(${n.left.data})</code>.`
+          });
+          traverse(n.left);
+        }
+
+        if (n.right) {
+          steps.push({
+            active: n.data,
+            code: `postorder(n.right = ${n.right.data}, out);`,
+            stack: stack.map(f => ({ ...f })),
+            out: [...out],
+            desc: `From <strong>${n.data}</strong>, traverse right branch next &rarr; calls <code>postorder(${n.right.data})</code>.`
+          });
+          traverse(n.right);
+        }
+
+        out.push(n.data);
+        steps.push({
+          active: n.data,
+          code: `out.add(${n.data}); // Process node after children`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `Both children of <strong>${n.data}</strong> are done! Added <strong>${n.data}</strong> to the output list.`
+        });
+
+        stack.pop();
+        steps.push({
+          active: stack.length > 0 ? stack[stack.length - 1].node : null,
+          code: `return; // postorder(${n.data}) finished & pops`,
+          stack: stack.map(f => ({ ...f })),
+          out: [...out],
+          desc: `<code>postorder(${n.data})</code> completed. <strong>POPPED from the top of the stack</strong>.` +
+                (stack.length > 0 ? ` Resuming caller: <code>${stack[stack.length - 1].name}</code>.` : ``)
+        });
+      }
+
+      traverse(root);
+      steps.push({
+        active: null,
+        code: `// Traversal Complete!`,
+        stack: [],
+        out: [...out],
+        desc: `Postorder traversal complete! Result: <strong>[${out.join(", ")}]</strong>.`
+      });
+      return steps;
+    }
+
+    function generateLevelorderTrace(root) {
+      const steps = [];
+      const out = [];
+      if (!root) {
+        return [{ active: null, code: "return out;", stack: [], out: [], desc: "Tree is empty." }];
+      }
+
+      const q = [root];
+      steps.push({
+        active: root.data,
+        code: `Queue<Node> q = new ArrayDeque<>(); q.add(root = ${root.data});`,
+        stack: [{ name: `Node(${root.data})`, node: root.data }],
+        out: [],
+        desc: `Initialize BFS Queue and enqueue root <strong>${root.data}</strong> at the rear.`
+      });
+
+      while (q.length > 0) {
+        const curr = q.shift();
+        out.push(curr.data);
+
+        if (curr.left) q.push(curr.left);
+        if (curr.right) q.push(curr.right);
+
+        steps.push({
+          active: curr.data,
+          code: `Node curr = q.remove(); // Dequeued ${curr.data}\n` +
+                `out.add(${curr.data});` + 
+                (curr.left ? ` q.add(${curr.left.data});` : '') + 
+                (curr.right ? ` q.add(${curr.right.data});` : ''),
+          stack: q.map(n => ({ name: `Node(${n.data})`, node: n.data })),
+          out: [...out],
+          desc: `Dequeued <strong>${curr.data}</strong> from FRONT of Queue.` + 
+                (curr.left ? ` Enqueued left child <strong>${curr.left.data}</strong> to REAR.` : '') + 
+                (curr.right ? ` Enqueued right child <strong>${curr.right.data}</strong> to REAR.` : '')
+        });
+      }
+
+      steps.push({
+        active: null,
+        code: `while (!q.isEmpty()) exits. return out;`,
+        stack: [],
+        out: [...out],
+        desc: `Queue is now empty. BFS Levelorder traversal finished! Order: <strong>[${out.join(", ")}]</strong>.`
+      });
+      return steps;
+    }
+
+    let currentTree = new BinarySearchTree();
+    let currentSteps = [];
+    let currentStepIdx = 0;
+    let autoInterval = null;
+
+    // DOM Elements
+    const treeSvg = document.getElementById("treeSvg");
+    const outputList = document.getElementById("outputList");
+    const outputCount = document.getElementById("outputCount");
+    const mobileOutputList = document.getElementById("mobileOutputList");
+    const mobileOutputCount = document.getElementById("mobileOutputCount");
+    const stackList = document.getElementById("stackList");
+    const stackHeader = document.getElementById("stackHeader");
+    const stackDepthBadge = document.getElementById("stackDepthBadge");
+    const stackGuideTop = document.getElementById("stackGuideTop");
+    const stackGuideBottom = document.getElementById("stackGuideBottom");
+    const stepCode = document.getElementById("stepCode");
+    const stepExplanation = document.getElementById("stepExplanation");
+    const stepCounter = document.getElementById("stepCounter");
+    const mobileStepCounter = document.getElementById("mobileStepCounter");
+    
+    // Desktop Controls
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const autoBtn = document.getElementById("autoBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    
+    // Mobile Controls
+    const mobilePrevBtn = document.getElementById("mobilePrevBtn");
+    const mobileNextBtn = document.getElementById("mobileNextBtn");
+    const mobileAutoBtn = document.getElementById("mobileAutoBtn");
+    const mobileResetBtn = document.getElementById("mobileResetBtn");
+
+    // Inputs & Presets
+    const traversalSelect = document.getElementById("traversalSelect");
+    const customInput = document.getElementById("customInput");
+    const buildTreeBtn = document.getElementById("buildTreeBtn");
+    const insertValue = document.getElementById("insertValue");
+    const insertNodeBtn = document.getElementById("insertNodeBtn");
+    const randomTreeBtn = document.getElementById("randomTreeBtn");
+    const statusToast = document.getElementById("statusToast");
+
+    // Mobile Section Tabs
+    const tabTreeBtn = document.getElementById("tabTreeBtn");
+    const tabStackBtn = document.getElementById("tabStackBtn");
+    const tabReviewBtn = document.getElementById("tabReviewBtn");
+    const treeSection = document.getElementById("treeSection");
+    const stackSection = document.getElementById("stackSection");
+    const reviewerSection = document.getElementById("reviewerSection");
+
+    function setMobileTab(tab) {
+      // Only manipulate individual visibility classes on small screens
+      if (window.innerWidth < 1024) {
+        treeSection.classList.add("hidden");
+        stackSection.classList.add("hidden");
+        reviewerSection.classList.add("hidden");
+
+        [tabTreeBtn, tabStackBtn, tabReviewBtn].forEach(b => {
+          b.className = "tab-btn py-2 px-1 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1";
+        });
+
+        if (tab === "tree") {
+          treeSection.classList.remove("hidden");
+          tabTreeBtn.className = "tab-btn py-2 px-1 rounded-lg bg-sky-600 text-white shadow transition flex items-center justify-center gap-1";
+        } else if (tab === "stack") {
+          stackSection.classList.remove("hidden");
+          tabStackBtn.className = "tab-btn py-2 px-1 rounded-lg bg-amber-600 text-white shadow transition flex items-center justify-center gap-1";
+        } else if (tab === "review") {
+          reviewerSection.classList.remove("hidden");
+          tabReviewBtn.className = "tab-btn py-2 px-1 rounded-lg bg-emerald-600 text-white shadow transition flex items-center justify-center gap-1";
+        }
+      }
+    }
+
+    tabTreeBtn.addEventListener("click", () => setMobileTab("tree"));
+    tabStackBtn.addEventListener("click", () => setMobileTab("stack"));
+    tabReviewBtn.addEventListener("click", () => setMobileTab("review"));
+
+    // Reset layout on window resize across breakpoint
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 1024) {
+        treeSection.classList.remove("hidden");
+        stackSection.classList.remove("hidden");
+        reviewerSection.classList.remove("hidden");
+      } else {
+        setMobileTab("tree");
+      }
+    });
+
+    function showToast(msg) {
+      statusToast.textContent = msg;
+      statusToast.classList.remove("hidden");
+      setTimeout(() => statusToast.classList.add("hidden"), 3000);
+    }
+
+    function renderSvgTree() {
+      const { nodes, edges } = calculateTreeLayout(currentTree.root);
+      treeSvg.innerHTML = "";
+
+      edges.forEach(edge => {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", edge.from.x);
+        line.setAttribute("y1", edge.from.y);
+        line.setAttribute("x2", edge.to.x);
+        line.setAttribute("y2", edge.to.y);
+        line.setAttribute("class", "tree-edge");
+        treeSvg.appendChild(line);
+      });
+
+      nodes.forEach(node => {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("id", `svg-node-${node.data}`);
+        g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
+
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("r", "20");
+        circle.setAttribute("class", "node-base");
+        g.appendChild(circle);
+
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("dy", "5.5");
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("class", "node-text");
+        text.textContent = node.data;
+        g.appendChild(text);
+
+        treeSvg.appendChild(g);
+      });
+    }
+
+    function recomputeTraces() {
+      const mode = traversalSelect.value;
+      if (mode === "inorder") {
+        currentSteps = generateInorderTrace(currentTree.root);
+      } else if (mode === "preorder") {
+        currentSteps = generatePreorderTrace(currentTree.root);
+      } else if (mode === "postorder") {
+        currentSteps = generatePostorderTrace(currentTree.root);
+      } else {
+        currentSteps = generateLevelorderTrace(currentTree.root);
+      }
+      currentStepIdx = 0;
+      updateUI();
+    }
+
+    function updateUI() {
+      if (currentSteps.length === 0) return;
+      const step = currentSteps[currentStepIdx];
+      const isLevelOrder = traversalSelect.value === "levelorder";
+
+      // Configure Header & Guide Labels
+      if (isLevelOrder) {
+        stackHeader.innerHTML = `
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          <span>Queue FIFO Buffer</span>
+        `;
+        stackDepthBadge.textContent = `Queue Size: ${step.stack.length}`;
+        stackGuideTop.innerHTML = `
+          <span>&#11013; FRONT / HEAD (Next to Dequeue)</span>
+          <span class="text-[10px] text-emerald-300/80 font-mono">q.remove()</span>
+        `;
+        stackGuideTop.className = "text-[10px] sm:text-[11px] font-bold text-emerald-300 py-1 px-2 rounded-t mb-1 flex items-center justify-between bg-emerald-950/40 border-t-2 border-emerald-500";
+        stackGuideBottom.innerHTML = `&#10145; REAR / TAIL (New nodes enter via q.add())`;
+      } else {
+        stackHeader.innerHTML = `
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <span>Call Stack (LIFO)</span>
+        `;
+        stackDepthBadge.textContent = `Frames: ${step.stack.length}`;
+        stackGuideTop.innerHTML = `
+          <span>&#9650; TOP OF STACK (Active Call)</span>
+          <span class="text-[10px] text-amber-300/80 font-normal">Push &amp; Pop here</span>
+        `;
+        stackGuideTop.className = "text-[10px] sm:text-[11px] font-bold text-amber-400/90 py-1 px-2 rounded-t mb-1 flex items-center justify-between stack-top-opening";
+        stackGuideBottom.innerHTML = `&#9660; BASE OF STACK (First call from main)`;
+      }
+
+      // Update Tree Node Visuals
+      const allNodeGroups = document.querySelectorAll("[id^='svg-node-']");
+      allNodeGroups.forEach(g => {
+        const val = parseInt(g.id.replace("svg-node-", ""), 10);
+        g.classList.remove("node-active", "node-visited");
+        if (val === step.active) {
+          g.classList.add("node-active");
+        } else if (step.out.includes(val)) {
+          g.classList.add("node-visited");
+        }
+      });
+
+      // Update Call Stack / Queue View
+      stackList.innerHTML = "";
+      if (step.stack.length === 0) {
+        stackList.innerHTML = `<span class="text-xs text-slate-500 italic p-3 text-center block">${isLevelOrder ? "Queue is empty" : "Call stack is empty (All frames resolved)"}</span>`;
+      } else {
+        if (isLevelOrder) {
+          step.stack.forEach((frameObj, idx) => {
+            const isHead = idx === 0;
+            const div = document.createElement("div");
+            div.className = `stack-frame-anim p-2 sm:p-2.5 rounded-lg text-xs font-mono font-bold border flex items-center justify-between ${
+              isHead
+                ? "bg-emerald-500/20 border-emerald-400 text-emerald-200 shadow-sm ring-1 ring-emerald-500/40"
+                : "bg-slate-950 border-slate-800 text-slate-300"
+            }`;
+            div.innerHTML = `
+              <div class="flex items-center gap-2">
+                <span class="text-slate-500 text-[10px]">#${idx + 1}</span>
+                <span>${frameObj.name}</span>
+              </div>
+              <span class="text-[9px] sm:text-[10px] font-sans uppercase font-bold px-1.5 py-0.5 rounded ${
+                isHead ? "bg-emerald-500 text-slate-950" : "bg-slate-800 text-slate-400"
+              }">${isHead ? "FRONT" : "QUEUED"}</span>
+            `;
+            stackList.appendChild(div);
+          });
+        } else {
+          const framesTopToBottom = [...step.stack].reverse();
+          framesTopToBottom.forEach((frameObj, renderIdx) => {
+            const isTop = renderIdx === 0;
+            const isBase = renderIdx === framesTopToBottom.length - 1;
+            const div = document.createElement("div");
+            div.className = `stack-frame-anim p-2 sm:p-2.5 rounded-lg text-xs font-mono font-bold border flex items-center justify-between transition-all ${
+              isTop
+                ? "bg-amber-400/20 border-amber-400 text-amber-200 shadow-md ring-2 ring-amber-400/60"
+                : "bg-slate-950/80 border-slate-800 text-slate-400"
+            }`;
+            div.innerHTML = `
+              <div class="flex items-center gap-2">
+                <span class="text-xs">${isTop ? "🔥" : "⏸️"}</span>
+                <span class="${isTop ? "text-amber-200 font-bold" : "text-slate-400"}">${frameObj.name}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                ${isBase && !isTop ? '<span class="text-[9px] font-sans uppercase px-1 rounded bg-slate-800 text-slate-400">Base</span>' : ''}
+                <span class="text-[9px] sm:text-[10px] font-sans uppercase font-bold px-2 py-0.5 rounded ${
+                  isTop ? "bg-amber-400 text-slate-950" : "bg-slate-800 text-slate-400"
+                }">${isTop ? "TOP (ACTIVE)" : "PAUSED"}</span>
+              </div>
+            `;
+            stackList.appendChild(div);
+          });
+        }
+      }
+
+      // Update Desktop Output chips
+      outputCount.textContent = `${step.out.length} items`;
+      mobileOutputCount.textContent = `${step.out.length} items`;
+
+      const outputHtml = step.out.length === 0
+        ? `<span class="text-slate-500 font-normal italic text-xs">Awaiting traversal execution...</span>`
+        : step.out
+            .map(val => `
+              <span class="px-2.5 py-0.5 bg-emerald-400 border-2 border-emerald-600 rounded-md text-slate-950 font-mono font-black text-xs sm:text-sm shadow-sm flex-shrink-0">
+                ${val}
+              </span>
+            `)
+            .join(" ");
+
+      outputList.innerHTML = outputHtml;
+      mobileOutputList.innerHTML = outputHtml;
+
+      // Update Step description and code
+      stepCode.textContent = step.code;
+      stepExplanation.innerHTML = step.desc;
+      
+      const stepText = `Step ${currentStepIdx + 1} / ${currentSteps.length}`;
+      stepCounter.textContent = stepText;
+      mobileStepCounter.textContent = stepText;
+
+      const isFirst = currentStepIdx === 0;
+      const isLast = currentStepIdx === currentSteps.length - 1;
+
+      prevBtn.disabled = isFirst;
+      mobilePrevBtn.disabled = isFirst;
+
+      nextBtn.disabled = isLast;
+      mobileNextBtn.disabled = isLast;
+    }
+
+    function buildTreeFromValues(values) {
+      if (!Array.isArray(values) || values.length === 0) {
+        showToast("Please enter valid comma-separated numbers.");
+        return;
+      }
+      currentTree = new BinarySearchTree();
+      values.forEach(v => {
+        if (!isNaN(v)) currentTree.insert(v);
+      });
+      renderSvgTree();
+      recomputeTraces();
+    }
+
+    function advanceStep() {
+      if (currentStepIdx < currentSteps.length - 1) {
+        currentStepIdx++;
+        updateUI();
+      }
+    }
+
+    function retreatStep() {
+      if (currentStepIdx > 0) {
+        currentStepIdx--;
+        updateUI();
+      }
+    }
+
+    function resetSteps() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        autoBtn.textContent = "Auto Play";
+        mobileAutoBtn.textContent = "Auto";
+      }
+      currentStepIdx = 0;
+      updateUI();
+    }
+
+    function toggleAutoPlay() {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        autoBtn.textContent = "Auto Play";
+        mobileAutoBtn.textContent = "Auto";
+      } else {
+        autoBtn.textContent = "Pause";
+        mobileAutoBtn.textContent = "Pause";
+        autoInterval = setInterval(() => {
+          if (currentStepIdx < currentSteps.length - 1) {
+            currentStepIdx++;
+            updateUI();
+          } else {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            autoBtn.textContent = "Auto Play";
+            mobileAutoBtn.textContent = "Auto";
+          }
+        }, 1100);
+      }
+    }
+
+    // Unified Event Listeners
+    nextBtn.addEventListener("click", advanceStep);
+    mobileNextBtn.addEventListener("click", advanceStep);
+
+    prevBtn.addEventListener("click", retreatStep);
+    mobilePrevBtn.addEventListener("click", retreatStep);
+
+    resetBtn.addEventListener("click", resetSteps);
+    mobileResetBtn.addEventListener("click", resetSteps);
+
+    autoBtn.addEventListener("click", toggleAutoPlay);
+    mobileAutoBtn.addEventListener("click", toggleAutoPlay);
+
+    buildTreeBtn.addEventListener("click", () => {
+      const raw = customInput.value;
+      const parsed = raw.split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+      if (parsed.length === 0) {
+        showToast("Invalid input. Enter numbers like: 10, 5, 15, 2, 7");
+        return;
+      }
+      if (parsed.length > 15) {
+        showToast("Keep tree under 15 nodes for clear display.");
+      }
+      buildTreeFromValues(parsed);
+    });
+
+    insertNodeBtn.addEventListener("click", () => {
+      const val = parseInt(insertValue.value, 10);
+      if (isNaN(val)) {
+        showToast("Please provide a valid integer to insert.");
+        return;
+      }
+      const success = currentTree.insert(val);
+      if (!success) {
+        showToast(`Value ${val} already exists in BST.`);
+      } else {
+        insertValue.value = "";
+        renderSvgTree();
+        recomputeTraces();
+      }
+    });
+
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const vals = btn.getAttribute("data-vals").split(",").map(v => parseInt(v.trim(), 10));
+        customInput.value = btn.getAttribute("data-vals");
+        buildTreeFromValues(vals);
+      });
+    });
+
+    randomTreeBtn.addEventListener("click", () => {
+      const size = 6 + Math.floor(Math.random() * 4);
+      const set = new Set();
+      while (set.size < size) {
+        set.add(Math.floor(Math.random() * 90) + 10);
+      }
+      const arr = Array.from(set);
+      customInput.value = arr.join(", ");
+      buildTreeFromValues(arr);
+    });
+
+    traversalSelect.addEventListener("change", () => {
+      if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        autoBtn.textContent = "Auto Play";
+        mobileAutoBtn.textContent = "Auto";
+      }
+      recomputeTraces();
+    });
+
+    // Bootstrapping with midterm default: [10, 5, 15, 2, 7, 12]
+    buildTreeFromValues([10, 5, 15, 2, 7, 12]);
+  </script>
+</body>
+</html>
