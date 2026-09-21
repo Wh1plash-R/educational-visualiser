@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Concurrency Control & Transaction Visualizer</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Pulse Glow for active state node */
+    @keyframes stateGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+    }
+    .state-active-pulse {
+      animation: stateGlow 1.8s infinite;
+    }
+
+    /* Deadlock cycle pulse */
+    @keyframes alertPulse {
+      0%, 100% { border-color: #ef4444; background-color: rgba(254, 226, 226, 0.6); }
+      50% { border-color: #b91c1c; background-color: rgba(254, 202, 202, 0.9); }
+    }
+    .deadlock-alert {
+      animation: alertPulse 1.2s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white font-bold text-lg">
+            DB
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold leading-tight flex items-center gap-2">
+              Concurrency Control Interactive Lab
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">IT2003 Handout</span>
+            </h1>
+            <p class="text-xs text-slate-400 hidden sm:block">ACID • Concurrency Anomalies • Locking & Deadlocks • Isolation Levels</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto py-1">
+          <button onclick="switchTab('tab-acid')" id="btn-tab-acid" class="tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="hidden md:inline">1. Transactions &</span> ACID
+          </button>
+          <button onclick="switchTab('tab-problems')" id="btn-tab-problems" class="tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span class="hidden md:inline">2. Concurrency</span> Problems
+          </button>
+          <button onclick="switchTab('tab-locks')" id="btn-tab-locks" class="tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            <span class="hidden md:inline">3. Locks &</span> Deadlocks
+          </button>
+          <button onclick="switchTab('tab-isolation')" id="btn-tab-isolation" class="tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <span class="hidden md:inline">4. Isolation</span> Levels
+          </button>
+          <button onclick="switchTab('tab-quiz')" id="btn-tab-quiz" class="tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Quiz
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: TRANSACTIONS & ACID & EXECUTION STATES                            -->
+    <!-- ========================================================================= -->
+    <section id="tab-acid" class="tab-content block space-y-6">
+      <!-- Overview Banner -->
+      <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-md border border-indigo-700/50">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 uppercase tracking-wide">Module A</span>
+            <h2 class="text-2xl font-bold mt-2">Transaction Concept & ACID Properties</h2>
+            <p class="text-indigo-200 text-sm mt-1 max-w-3xl leading-relaxed">
+              A <strong>transaction</strong> is a collection of operations that form a single logical unit of work. 
+              Even if a user views it as a single task (e.g. buying shoes, transferring money), the database executes multiple reads and writes. 
+              All must succeed, or all must be undone.
+            </p>
+          </div>
+          <!-- Quick ACID Badges -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            <div class="bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+              <span class="block font-bold text-base text-amber-300">A</span>
+              <span class="font-semibold text-white">Atomicity</span>
+              <p class="text-[10px] text-indigo-200">All or nothing</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+              <span class="block font-bold text-base text-emerald-300">C</span>
+              <span class="font-semibold text-white">Consistency</span>
+              <p class="text-[10px] text-indigo-200">Preserves rules</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+              <span class="block font-bold text-base text-cyan-300">I</span>
+              <span class="font-semibold text-white">Isolation</span>
+              <p class="text-[10px] text-indigo-200">No interference</p>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm p-2.5 rounded-xl border border-white/10">
+              <span class="block font-bold text-base text-purple-300">D</span>
+              <span class="font-semibold text-white">Durability</span>
+              <p class="text-[10px] text-indigo-200">Changes persist</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>Figure 1: Transaction Execution State Machine</span>
+            </h3>
+            <p class="text-xs text-slate-500">Live visualization of transaction lifecycle transitions</p>
+          </div>
+          <div class="text-xs text-slate-500 flex items-center gap-2">
+            Current State: <span id="lbl-state-badge" class="font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-300 uppercase tracking-wider text-[11px]">Active</span>
+          </div>
+        </div>
+
+        <!-- Visual State Diagram Flow -->
+        <div class="relative bg-slate-50 border border-slate-200 rounded-xl p-6 overflow-x-auto">
+          <div class="min-w-[650px] flex items-center justify-between relative py-6">
+            <!-- Connector Line -->
+            <div class="absolute top-1/2 left-16 right-16 h-1 bg-slate-200 -translate-y-1/2 z-0"></div>
+
+            <!-- State 1: Active -->
+            <div id="state-node-active" class="state-node relative z-10 flex flex-col items-center p-3 w-32 rounded-xl bg-white border-2 border-indigo-500 shadow-md transition-all state-active-pulse">
+              <span class="text-xs font-bold uppercase text-indigo-700">Active</span>
+              <span class="text-[10px] text-slate-500 text-center mt-1">READ / WRITE ops executing</span>
+            </div>
+
+            <!-- Arrow Right -->
+            <div class="z-10 text-slate-400 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200">End Query</div>
+
+            <!-- State 2: Partially Committed -->
+            <div id="state-node-partially" class="state-node relative z-10 flex flex-col items-center p-3 w-36 rounded-xl bg-white border-2 border-slate-300 shadow-sm opacity-60 transition-all">
+              <span class="text-xs font-bold uppercase text-slate-700">Partially Committed</span>
+              <span class="text-[10px] text-slate-500 text-center mt-1">Final SQL stmt run</span>
+            </div>
+
+            <!-- Arrow Right -->
+            <div class="z-10 text-slate-400 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200">COMMIT</div>
+
+            <!-- State 3: Committed -->
+            <div id="state-node-committed" class="state-node relative z-10 flex flex-col items-center p-3 w-32 rounded-xl bg-white border-2 border-slate-300 shadow-sm opacity-60 transition-all">
+              <span class="text-xs font-bold uppercase text-emerald-700">Committed</span>
+              <span class="text-[10px] text-slate-500 text-center mt-1">All changes permanent</span>
+            </div>
+
+            <!-- Arrow Right -->
+            <div class="z-10 text-slate-400 font-bold text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Exit</div>
+
+            <!-- State 4: Terminated -->
+            <div id="state-node-terminated" class="state-node relative z-10 flex flex-col items-center p-3 w-32 rounded-xl bg-white border-2 border-slate-300 shadow-sm opacity-60 transition-all">
+              <span class="text-xs font-bold uppercase text-slate-700">Terminated</span>
+              <span class="text-[10px] text-slate-500 text-center mt-1">Leaves the DBMS</span>
+            </div>
+          </div>
+
+          <!-- Bottom Branch: Failed -->
+          <div class="min-w-[650px] flex items-center justify-center pt-2">
+            <div id="state-node-failed" class="state-node flex flex-col items-center p-3 w-40 rounded-xl bg-white border-2 border-slate-300 shadow-sm opacity-60 transition-all">
+              <span class="text-xs font-bold uppercase text-rose-700">Failed (Abort)</span>
+              <span class="text-[10px] text-slate-500 text-center mt-1">Error detected / ROLLBACK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Interactive Simulator & Table -->
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-base text-slate-900">Handout Example: Fund Transfer & Savepoint Lab</h3>
+                <p class="text-xs text-slate-500">Aldous transfers to Brendon, then attempts an overdraft withdrawal</p>
+              </div>
+              <button onclick="resetFundTransferLab()" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                Reset Values
+              </button>
+            </div>
+
+            <!-- Live Table: BankAccount -->
+            <div class="mb-5 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+              <div class="bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>Table: BankAccount (Database Consistent State)</span>
+                <span id="txt-tran-count" class="font-mono text-indigo-700 text-[11px]">@@TRANCOUNT: 0</span>
+              </div>
+              <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500">
+                  <tr>
+                    <th class="px-4 py-2 font-semibold">AccountNo</th>
+                    <th class="px-4 py-2 font-semibold">Name</th>
+                    <th class="px-4 py-2 font-semibold text-right">Balance (PHP)</th>
+                    <th class="px-4 py-2 font-semibold text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-mono text-xs">
+                  <tr id="row-aldous" class="transition-colors">
+                    <td class="px-4 py-3 font-semibold text-slate-900">10</td>
+                    <td class="px-4 py-3 font-sans font-medium text-slate-800">Aldous</td>
+                    <td class="px-4 py-3 text-right font-bold text-slate-900" id="val-aldous-bal">₱11,000.00</td>
+                    <td class="px-4 py-3 text-right"><span id="badge-aldous" class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600">Idle</span></td>
+                  </tr>
+                  <tr id="row-brendon" class="transition-colors">
+                    <td class="px-4 py-3 font-semibold text-slate-900">20</td>
+                    <td class="px-4 py-3 font-sans font-medium text-slate-800">Brendon</td>
+                    <td class="px-4 py-3 text-right font-bold text-slate-900" id="val-brendon-bal">₱10,000.00</td>
+                    <td class="px-4 py-3 text-right"><span id="badge-brendon" class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600">Idle</span></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="bg-slate-50 p-2.5 text-[11px] text-slate-600 border-t border-slate-200 flex justify-between">
+                <span>Total Money in System (Consistency Check):</span>
+                <span id="val-total-money" class="font-mono font-bold text-indigo-700">₱21,000.00</span>
+              </div>
+            </div>
+
+            <!-- Custom Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div>
+                <label class="text-xs font-semibold text-slate-700 block mb-1">Transfer Amount (Aldous -> Brendon):</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-slate-400">₱</span>
+                  <input type="number" id="input-transfer-amt" value="1000" class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500 font-mono">
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-700 block mb-1">Subsequent Withdrawal Request:</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-slate-400">₱</span>
+                  <input type="number" id="input-withdraw-amt" value="11000" class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500 font-mono">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step By Step Interactive Buttons -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700">Step through Handout Script:</span>
+              <span id="step-indicator" class="text-xs text-indigo-600 font-semibold">Step 0 of 6</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button onclick="execNextFundStep()" id="btn-next-step" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-1">
+                <span>Next Step ▶</span>
+              </button>
+              <button onclick="execSimulateCrash()" id="btn-crash-step" class="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-1">
+                <span>⚡ Simulate Crash</span>
+              </button>
+              <button onclick="execAutoRun()" id="btn-autorun" class="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-1">
+                <span>Run Full Script</span>
+              </button>
+              <button onclick="resetFundTransferLab()" class="w-full py-2 px-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs transition-colors">
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 bg-slate-900 rounded-2xl p-5 text-slate-100 flex flex-col font-mono text-xs shadow-md border border-slate-800">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <span class="font-bold text-slate-300 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              T-SQL Script (IT2003 Page 2)
+            </span>
+            <span class="text-[10px] text-slate-400">SSMS Execution Output</span>
+          </div>
+
+          <!-- Highlighted SQL steps -->
+          <div class="py-3 space-y-1 text-[11px] overflow-y-auto max-h-48">
+            <div id="code-line-1" class="p-1 rounded transition-colors text-slate-400"><span class="text-indigo-400 font-bold">BEGIN TRANSACTION</span></div>
+            <div id="code-line-2" class="p-1 rounded transition-colors text-slate-400"><span class="text-cyan-300">UPDATE</span> BankAccount <span class="text-cyan-300">SET</span> Balance = Balance - <span id="code-amt-deduct">1000</span> <span class="text-cyan-300">WHERE</span> AccountNo = 10</div>
+            <div id="code-line-3" class="p-1 rounded transition-colors text-slate-400"><span class="text-cyan-300">UPDATE</span> BankAccount <span class="text-cyan-300">SET</span> Balance = Balance + <span id="code-amt-add">1000</span> <span class="text-cyan-300">WHERE</span> AccountNo = 20</div>
+            <div id="code-line-4" class="p-1 rounded transition-colors text-slate-400"><span class="text-indigo-400 font-bold">SAVE TRANSACTION</span> FundTransfer</div>
+            <div id="code-line-5" class="p-1 rounded transition-colors text-slate-400"><span class="text-cyan-300">UPDATE</span> BankAccount <span class="text-cyan-300">SET</span> Balance = Balance - <span id="code-amt-withdraw">11000</span> <span class="text-cyan-300">WHERE</span> AccountNo = 10</div>
+            <div id="code-line-6" class="p-1 rounded transition-colors text-slate-400"><span class="text-amber-400">IF</span> @balance &lt; 0 <span class="text-rose-400 font-bold">ROLLBACK TRANSACTION</span> FundTransfer <span class="text-indigo-400 font-bold">COMMIT</span></div>
+          </div>
+
+          <!-- Messages / Log Window -->
+          <div class="mt-2 pt-2 border-t border-slate-800 flex-1 flex flex-col justify-end">
+            <div class="text-[10px] uppercase text-slate-400 font-semibold mb-1 flex items-center justify-between">
+              <span>Execution Log & Messages</span>
+              <button onclick="clearFundLogs()" class="text-slate-500 hover:text-slate-300">Clear</button>
+            </div>
+            <div id="box-fund-log" class="bg-black/40 rounded-lg p-3 text-[11px] leading-relaxed text-slate-300 h-36 overflow-y-auto space-y-1 font-mono">
+              <p class="text-slate-500">Ready to execute. Click 'Next Step' or 'Run Full Script'.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: CONCURRENCY PROBLEMS (LOST UPDATE, DIRTY READ, INCONSISTENT READ)   -->
+    <!-- ========================================================================= -->
+    <section id="tab-problems" class="tab-content hidden space-y-6">
+      <!-- Problem Selector Header -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200 uppercase">Module B</span>
+            <h2 class="text-xl font-bold text-slate-900 mt-1">The 3 Main Concurrency Problems</h2>
+            <p class="text-xs text-slate-500">When multiple transactions execute simultaneously without proper concurrency control</p>
+          </div>
+
+          <!-- Tabs for the 3 Problems -->
+          <div class="flex bg-slate-100 p-1 rounded-xl gap-1">
+            <button onclick="selectProblem('lost_update')" id="btn-prob-lost" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm">
+              1. Lost Update
+            </button>
+            <button onclick="selectProblem('dirty_read')" id="btn-prob-dirty" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">
+              2. Uncommitted Data (Dirty Read)
+            </button>
+            <button onclick="selectProblem('inconsistent')" id="btn-prob-inconsistent" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">
+              3. Inconsistent Retrievals
+            </button>
+          </div>
+        </div>
+
+        <!-- Problem Description Card -->
+        <div id="problem-desc-card" class="mt-4 p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 flex items-start gap-3">
+          <div class="p-2 rounded-lg bg-amber-200/70 text-amber-800 font-bold shrink-0">
+            ⚠️
+          </div>
+          <div id="problem-desc-text">
+            <strong class="font-bold text-sm block mb-1">Lost Update (Handout Page 3):</strong>
+            Occurs when two concurrent transactions, T1 and T2, are updating the same data element, and one of the updates is lost (overwritten by the other transaction without accounting for both changes).
+          </div>
+        </div>
+
+        <!-- Interactive Stepper & Timeline Visualizer -->
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Timeline Display (Two Transactions side by side) -->
+          <div class="lg:col-span-8 bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Interleaved Execution Timeline</span>
+              <div class="flex items-center gap-2">
+                <button onclick="stepProblem(-1)" class="px-2 py-1 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100">◀ Step Back</button>
+                <button onclick="stepProblem(1)" id="btn-prob-next" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm">Next Step ▶</button>
+                <button onclick="resetProblemSim()" class="px-2 py-1 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100">Reset</button>
+              </div>
+            </div>
+
+            <!-- Two-Column Timeline -->
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Transaction 1 -->
+              <div class="bg-white rounded-xl p-3 border border-indigo-100 shadow-sm">
+                <div class="flex items-center justify-between pb-2 border-b border-indigo-50 mb-3">
+                  <span class="font-bold text-xs text-indigo-700 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span> Transaction 1 (T1)
+                  </span>
+                  <span id="prob-t1-status" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">Idle</span>
+                </div>
+                <div id="prob-t1-steps" class="space-y-2 min-h-[220px]">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <!-- Transaction 2 -->
+              <div class="bg-white rounded-xl p-3 border border-purple-100 shadow-sm">
+                <div class="flex items-center justify-between pb-2 border-b border-purple-50 mb-3">
+                  <span class="font-bold text-xs text-purple-700 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-purple-600"></span> Transaction 2 (T2)
+                  </span>
+                  <span id="prob-t2-status" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono">Idle</span>
+                </div>
+                <div id="prob-t2-steps" class="space-y-2 min-h-[220px]">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Current Live Database State Inspector -->
+          <div class="lg:col-span-4 flex flex-col space-y-4">
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex-1">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Live Database Variable State</h4>
+              <div class="p-3 bg-slate-900 rounded-xl text-white font-mono text-xs space-y-2">
+                <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span class="text-slate-400">Target Variable:</span>
+                  <span id="prob-var-name" class="text-amber-400 font-bold">Stocks (Qty)</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span class="text-slate-400">Committed Value:</span>
+                  <span id="prob-var-committed" class="text-emerald-400 font-bold">100</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Current In-Memory:</span>
+                  <span id="prob-var-memory" class="text-cyan-300 font-bold">100</span>
+                </div>
+              </div>
+
+              <!-- Anomaly Explainer Box -->
+              <div class="mt-4 p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                <span class="text-[11px] font-bold text-indigo-900 block mb-1">What Went Wrong Here?</span>
+                <p id="prob-verdict-text" class="text-xs text-indigo-800 leading-relaxed">
+                  Start stepping through the timeline above to observe how concurrent interleaving without locks corrupts data integrity.
+                </p>
+              </div>
+
+              <!-- Concurrency Solution Note -->
+              <div class="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-900">
+                <strong class="font-bold">DBMS Solution:</strong>
+                <span id="prob-solution-text">Exclusive (Write) locks or higher isolation levels (Repeatable Read / Serializable) prevent this anomaly.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: LOCKING METHODS & DEADLOCK CONTROL                                  -->
+    <!-- ========================================================================= -->
+    <section id="tab-locks" class="tab-content hidden space-y-6">
+      <!-- Section Overview -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Part A: Lock Granularity (DB vs Table vs Row) -->
+        <div class="lg:col-span-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="mb-4">
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200 uppercase">Lock Granularity</span>
+            <h3 class="text-lg font-bold text-slate-900 mt-1">Database vs Table vs Row-Level Locks</h3>
+            <p class="text-xs text-slate-500">How lock scope affects concurrency and storage overhead (Handout Page 3-4)</p>
+          </div>
+
+          <!-- Selector -->
+          <div class="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
+            <button onclick="setLockGranularity('database')" id="btn-lock-db" class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm">
+              Database Lock
+            </button>
+            <button onclick="setLockGranularity('table')" id="btn-lock-tbl" class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">
+              Table Lock
+            </button>
+            <button onclick="setLockGranularity('row')" id="btn-lock-row" class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900">
+              Row Lock
+            </button>
+          </div>
+
+          <!-- Granularity Interactive Visual Schema -->
+          <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+            <div id="gran-db-box" class="p-3 rounded-lg bg-indigo-50/60 border border-indigo-200 transition-all">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                  DATABASE: STIBankDB
+                </span>
+                <span id="badge-gran-db" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">UNLOCKED</span>
+              </div>
+
+              <!-- Table 1 -->
+              <div id="gran-tbl-1" class="p-2.5 rounded bg-white border border-slate-200 mb-2 transition-all">
+                <div class="flex justify-between items-center mb-1.5">
+                  <span class="text-[11px] font-bold text-slate-700">Table: BankAccount</span>
+                  <span id="badge-gran-tbl1" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">Free</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                  <div id="gran-row-1" class="p-1.5 bg-slate-50 rounded border border-slate-200 flex justify-between">
+                    <span>Row 1 (Aldous)</span>
+                    <span id="badge-gran-r1" class="text-emerald-600 font-bold">Free</span>
+                  </div>
+                  <div id="gran-row-2" class="p-1.5 bg-slate-50 rounded border border-slate-200 flex justify-between">
+                    <span>Row 2 (Brendon)</span>
+                    <span id="badge-gran-r2" class="text-emerald-600 font-bold">Free</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Table 2 -->
+              <div id="gran-tbl-2" class="p-2.5 rounded bg-white border border-slate-200 transition-all">
+                <div class="flex justify-between items-center mb-1.5">
+                  <span class="text-[11px] font-bold text-slate-700">Table: Stocks</span>
+                  <span id="badge-gran-tbl2" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">Free</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                  <div id="gran-row-3" class="p-1.5 bg-slate-50 rounded border border-slate-200 flex justify-between">
+                    <span>Row 1 (Samsung S10)</span>
+                    <span id="badge-gran-r3" class="text-emerald-600 font-bold">Free</span>
+                  </div>
+                  <div id="gran-row-4" class="p-1.5 bg-slate-50 rounded border border-slate-200 flex justify-between">
+                    <span>Row 2 (iPhone 11)</span>
+                    <span id="badge-gran-r4" class="text-emerald-600 font-bold">Free</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary comparison details from handout -->
+          <div id="gran-explanation" class="mt-4 p-3 bg-slate-100 rounded-xl text-xs text-slate-700 leading-relaxed">
+            <!-- Dynamic content -->
+          </div>
+        </div>
+
+        <!-- Part B: Shared (S) vs Exclusive (X) Lock Compatibility Matrix -->
+        <div class="lg:col-span-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="mb-4">
+              <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase">Lock Types</span>
+              <h3 class="text-lg font-bold text-slate-900 mt-1">Shared (S) vs Exclusive (X) Locks</h3>
+              <p class="text-xs text-slate-500">Binary locks (0/1) vs Three-state S/X locks (Handout Page 4)</p>
+            </div>
+
+            <!-- Lock Compatibility Matrix Table -->
+            <div class="overflow-hidden rounded-xl border border-slate-200 mb-4">
+              <table class="w-full text-center text-xs">
+                <thead class="bg-slate-100 text-slate-700 font-bold">
+                  <tr>
+                    <th class="p-2 text-left">Current Lock Held</th>
+                    <th class="p-2 bg-blue-50 text-blue-800">Req: Shared (Read)</th>
+                    <th class="p-2 bg-rose-50 text-rose-800">Req: Exclusive (Write)</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr id="mat-row-free">
+                    <td class="p-2 text-left font-semibold text-slate-700">None (Unlocked)</td>
+                    <td class="p-2 text-emerald-600 font-bold">✔ Granted</td>
+                    <td class="p-2 text-emerald-600 font-bold">✔ Granted</td>
+                  </tr>
+                  <tr id="mat-row-s">
+                    <td class="p-2 text-left font-semibold text-blue-700">Shared (S) [Reading]</td>
+                    <td class="p-2 text-emerald-600 font-bold bg-emerald-50/50">✔ Compatible (Multiple Readers)</td>
+                    <td class="p-2 text-rose-600 font-bold bg-rose-50/50">✖ WAITS (Blocked)</td>
+                  </tr>
+                  <tr id="mat-row-x">
+                    <td class="p-2 text-left font-semibold text-rose-700">Exclusive (X) [Writing]</td>
+                    <td class="p-2 text-rose-600 font-bold bg-rose-50/50">✖ WAITS (Blocked)</td>
+                    <td class="p-2 text-rose-600 font-bold bg-rose-50/50">✖ WAITS (Blocked)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Interactive Request Tester -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <span class="text-xs font-bold text-slate-800 block">Interactive Lock Request Workbench</span>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label class="block text-slate-500 mb-1">T1 Holds on Item X:</label>
+                  <select id="sel-test-t1-lock" onchange="calcLockCompatibility()" class="w-full p-2 rounded-lg border border-slate-300 font-medium text-xs">
+                    <option value="none">No Lock (Free)</option>
+                    <option value="S">Shared Lock (Read)</option>
+                    <option value="X">Exclusive Lock (Write)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-slate-500 mb-1">T2 Wants to Request:</label>
+                  <select id="sel-test-t2-req" onchange="calcLockCompatibility()" class="w-full p-2 rounded-lg border border-slate-300 font-medium text-xs">
+                    <option value="S">Shared Lock (Read)</option>
+                    <option value="X">Exclusive Lock (Write)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Output Verdict -->
+              <div id="box-lock-verdict" class="p-3 rounded-lg text-xs font-semibold flex items-center justify-between bg-emerald-100 text-emerald-900 border border-emerald-300">
+                <span>Result: GRANTED immediately.</span>
+                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-200">OK</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-5">
+          <div>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200 uppercase">Deadlock Control</span>
+            <h3 class="text-lg font-bold text-slate-900 mt-1">Deadlock Arena & Wait-For Graph (WFG)</h3>
+            <p class="text-xs text-slate-500">T1 holds X and wants Y; T2 holds Y and wants X (Handout Page 4)</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-600">Strategy:</span>
+            <select id="sel-deadlock-technique" onchange="updateDeadlockTechnique()" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 text-slate-800">
+              <option value="none">No Control (Demonstrate Deadlock)</option>
+              <option value="detection">Deadlock Detection & Victim Abort</option>
+              <option value="prevention">Deadlock Prevention (Wait-Die)</option>
+              <option value="avoidance">Deadlock Avoidance (Pre-declare All)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Left: Visual Wait-For Graph & Resource Holders -->
+          <div class="lg:col-span-7 bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-slate-700">Circular Dependency Visualizer</span>
+              <span id="badge-deadlock-status" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">System Normal</span>
+            </div>
+
+            <!-- Deadlock Interactive Diagram -->
+            <div id="wfg-container" class="relative bg-white rounded-xl p-6 border border-slate-200 flex items-center justify-around min-h-[220px]">
+              <!-- Node: Transaction 1 -->
+              <div id="node-t1" class="flex flex-col items-center p-3 w-28 rounded-xl bg-indigo-50 border-2 border-indigo-400 shadow-sm transition-all">
+                <span class="text-xs font-bold text-indigo-900">Transaction T1</span>
+                <span id="t1-holds-badge" class="text-[10px] font-mono text-indigo-700 mt-1">Holds: Item X</span>
+                <span id="t1-waits-badge" class="text-[10px] font-mono text-slate-400">Waits: None</span>
+              </div>
+
+              <!-- Cycle Arrows Center -->
+              <div class="flex flex-col items-center justify-center space-y-3 text-xs font-bold text-slate-400 px-4">
+                <div id="arrow-t1-to-t2" class="flex items-center gap-1 transition-colors">
+                  <span>T1 waits for Y</span>
+                  <span>➜</span>
+                </div>
+                <div id="arrow-t2-to-t1" class="flex items-center gap-1 transition-colors">
+                  <span>◀</span>
+                  <span>T2 waits for X</span>
+                </div>
+              </div>
+
+              <!-- Node: Transaction 2 -->
+              <div id="node-t2" class="flex flex-col items-center p-3 w-28 rounded-xl bg-purple-50 border-2 border-purple-400 shadow-sm transition-all">
+                <span class="text-xs font-bold text-purple-900">Transaction T2</span>
+                <span id="t2-holds-badge" class="text-[10px] font-mono text-purple-700 mt-1">Holds: Item Y</span>
+                <span id="t2-waits-badge" class="text-[10px] font-mono text-slate-400">Waits: None</span>
+              </div>
+            </div>
+
+            <!-- Deadlock step controls -->
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button onclick="deadlockStep(1)" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+                1. T1 Locks Item X
+              </button>
+              <button onclick="deadlockStep(2)" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-purple-600 text-white hover:bg-purple-700">
+                2. T2 Locks Item Y
+              </button>
+              <button onclick="deadlockStep(3)" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-800 text-white hover:bg-indigo-900">
+                3. T1 Requests Item Y
+              </button>
+              <button onclick="deadlockStep(4)" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-700">
+                4. T2 Requests Item X (Deadlock!)
+              </button>
+              <button onclick="resetDeadlockSim()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300">
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: Technique Explainer & Activity Log -->
+          <div class="lg:col-span-5 flex flex-col space-y-3">
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex-1">
+              <h4 id="deadlock-technique-title" class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                Deadlock Concept
+              </h4>
+              <p id="deadlock-technique-desc" class="text-xs text-slate-600 leading-relaxed">
+                A deadlock occurs when two transactions wait indefinitely for each other to unlock data. 
+                Follow steps 1 to 4 to trigger the deadlock condition and see how circular wait forms.
+              </p>
+
+              <div class="mt-3 pt-3 border-t border-slate-200">
+                <span class="text-[11px] font-bold text-slate-700 block mb-1">Active Technique Details:</span>
+                <ul id="deadlock-technique-bullets" class="text-[11px] text-slate-600 space-y-1 list-disc pl-4">
+                  <li><strong>Deadlock Prevention:</strong> Aborts a transaction if a deadlock could arise.</li>
+                  <li><strong>Deadlock Detection:</strong> Periodically checks for cycles in the WFG, selects a "victim" transaction, aborts and rolls it back.</li>
+                  <li><strong>Deadlock Avoidance:</strong> Transactions must obtain all locks upfront before executing.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Log Box -->
+            <div class="bg-slate-900 rounded-xl p-3 text-white font-mono text-[11px]">
+              <span class="text-slate-400 text-[10px] uppercase font-bold block mb-1">Deadlock Controller Log</span>
+              <div id="box-deadlock-log" class="h-24 overflow-y-auto space-y-1 text-slate-300">
+                <p class="text-slate-500">&gt; Engine initialized. Select buttons to step.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: ISOLATION LEVELS LAB (HANDOUT PAGES 4-8 SQL SIMULATOR)              -->
+    <!-- ========================================================================= -->
+    <section id="tab-isolation" class="tab-content hidden space-y-6">
+      <!-- Overview & Matrix -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+          <div>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">Module C</span>
+            <h2 class="text-xl font-bold text-slate-900 mt-1">Transaction Isolation Levels & Read Phenomena</h2>
+            <p class="text-xs text-slate-500">SQL Server Isolation Levels tested using the Handout's "Stocks" table (Pages 5-8)</p>
+          </div>
+          <!-- Quick Selector for active simulation level -->
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-600">Simulate Level:</span>
+            <select id="sel-active-iso" onchange="changeActiveIsoLevel()" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 bg-indigo-50 text-indigo-900">
+              <option value="READ_UNCOMMITTED">1. READ UNCOMMITTED</option>
+              <option value="READ_COMMITTED" selected>2. READ COMMITTED (Default)</option>
+              <option value="REPEATABLE_READ">3. REPEATABLE READ</option>
+              <option value="SERIALIZABLE">4. SERIALIZABLE (Most Strict)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Comparative Reference Table from Handout -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200 mb-6">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Isolation Level</th>
+                <th class="p-3 text-center">Dirty Read<br><span class="font-normal text-[10px] text-slate-500">Uncommitted data read</span></th>
+                <th class="p-3 text-center">Non-Repeatable Read<br><span class="font-normal text-[10px] text-slate-500">Row changed between reads</span></th>
+                <th class="p-3 text-center">Phantom Read<br><span class="font-normal text-[10px] text-slate-500">New rows inserted</span></th>
+                <th class="p-3 text-right">Restrictiveness</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium">
+              <tr id="row-iso-uncommitted" class="transition-colors hover:bg-slate-50">
+                <td class="p-3 font-bold text-slate-900">READ UNCOMMITTED</td>
+                <td class="p-3 text-center text-rose-600 font-bold bg-rose-50/40">Allowed (Dirty data)</td>
+                <td class="p-3 text-center text-rose-600 font-bold bg-rose-50/40">Allowed</td>
+                <td class="p-3 text-center text-rose-600 font-bold bg-rose-50/40">Allowed</td>
+                <td class="p-3 text-right text-slate-500">Least Restrictive</td>
+              </tr>
+              <tr id="row-iso-committed" class="transition-colors bg-indigo-50/40 font-semibold">
+                <td class="p-3 font-bold text-indigo-900 flex items-center gap-1.5">
+                  READ COMMITTED <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-800">DEFAULT</span>
+                </td>
+                <td class="p-3 text-center text-emerald-600 font-bold bg-emerald-50/40">Prevented ✔</td>
+                <td class="p-3 text-center text-rose-600 font-bold bg-rose-50/40">Allowed</td>
+                <td class="p-3 text-center text-rose-600 font-bold bg-rose-50/40">Allowed</td>
+                <td class="p-3 text-right text-slate-500">Medium</td>
+              </tr>
+              <tr id="row-iso-repeatable" class="transition-colors hover:bg-slate-50">
+                <td class="p-3 font-bold text-slate-900">REPEATABLE READ</td>
+                <td class="p-3 text-center text-emerald-600 font-bold bg-emerald-50/40">Prevented ✔</td>
+                <td class="p-3 text-center text-emerald-600 font-bold bg-emerald-50/40">Prevented ✔</td>
+                <td class="p-3 text-center text-rose-600 font-bold bg-rose-50/40">Allowed (Phantoms)</td>
+                <td class="p-3 text-right text-slate-500">High</td>
+              </tr>
+              <tr id="row-iso-serializable" class="transition-colors hover:bg-slate-50">
+                <td class="p-3 font-bold text-slate-900">SERIALIZABLE</td>
+                <td class="p-3 text-center text-emerald-600 font-bold bg-emerald-50/40">Prevented ✔</td>
+                <td class="p-3 text-center text-emerald-600 font-bold bg-emerald-50/40">Prevented ✔</td>
+                <td class="p-3 text-center text-emerald-600 font-bold bg-emerald-50/40">Prevented ✔</td>
+                <td class="p-3 text-right text-slate-500">Most Restrictive</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Window 1: Transaction 1 Terminal -->
+          <div class="lg:col-span-6 bg-slate-900 rounded-2xl p-5 text-slate-100 flex flex-col font-mono text-xs shadow-md border border-slate-800">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+              <span class="font-bold text-indigo-400 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                Window 1: Transaction 1 (T1)
+              </span>
+              <span id="badge-t1-query-status" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">Ready</span>
+            </div>
+
+            <!-- SQL Code View for T1 -->
+            <div id="box-iso-t1-code" class="bg-black/40 rounded-xl p-3 text-[11px] leading-relaxed text-slate-300 mb-3 overflow-x-auto min-h-[140px]">
+              <!-- Injected by script based on selected isolation level -->
+            </div>
+
+            <!-- Results Panel T1 -->
+            <div class="flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Output Grid: Transaction 1</span>
+                <div id="grid-iso-t1" class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-[11px] min-h-[90px] overflow-x-auto">
+                  <div class="text-slate-500 italic">No output yet. Click 'Run Concurrently'.</div>
+                </div>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button onclick="runIsoT1()" id="btn-run-t1" class="flex-1 py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors">
+                  Run T1 Alone
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Window 2: Transaction 2 Terminal -->
+          <div class="lg:col-span-6 bg-slate-900 rounded-2xl p-5 text-slate-100 flex flex-col font-mono text-xs shadow-md border border-slate-800">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+              <span class="font-bold text-purple-400 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                Window 2: Transaction 2 (T2)
+              </span>
+              <span id="badge-t2-query-status" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400">Ready</span>
+            </div>
+
+            <!-- SQL Code View for T2 -->
+            <div id="box-iso-t2-code" class="bg-black/40 rounded-xl p-3 text-[11px] leading-relaxed text-slate-300 mb-3 overflow-x-auto min-h-[140px]">
+              <!-- Injected by script based on selected isolation level -->
+            </div>
+
+            <!-- Results Panel T2 -->
+            <div class="flex-1 flex flex-col justify-between">
+              <div>
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Output Grid: Transaction 2</span>
+                <div id="grid-iso-t2" class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-[11px] min-h-[90px] overflow-x-auto">
+                  <div class="text-slate-500 italic">No output yet. Click 'Run Concurrently'.</div>
+                </div>
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button onclick="runIsoConcurrent()" id="btn-run-iso-both" class="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-sm">
+                  ⚡ Run Concurrently (Handout Demonstration)
+                </button>
+                <button onclick="resetIsoSimulator()" class="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Handout Analysis for this isolation level -->
+        <div id="box-iso-explanation" class="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
+          <!-- Dynamic text explaining what students should observe -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 5: KNOWLEDGE CHECK / QUIZ                                             -->
+    <!-- ========================================================================= -->
+    <section id="tab-quiz" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-6">
+          <div>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase">Self-Assessment</span>
+            <h2 class="text-xl font-bold text-slate-900 mt-1">IT2003 Concurrency Control Mastery Quiz</h2>
+            <p class="text-xs text-slate-500">Test your understanding of transactions, locks, and isolation phenomena</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-slate-600">Score: <span id="quiz-score" class="text-indigo-600 text-sm">0 / 5</span></span>
+            <button onclick="resetQuiz()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">Reset Quiz</button>
+          </div>
+        </div>
+
+        <div id="quiz-questions-list" class="space-y-6">
+          <!-- Questions dynamically injected with interactive options -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       TAB SWITCHING CONTROLLER
+       ========================================================================== */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-300');
+      });
+
+      const target = document.getElementById(tabId);
+      if (target) target.classList.remove('hidden');
+
+      const activeBtn = document.getElementById(`btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-300');
+      }
+    }
+
+    /* ==========================================================================
+       MODULE 1: TRANSACTIONS & ACID LAB JAVASCRIPT
+       ========================================================================== */
+    let fundState = {
+      step: 0,
+      aldousBalance: 11000,
+      brendonBalance: 10000,
+      initialAldous: 11000,
+      initialBrendon: 10000,
+      savepointAldous: null,
+      savepointBrendon: null,
+      trancount: 0,
+      execState: 'Active',
+      timer: null
+    };
+
+    function updateFundUI() {
+      document.getElementById('val-aldous-bal').innerText = `₱${fundState.aldousBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('val-brendon-bal').innerText = `₱${fundState.brendonBalance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      const total = fundState.aldousBalance + fundState.brendonBalance;
+      document.getElementById('val-total-money').innerText = `₱${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('txt-tran-count').innerText = `@@TRANCOUNT: ${fundState.trancount}`;
+      document.getElementById('step-indicator').innerText = `Step ${fundState.step} of 6`;
+
+      // Update state machine visualization
+      updateStateMachineGraph(fundState.execState);
+
+      // Highlight code line
+      for (let i = 1; i <= 6; i++) {
+        const el = document.getElementById(`code-line-${i}`);
+        if (el) {
+          if (i === fundState.step) {
+            el.className = 'p-1.5 rounded bg-indigo-950/80 border border-indigo-500/50 text-white font-bold';
+          } else {
+            el.className = 'p-1 rounded transition-colors text-slate-400';
+          }
+        }
+      }
+    }
+
+    function updateStateMachineGraph(activeState) {
+      const badge = document.getElementById('lbl-state-badge');
+      if (badge) badge.innerText = activeState;
+
+      const nodes = {
+        'Active': document.getElementById('state-node-active'),
+        'Partially Committed': document.getElementById('state-node-partially'),
+        'Committed': document.getElementById('state-node-committed'),
+        'Failed': document.getElementById('state-node-failed'),
+        'Terminated': document.getElementById('state-node-terminated')
+      };
+
+      Object.entries(nodes).forEach(([key, el]) => {
+        if (!el) return;
+        if (key === activeState) {
+          el.classList.remove('opacity-60', 'border-slate-300');
+          el.classList.add('border-indigo-600', 'state-active-pulse', 'bg-indigo-50/50');
+        } else {
+          el.classList.add('opacity-60', 'border-slate-300');
+          el.classList.remove('border-indigo-600', 'state-active-pulse', 'bg-indigo-50/50');
+        }
+      });
+    }
+
+    function logFundMessage(msg, color = 'text-slate-300') {
+      const box = document.getElementById('box-fund-log');
+      const p = document.createElement('p');
+      p.className = `${color}`;
+      p.innerHTML = msg;
+      box.appendChild(p);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function clearFundLogs() {
+      const box = document.getElementById('box-fund-log');
+      box.innerHTML = '<p class="text-slate-500">Logs cleared.</p>';
+    }
+
+    function resetFundTransferLab() {
+      if (fundState.timer) clearInterval(fundState.timer);
+      fundState.step = 0;
+      fundState.aldousBalance = 11000;
+      fundState.brendonBalance = 10000;
+      fundState.savepointAldous = null;
+      fundState.savepointBrendon = null;
+      fundState.trancount = 0;
+      fundState.execState = 'Active';
+
+      document.getElementById('badge-aldous').className = 'px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600';
+      document.getElementById('badge-aldous').innerText = 'Idle';
+      document.getElementById('badge-brendon').className = 'px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600';
+      document.getElementById('badge-brendon').innerText = 'Idle';
+
+      clearFundLogs();
+      logFundMessage('> Reset to initial DB consistent state (Aldous: ₱11,000, Brendon: ₱10,000)', 'text-indigo-300');
+      updateFundUI();
+    }
+
+    function execNextFundStep() {
+      const transferAmt = parseFloat(document.getElementById('input-transfer-amt').value) || 1000;
+      const withdrawAmt = parseFloat(document.getElementById('input-withdraw-amt').value) || 11000;
+
+      // Update script text dynamically with user custom numbers
+      document.getElementById('code-amt-deduct').innerText = transferAmt;
+      document.getElementById('code-amt-add').innerText = transferAmt;
+      document.getElementById('code-amt-withdraw').innerText = withdrawAmt;
+
+      fundState.step++;
+
+      if (fundState.step === 1) {
+        // BEGIN TRANSACTION
+        fundState.trancount = 1;
+        fundState.execState = 'Active';
+        logFundMessage('> [T-SQL] BEGIN TRANSACTION: @@TRANCOUNT incremented to 1.', 'text-indigo-400');
+        document.getElementById('badge-aldous').innerText = 'Locked (X)';
+        document.getElementById('badge-aldous').className = 'px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold';
+      }
+      else if (fundState.step === 2) {
+        // Deduct transfer from Aldous
+        fundState.aldousBalance -= transferAmt;
+        fundState.execState = 'Active';
+        logFundMessage(`> UPDATE BankAccount SET Balance = Balance - ${transferAmt} WHERE AccountNo = 10 (Aldous: ₱${fundState.aldousBalance.toLocaleString()})`, 'text-cyan-300');
+        document.getElementById('row-aldous').classList.add('bg-amber-50');
+      }
+      else if (fundState.step === 3) {
+        // Add transfer to Brendon
+        fundState.brendonBalance += transferAmt;
+        fundState.execState = 'Active';
+        logFundMessage(`> UPDATE BankAccount SET Balance = Balance + ${transferAmt} WHERE AccountNo = 20 (Brendon: ₱${fundState.brendonBalance.toLocaleString()})`, 'text-cyan-300');
+        document.getElementById('row-brendon').classList.add('bg-amber-50');
+        document.getElementById('badge-brendon').innerText = 'Locked (X)';
+        document.getElementById('badge-brendon').className = 'px-2 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 font-bold';
+      }
+      else if (fundState.step === 4) {
+        // SAVE TRANSACTION FundTransfer
+        fundState.savepointAldous = fundState.aldousBalance;
+        fundState.savepointBrendon = fundState.brendonBalance;
+        fundState.execState = 'Active';
+        logFundMessage(`> [SAVEPOINT] SAVE TRANSACTION FundTransfer established. Checkpoint saved!`, 'text-emerald-400');
+      }
+      else if (fundState.step === 5) {
+        // Aldous withdraw attempt
+        fundState.aldousBalance -= withdrawAmt;
+        fundState.execState = 'Partially Committed';
+        logFundMessage(`> Aldous attempts to withdraw ₱${withdrawAmt.toLocaleString()}. Resulting balance: ₱${fundState.aldousBalance.toLocaleString()}`, 'text-amber-300');
+      }
+      else if (fundState.step === 6) {
+        // IF @balance < 0 ROLLBACK TRANSACTION FundTransfer ELSE COMMIT
+        if (fundState.aldousBalance < 0) {
+          logFundMessage(`> [CONSTRAINT VIOLATION] Balance is negative (₱${fundState.aldousBalance.toLocaleString()} &lt; 0)!`, 'text-rose-400 font-bold');
+          logFundMessage(`> ROLLBACK TRANSACTION FundTransfer triggered: Reverting only the withdrawal to savepoint!`, 'text-rose-300');
+          fundState.aldousBalance = fundState.savepointAldous;
+          fundState.execState = 'Partially Committed';
+          setTimeout(() => {
+            fundState.trancount = 0;
+            fundState.execState = 'Committed';
+            logFundMessage(`> COMMIT successfully executed. Fund transfer is permanent; illegal withdrawal was rolled back.`, 'text-emerald-400 font-bold');
+            updateFundUI();
+            setTimeout(() => {
+              fundState.execState = 'Terminated';
+              updateFundUI();
+            }, 1000);
+          }, 600);
+        } else {
+          fundState.trancount = 0;
+          fundState.execState = 'Committed';
+          logFundMessage(`> Balance is sufficient! COMMIT completed successfully.`, 'text-emerald-400 font-bold');
+          setTimeout(() => {
+            fundState.execState = 'Terminated';
+            updateFundUI();
+          }, 1000);
+        }
+      }
+      else {
+        logFundMessage('> Transaction has already terminated. Click Reset to run again.', 'text-slate-400');
+        fundState.step = 6;
+      }
+
+      updateFundUI();
+    }
+
+    function execSimulateCrash() {
+      if (fundState.step < 1) {
+        logFundMessage('> Start the transaction first before crashing.', 'text-amber-400');
+        return;
+      }
+      fundState.execState = 'Failed';
+      logFundMessage('⚡ [SYSTEM CRASH DETECTED!] Power failure before COMMIT occurred.', 'text-rose-400 font-bold');
+      logFundMessage('> Atomicity Enforced: Database reading Transaction Log to UNDO uncommitted operations...', 'text-rose-300');
+      
+      setTimeout(() => {
+        fundState.aldousBalance = fundState.initialAldous;
+        fundState.brendonBalance = fundState.initialBrendon;
+        fundState.trancount = 0;
+        fundState.execState = 'Terminated';
+        logFundMessage('> ROLLBACK COMPLETE: All accounts returned to original consistent state.', 'text-emerald-400 font-bold');
+        document.getElementById('badge-aldous').className = 'px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600';
+        document.getElementById('badge-aldous').innerText = 'Idle';
+        document.getElementById('badge-brendon').className = 'px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600';
+        document.getElementById('badge-brendon').innerText = 'Idle';
+        updateFundUI();
+      }, 1000);
+      updateFundUI();
+    }
+
+    function execAutoRun() {
+      resetFundTransferLab();
+      let count = 0;
+      fundState.timer = setInterval(() => {
+        count++;
+        execNextFundStep();
+        if (count >= 6) {
+          clearInterval(fundState.timer);
+        }
+      }, 1000);
+    }
+
+    /* ==========================================================================
+       MODULE 2: CONCURRENCY PROBLEMS SANDBOX
+       ========================================================================== */
+    const problemConfigs = {
+      lost_update: {
+        title: "Lost Update (Handout Page 3)",
+        desc: "Occurs when two concurrent transactions, T1 and T2, are updating the same data element, and one of the updates is lost (overwritten by the other transaction).",
+        varName: "Stocks (Samsung S10)",
+        initialVal: 10,
+        solution: "Exclusive locks (Write locks) held during modification prevent T2 from reading or overwriting the old value until T1 commits.",
+        steps: [
+          { t: 't1', action: "READ Stocks (Qty = 10)", effect: "T1 reads Qty = 10 into its local memory.", mem: 10, comm: 10 },
+          { t: 't2', action: "READ Stocks (Qty = 10)", effect: "T2 reads the same Qty = 10 concurrently.", mem: 10, comm: 10 },
+          { t: 't1', action: "UPDATE Stocks SET Qty = 10 - 1 (= 9)", effect: "T1 calculates 9 and writes to memory.", mem: 9, comm: 10 },
+          { t: 't2', action: "UPDATE Stocks SET Qty = 10 - 2 (= 8)", effect: "T2 calculates 8 using its stale copy (10)!", mem: 8, comm: 10 },
+          { t: 't1', action: "COMMIT", effect: "T1 commits value 9 to database.", mem: 9, comm: 9 },
+          { t: 't2', action: "COMMIT", effect: "T2 commits value 8 to database. T1's update (-1) is COMPLETELY LOST!", mem: 8, comm: 8, anomaly: true }
+        ]
+      },
+      dirty_read: {
+        title: "Uncommitted Data / Dirty Read (Handout Page 3 & 4)",
+        desc: "Occurs when two transactions, T1 and T2, execute concurrently, and T1 rolls back after T2 has already read and acted upon T1's uncommitted data.",
+        varName: "Mary's Salary",
+        initialVal: 15000,
+        solution: "READ COMMITTED isolation level or Shared locks prevent T2 from reading data modified by uncommitted transactions.",
+        steps: [
+          { t: 't1', action: "BEGIN: UPDATE Salary = 20,000", effect: "Treasurer changes Mary's salary to ₱20,000 (uncommitted in buffer).", mem: 20000, comm: 15000 },
+          { t: 't2', action: "READ Mary Salary (= 20,000)", effect: "Mary reads her salary and sees ₱20,000 (DIRTY READ!).", mem: 20000, comm: 15000 },
+          { t: 't2', action: "Applies for Loan based on ₱20,000", effect: "Mary plans expenses assuming her salary is ₱20,000.", mem: 20000, comm: 15000 },
+          { t: 't1', action: "Treasurer notices error: ROLLBACK", effect: "T1 rolls back! Salary is reverted to ₱15,000 in database.", mem: 15000, comm: 15000 },
+          { t: 't2', action: "Mary's transaction finishes", effect: "Mary's logic was based on dirty data that never existed permanently!", mem: 15000, comm: 15000, anomaly: true }
+        ]
+      },
+      inconsistent: {
+        title: "Inconsistent Retrievals (Handout Page 3)",
+        desc: "Occurs when a transaction accesses data before and after one or more other transactions finish working with the same data, seeing partially updated inconsistent states.",
+        varName: "Total Bank Assets",
+        initialVal: 21000,
+        solution: "Repeatable Read or Serializable isolation prevents concurrent transactions from modifying data during an audit read.",
+        steps: [
+          { t: 't1', action: "Audit Read Account 10 (Aldous: 11,000)", effect: "T1 reads Aldous = 11,000. Running sum = 11,000.", mem: 11000, comm: 21000 },
+          { t: 't2', action: "Transfer ₱1,000: Deduct Aldous -> 10,000", effect: "T2 deducts 1,000 from Aldous.", mem: 10000, comm: 20000 },
+          { t: 't2', action: "Transfer ₱1,000: Add Brendon -> 11,000 & COMMIT", effect: "T2 adds 1,000 to Brendon and commits.", mem: 11000, comm: 21000 },
+          { t: 't1', action: "Audit Read Account 20 (Brendon: 11,000)", effect: "T1 now reads Brendon AFTER the transfer (11,000)!", mem: 22000, comm: 21000 },
+          { t: 't1', action: "Audit Sums: 11,000 + 11,000 = 22,000!", effect: "Inconsistent calculation! Bank appears to have created ₱1,000 out of nowhere!", mem: 22000, comm: 21000, anomaly: true }
+        ]
+      }
+    };
+
+    let activeProbKey = 'lost_update';
+    let currentProbStep = 0;
+
+    function selectProblem(key) {
+      activeProbKey = key;
+      currentProbStep = 0;
+
+      // Update button styles
+      ['lost', 'dirty', 'inconsistent'].forEach(id => {
+        const btn = document.getElementById(`btn-prob-${id}`);
+        if ((id === 'lost' && key === 'lost_update') ||
+            (id === 'dirty' && key === 'dirty_read') ||
+            (id === 'inconsistent' && key === 'inconsistent')) {
+          btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm";
+        } else {
+          btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900";
+        }
+      });
+
+      const config = problemConfigs[key];
+      document.getElementById('problem-desc-text').innerHTML = `<strong class="font-bold text-sm block mb-1">${config.title}:</strong> ${config.desc}`;
+      document.getElementById('prob-solution-text').innerText = config.solution;
+      document.getElementById('prob-var-name').innerText = config.varName;
+
+      renderProblemSteps();
+      updateProblemStateUI();
+    }
+
+    function renderProblemSteps() {
+      const config = problemConfigs[activeProbKey];
+      const t1Container = document.getElementById('prob-t1-steps');
+      const t2Container = document.getElementById('prob-t2-steps');
+      t1Container.innerHTML = '';
+      t2Container.innerHTML = '';
+
+      config.steps.forEach((step, idx) => {
+        const item = document.createElement('div');
+        item.id = `step-box-${idx}`;
+        item.className = `p-2.5 rounded-lg border text-xs transition-all ${
+          idx < currentProbStep
+            ? (step.anomaly ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-100 border-slate-200 text-slate-700')
+            : (idx === currentProbStep ? 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-2 ring-indigo-400' : 'opacity-40 bg-white border-slate-100 text-slate-400')
+        }`;
+        item.innerHTML = `
+          <div class="flex justify-between items-center mb-0.5">
+            <span class="font-bold text-[10px] uppercase">Step ${idx + 1}</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-white border border-slate-200">${step.t.toUpperCase()}</span>
+          </div>
+          <div class="font-mono text-[11px] font-semibold">${step.action}</div>
+        `;
+
+        if (step.t === 't1') {
+          t1Container.appendChild(item);
+          // Spacer for T2 to keep alignment visual
+          const spacer = document.createElement('div');
+          spacer.className = "h-12 border-l border-dashed border-slate-200 ml-4 hidden sm:block";
+          t2Container.appendChild(spacer);
+        } else {
+          t2Container.appendChild(item);
+          const spacer = document.createElement('div');
+          spacer.className = "h-12 border-l border-dashed border-slate-200 ml-4 hidden sm:block";
+          t1Container.appendChild(spacer);
+        }
+      });
+    }
+
+    function stepProblem(delta) {
+      const config = problemConfigs[activeProbKey];
+      currentProbStep = Math.max(0, Math.min(config.steps.length, currentProbStep + delta));
+      renderProblemSteps();
+      updateProblemStateUI();
+    }
+
+    function resetProblemSim() {
+      currentProbStep = 0;
+      renderProblemSteps();
+      updateProblemStateUI();
+    }
+
+    function updateProblemStateUI() {
+      const config = problemConfigs[activeProbKey];
+      const stepIndex = currentProbStep - 1;
+
+      if (stepIndex >= 0 && stepIndex < config.steps.length) {
+        const cur = config.steps[stepIndex];
+        document.getElementById('prob-var-memory').innerText = typeof cur.mem === 'number' ? cur.mem.toLocaleString() : cur.mem;
+        document.getElementById('prob-var-committed').innerText = typeof cur.comm === 'number' ? cur.comm.toLocaleString() : cur.comm;
+        document.getElementById('prob-verdict-text').innerText = cur.effect;
+
+        if (cur.anomaly) {
+          document.getElementById('prob-verdict-text').innerHTML = `<span class="text-rose-600 font-bold uppercase block">⚠️ ANOMALY TRIGGERED:</span> ${cur.effect}`;
+        }
+      } else {
+        document.getElementById('prob-var-memory').innerText = config.initialVal.toLocaleString();
+        document.getElementById('prob-var-committed').innerText = config.initialVal.toLocaleString();
+        document.getElementById('prob-verdict-text').innerText = "Click 'Next Step' to begin the concurrent interleaving sequence.";
+      }
+    }
+
+    /* ==========================================================================
+       MODULE 3: LOCKS & DEADLOCK CONTROL JAVASCRIPT
+       ========================================================================== */
+    function setLockGranularity(type) {
+      ['db', 'tbl', 'row'].forEach(id => {
+        const btn = document.getElementById(`btn-lock-${id}`);
+        if ((id === 'db' && type === 'database') ||
+            (id === 'tbl' && type === 'table') ||
+            (id === 'row' && type === 'row')) {
+          btn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm";
+        } else {
+          btn.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900";
+        }
+      });
+
+      const dbBox = document.getElementById('gran-db-box');
+      const tbl1 = document.getElementById('gran-tbl-1');
+      const r1 = document.getElementById('gran-row-1');
+      const expl = document.getElementById('gran-explanation');
+
+      // Reset
+      dbBox.className = "p-3 rounded-lg bg-white border border-slate-200 transition-all";
+      tbl1.className = "p-2.5 rounded bg-white border border-slate-200 mb-2 transition-all";
+      r1.className = "p-1.5 bg-slate-50 rounded border border-slate-200 flex justify-between";
+      document.getElementById('badge-gran-db').innerText = "UNLOCKED";
+      document.getElementById('badge-gran-db').className = "text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600";
+      document.getElementById('badge-gran-tbl1').innerText = "Free";
+      document.getElementById('badge-gran-r1').innerText = "Free";
+
+      if (type === 'database') {
+        dbBox.className = "p-3 rounded-lg bg-rose-50 border-2 border-rose-500 transition-all";
+        document.getElementById('badge-gran-db').innerText = "LOCKED BY T1";
+        document.getElementById('badge-gran-db').className = "text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-200 text-rose-800";
+        expl.innerHTML = `
+          <strong class="font-bold text-slate-900 block mb-1">Database-level lock (Handout Page 3):</strong>
+          Locks the entire database. Prevents the use of <em>any tables</em> in the database to transaction T2 while T1 is executing.
+          <br><span class="text-rose-700 font-semibold">Pros/Cons:</span> Good for batch processes, but unsuitable for multi-user DBMS as it severely degrades concurrent throughput.
+        `;
+      } else if (type === 'table') {
+        tbl1.className = "p-2.5 rounded bg-amber-50 border-2 border-amber-500 mb-2 transition-all";
+        document.getElementById('badge-gran-tbl1').innerText = "LOCKED BY T1";
+        document.getElementById('badge-gran-tbl1').className = "text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-200 text-amber-800";
+        expl.innerHTML = `
+          <strong class="font-bold text-slate-900 block mb-1">Table-level lock (Handout Page 3-4):</strong>
+          Locks the entire table (BankAccount). Prevents access to any row in this table by T2, even if T2 wants a different row (Brendon).
+          <br><span class="text-amber-700 font-semibold">Note:</span> T2 can still access the <em>Stocks</em> table simultaneously!
+        `;
+      } else {
+        r1.className = "p-1.5 bg-indigo-50 border-2 border-indigo-500 rounded flex justify-between";
+        document.getElementById('badge-gran-r1').innerText = "LOCKED (T1)";
+        document.getElementById('badge-gran-r1').className = "text-indigo-700 font-bold";
+        expl.innerHTML = `
+          <strong class="font-bold text-slate-900 block mb-1">Row-level lock (Handout Page 4):</strong>
+          Less restrictive! Allows concurrent transactions to access different rows of the same table simultaneously (e.g. T2 can update Brendon while T1 updates Aldous).
+          <br><span class="text-indigo-700 font-semibold">Trade-off:</span> High data availability, but requires high memory overhead because a lock is maintained per row.
+        `;
+      }
+    }
+
+    function calcLockCompatibility() {
+      const t1Held = document.getElementById('sel-test-t1-lock').value;
+      const t2Req = document.getElementById('sel-test-t2-req').value;
+      const box = document.getElementById('box-lock-verdict');
+
+      // Highlight corresponding matrix rows
+      document.getElementById('mat-row-free').classList.remove('bg-indigo-50');
+      document.getElementById('mat-row-s').classList.remove('bg-indigo-50');
+      document.getElementById('mat-row-x').classList.remove('bg-indigo-50');
+
+      if (t1Held === 'none') {
+        document.getElementById('mat-row-free').classList.add('bg-indigo-50');
+        box.className = "p-3 rounded-lg text-xs font-semibold flex items-center justify-between bg-emerald-100 text-emerald-900 border border-emerald-300";
+        box.innerHTML = `<span>Result: Lock GRANTED immediately to T2.</span><span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-200">OK</span>`;
+      } else if (t1Held === 'S') {
+        document.getElementById('mat-row-s').classList.add('bg-indigo-50');
+        if (t2Req === 'S') {
+          box.className = "p-3 rounded-lg text-xs font-semibold flex items-center justify-between bg-emerald-100 text-emerald-900 border border-emerald-300";
+          box.innerHTML = `<span>Result: GRANTED! Multiple transactions can hold Shared (Read) locks concurrently.</span><span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-200">SHARED</span>`;
+        } else {
+          box.className = "p-3 rounded-lg text-xs font-semibold flex items-center justify-between bg-rose-100 text-rose-900 border border-rose-300";
+          box.innerHTML = `<span>Result: BLOCKED! T2 cannot acquire Exclusive (Write) lock while T1 holds Shared.</span><span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-rose-200">WAIT</span>`;
+        }
+      } else {
+        // T1 has X
+        document.getElementById('mat-row-x').classList.add('bg-indigo-50');
+        box.className = "p-3 rounded-lg text-xs font-semibold flex items-center justify-between bg-rose-100 text-rose-900 border border-rose-300";
+        box.innerHTML = `<span>Result: BLOCKED! Exclusive lock guarantees sole access. T2 must WAIT until T1 completes.</span><span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-rose-200">WAIT</span>`;
+      }
+    }
+
+    let deadlockSimState = {
+      t1Holds: null,
+      t2Holds: null,
+      t1Waits: null,
+      t2Waits: null,
+      technique: 'none'
+    };
+
+    function updateDeadlockTechnique() {
+      deadlockSimState.technique = document.getElementById('sel-deadlock-technique').value;
+      const title = document.getElementById('deadlock-technique-title');
+      const desc = document.getElementById('deadlock-technique-desc');
+
+      if (deadlockSimState.technique === 'detection') {
+        title.innerText = "Deadlock Detection Technique (Handout Page 4)";
+        desc.innerText = "The DBMS periodically checks for cycles in the Wait-For Graph (WFG). When cycle T1 -> T2 -> T1 is discovered, the DBMS picks a 'victim' transaction, aborts it, rolls back its locks, and allows the other transaction to continue.";
+      } else if (deadlockSimState.technique === 'prevention') {
+        title.innerText = "Deadlock Prevention Technique (Handout Page 4)";
+        desc.innerText = "A transaction requesting a lock that could possibly cause a circular dependency is aborted upfront before deadlock can occur. All changes are rolled back and locks released.";
+      } else if (deadlockSimState.technique === 'avoidance') {
+        title.innerText = "Deadlock Avoidance Technique (Handout Page 4)";
+        desc.innerText = "Transactions must declare and obtain ALL locks they will need upfront before they begin execution. Serial lock assignment avoids deadlock but increases response time.";
+      } else {
+        title.innerText = "Deadlock Example (Handout Page 4)";
+        desc.innerText = "Concurrent transactions: T1 accesses X then Y; T2 accesses Y then X. If neither releases their lock, indefinite waiting results.";
+      }
+      resetDeadlockSim();
+    }
+
+    function logDeadlock(msg, color = 'text-slate-300') {
+      const box = document.getElementById('box-deadlock-log');
+      const p = document.createElement('p');
+      p.className = color;
+      p.innerHTML = `&gt; ${msg}`;
+      box.appendChild(p);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function deadlockStep(stepNum) {
+      if (deadlockSimState.technique === 'avoidance' && stepNum === 1) {
+        logDeadlock("[AVOIDANCE] T1 requests BOTH Item X & Item Y upfront. All locks granted before execution.", 'text-emerald-400');
+        deadlockSimState.t1Holds = 'X & Y';
+        document.getElementById('t1-holds-badge').innerText = 'Holds: X & Y';
+        logDeadlock("[AVOIDANCE] T2 cannot start until T1 finishes completely. Deadlock avoided entirely!", 'text-indigo-300');
+        return;
+      }
+
+      if (stepNum === 1) {
+        deadlockSimState.t1Holds = 'Item X';
+        document.getElementById('t1-holds-badge').innerText = 'Holds: Item X';
+        document.getElementById('t1-holds-badge').className = 'text-[10px] font-mono font-bold text-indigo-700 mt-1';
+        logDeadlock("Transaction T1 requests and acquires lock on Item X.", 'text-indigo-300');
+      } else if (stepNum === 2) {
+        deadlockSimState.t2Holds = 'Item Y';
+        document.getElementById('t2-holds-badge').innerText = 'Holds: Item Y';
+        document.getElementById('t2-holds-badge').className = 'text-[10px] font-mono font-bold text-purple-700 mt-1';
+        logDeadlock("Transaction T2 requests and acquires lock on Item Y.", 'text-purple-300');
+      } else if (stepNum === 3) {
+        deadlockSimState.t1Waits = 'Item Y';
+        document.getElementById('t1-waits-badge').innerText = 'Waits for: Item Y';
+        document.getElementById('t1-waits-badge').className = 'text-[10px] font-mono font-bold text-rose-500';
+        document.getElementById('arrow-t1-to-t2').className = 'flex items-center gap-1 text-rose-600 font-bold';
+        logDeadlock("T1 requests Item Y, but it is held by T2! T1 is placed in WAIT queue.", 'text-amber-400');
+      } else if (stepNum === 4) {
+        if (deadlockSimState.technique === 'prevention') {
+          logDeadlock("[PREVENTION] T2 requests Item X. System detects potential deadlock! Transaction T2 is ABORTED immediately.", 'text-rose-400 font-bold');
+          logDeadlock("T2 rolls back locks on Y. T1 is unblocked and completes successfully!", 'text-emerald-400 font-bold');
+          document.getElementById('badge-deadlock-status').innerText = 'Deadlock Prevented';
+          document.getElementById('badge-deadlock-status').className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+          return;
+        }
+
+        deadlockSimState.t2Waits = 'Item X';
+        document.getElementById('t2-waits-badge').innerText = 'Waits for: Item X';
+        document.getElementById('t2-waits-badge').className = 'text-[10px] font-mono font-bold text-rose-500';
+        document.getElementById('arrow-t2-to-t1').className = 'flex items-center gap-1 text-rose-600 font-bold';
+
+        // Trigger Deadlock condition
+        document.getElementById('wfg-container').classList.add('deadlock-alert');
+        document.getElementById('badge-deadlock-status').innerText = '⚡ DEADLOCK DETECTED';
+        document.getElementById('badge-deadlock-status').className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-200 text-rose-800 deadlock-alert';
+        logDeadlock("T2 requests Item X held by T1. CIRCULAR WAIT FORMED! (T1 ⟷ T2)", 'text-rose-500 font-bold');
+
+        if (deadlockSimState.technique === 'detection') {
+          logDeadlock("[DETECTION] DBMS periodic graph checker detects cycle in Wait-For Graph!", 'text-amber-300');
+          setTimeout(() => {
+            logDeadlock("[DETECTION] DBMS selects T2 as 'VICTIM' transaction. Rolling back T2...", 'text-rose-400 font-bold');
+            setTimeout(() => {
+              deadlockSimState.t2Holds = null;
+              deadlockSimState.t2Waits = null;
+              document.getElementById('t2-holds-badge').innerText = 'Holds: None (Aborted)';
+              document.getElementById('t2-waits-badge').innerText = 'Waits: None';
+              document.getElementById('arrow-t2-to-t1').className = 'flex items-center gap-1 text-slate-400';
+              document.getElementById('arrow-t1-to-t2').className = 'flex items-center gap-1 text-slate-400';
+              document.getElementById('wfg-container').classList.remove('deadlock-alert');
+              logDeadlock("Victim T2 rolled back! T1 acquires Item Y, executes, and COMMITS. T2 can now restart.", 'text-emerald-400 font-bold');
+              document.getElementById('badge-deadlock-status').innerText = 'Resolved via Victim Rollback';
+              document.getElementById('badge-deadlock-status').className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+            }, 1200);
+          }, 1000);
+        }
+      }
+    }
+
+    function resetDeadlockSim() {
+      deadlockSimState.t1Holds = null;
+      deadlockSimState.t2Holds = null;
+      deadlockSimState.t1Waits = null;
+      deadlockSimState.t2Waits = null;
+
+      document.getElementById('wfg-container').classList.remove('deadlock-alert');
+      document.getElementById('badge-deadlock-status').innerText = 'System Normal';
+      document.getElementById('badge-deadlock-status').className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+
+      document.getElementById('t1-holds-badge').innerText = 'Holds: None';
+      document.getElementById('t1-holds-badge').className = 'text-[10px] font-mono text-slate-400 mt-1';
+      document.getElementById('t1-waits-badge').innerText = 'Waits: None';
+      document.getElementById('t1-waits-badge').className = 'text-[10px] font-mono text-slate-400';
+
+      document.getElementById('t2-holds-badge').innerText = 'Holds: None';
+      document.getElementById('t2-holds-badge').className = 'text-[10px] font-mono text-slate-400 mt-1';
+      document.getElementById('t2-waits-badge').innerText = 'Waits: None';
+      document.getElementById('t2-waits-badge').className = 'text-[10px] font-mono text-slate-400';
+
+      document.getElementById('arrow-t1-to-t2').className = 'flex items-center gap-1 text-slate-400';
+      document.getElementById('arrow-t2-to-t1').className = 'flex items-center gap-1 text-slate-400';
+
+      const box = document.getElementById('box-deadlock-log');
+      box.innerHTML = '<p class="text-slate-500">&gt; Simulator reset. Ready.</p>';
+    }
+
+    /* ==========================================================================
+       MODULE 4: ISOLATION LEVELS (HANDOUT PAGES 5-8 SQL SIMULATOR)
+       ========================================================================== */
+    const isoScenarios = {
+      READ_UNCOMMITTED: {
+        t1Code: `-- Transaction 1 (Handout Page 5)\nBEGIN TRANSACTION\nUPDATE Stocks SET Quantity = Quantity - 1\nWHERE ID = 1\n-- BILLING THE CUSTOMER\nWAITFOR DELAY '00:00:15'\nROLLBACK TRANSACTION\nSELECT * FROM Stocks`,
+        t2Code: `-- Transaction 2 (Handout Page 5)\nSET TRANSACTION ISOLATION LEVEL\n    READ UNCOMMITTED\nSELECT * FROM Stocks WHERE ID = 1`,
+        explanation: `
+          <strong class="font-bold text-slate-900 block mb-1">Observation for READ UNCOMMITTED (Handout Page 5):</strong>
+          In Transaction 1, the Samsung S10 stock was deducted by 1 (10 -> 9), but paused with <code>WAITFOR DELAY</code> before rolling back. 
+          Because Transaction 2 uses <strong>READ UNCOMMITTED</strong>, it ignores locks placed by T1 and returns <strong>Quantity = 9</strong> immediately (a DIRTY READ). 
+          Once T1 rolls back, the actual stock reverts back to 10.
+        `,
+        run: function(callback) {
+          // Simulation of dirty read
+          setQueryStatus('t1', 'Executing query (WAITFOR DELAY)...', 'text-amber-400');
+          setQueryStatus('t2', 'Query executed successfully.', 'text-emerald-400');
+
+          renderTableOutput('grid-iso-t2', [
+            { ID: 1, Name: 'Samsung S10', Quantity: 9 }
+          ], true, "Dirty read of uncommitted row!");
+
+          setTimeout(() => {
+            setQueryStatus('t1', 'ROLLBACK executed successfully.', 'text-rose-400');
+            renderTableOutput('grid-iso-t1', [
+              { ID: 1, Name: 'Samsung S10', Quantity: 10 }
+            ], false, "Rollback reverted stock to 10");
+            if (callback) callback();
+          }, 3000);
+        }
+      },
+
+      READ_COMMITTED: {
+        t1Code: `-- Transaction 1 READ COMMITTED (Handout Page 6)\nBEGIN TRANSACTION\nUPDATE Stocks SET Quantity = Quantity - 2\nWHERE ID = 1\nWAITFOR DELAY '00:00:10'\nCOMMIT\nSELECT * FROM Stocks`,
+        t2Code: `-- Transaction 2 READ COMMITTED (Handout Page 6)\nSET TRANSACTION ISOLATION LEVEL\n    READ COMMITTED\nBEGIN TRANSACTION\nSELECT * FROM Stocks\nCOMMIT`,
+        explanation: `
+          <strong class="font-bold text-slate-900 block mb-1">Observation for READ COMMITTED (Handout Page 6):</strong>
+          This is the default isolation level for SQL Server. Prevents dirty reads. 
+          When both queries run concurrently, Transaction 2 tries to access the row locked by Transaction 1. 
+          <strong>Transaction 2 is BLOCKED and displays 'Executing query...' loading</strong> until Transaction 1 commits after 10 seconds! Both then display the committed Quantity = 8.
+        `,
+        run: function(callback) {
+          setQueryStatus('t1', 'Executing query (WAITFOR DELAY 10s)...', 'text-amber-400');
+          setQueryStatus('t2', 'Executing query... (BLOCKED by T1 lock)', 'text-amber-400');
+
+          document.getElementById('grid-iso-t2').innerHTML = `
+            <div class="flex items-center gap-2 text-amber-400 font-bold p-2">
+              <span class="animate-spin text-sm">↻</span>
+              <span>Executing query... Waiting for T1 to release Exclusive lock (Handout Figure 1)</span>
+            </div>
+          `;
+
+          setTimeout(() => {
+            setQueryStatus('t1', 'Query executed successfully (COMMITTED).', 'text-emerald-400');
+            setQueryStatus('t2', 'Query executed successfully.', 'text-emerald-400');
+
+            renderTableOutput('grid-iso-t1', [{ ID: 1, Name: 'Samsung S10', Quantity: 8 }]);
+            renderTableOutput('grid-iso-t2', [{ ID: 1, Name: 'Samsung S10', Quantity: 8 }], false, "Returned only AFTER T1 committed (prevented dirty read)!");
+            if (callback) callback();
+          }, 3000);
+        }
+      },
+
+      REPEATABLE_READ: {
+        t1Code: `-- Transaction 1 REPEATABLE READ (Handout Page 6-7)\nSET TRANSACTION ISOLATION LEVEL\n    REPEATABLE READ\nBEGIN TRANSACTION\nSELECT * FROM Stocks\nWAITFOR DELAY '00:00:10'\nSELECT * FROM Stocks\nCOMMIT`,
+        t2Code: `-- Transaction 2 REPEATABLE READ (Handout Page 7)\nBEGIN TRANSACTION\nUPDATE Stocks SET Quantity = Quantity - 1\nWHERE ID = 1\nCOMMIT`,
+        explanation: `
+          <strong class="font-bold text-slate-900 block mb-1">Observation for REPEATABLE READ (Handout Page 6-7):</strong>
+          Ensures that no other transaction can modify or delete data that has been read by the current transaction until T1 commits.
+          Transaction 1 holds Shared locks for its entire duration. When Transaction 2 attempts to UPDATE Quantity, <strong>T2 is blocked</strong> until T1 completes, ensuring both of T1's reads return the identical Quantity = 10!
+        `,
+        run: function(callback) {
+          setQueryStatus('t1', 'First SELECT completed (Holding S-Locks)...', 'text-indigo-400');
+          setQueryStatus('t2', 'Executing UPDATE... (BLOCKED by T1 read locks)', 'text-amber-400');
+
+          renderTableOutput('grid-iso-t1', [{ ID: 1, Name: 'Samsung S10', Quantity: 10 }], false, "First read: Qty = 10");
+
+          document.getElementById('grid-iso-t2').innerHTML = `
+            <div class="flex items-center gap-2 text-amber-400 font-bold p-2">
+              <span class="animate-spin text-sm">↻</span>
+              <span>Executing UPDATE... Blocked because T1 holds repeatable read lock</span>
+            </div>
+          `;
+
+          setTimeout(() => {
+            setQueryStatus('t1', 'Second SELECT finished & COMMITTED.', 'text-emerald-400');
+            setQueryStatus('t2', 'UPDATE executed successfully & COMMITTED.', 'text-emerald-400');
+
+            renderTableOutput('grid-iso-t1', [{ ID: 1, Name: 'Samsung S10', Quantity: 10 }], false, "Second read matches first read: Non-repeatable read prevented!");
+            renderTableOutput('grid-iso-t2', [{ ID: 1, Name: 'Samsung S10', Quantity: 9 }], false, "T2 update applied after T1 committed");
+            if (callback) callback();
+          }, 3000);
+        }
+      },
+
+      SERIALIZABLE: {
+        t1Code: `-- Transaction 1 SERIALIZABLE (Handout Page 7-8)\nSET TRANSACTION ISOLATION LEVEL SERIALIZABLE\nBEGIN TRANSACTION\nUPDATE Stocks SET Quantity = Quantity + 1\nWHERE ID = 1\nSELECT * FROM Stocks\nWAITFOR DELAY '00:00:10'\nCOMMIT`,
+        t2Code: `-- Transaction 2 SERIALIZABLE (Handout Page 7-8)\nSET TRANSACTION ISOLATION LEVEL SERIALIZABLE\nBEGIN TRANSACTION\nINSERT INTO Stocks VALUES (3, 'Iphone 11', 3)\nSELECT * FROM Stocks\nCOMMIT`,
+        explanation: `
+          <strong class="font-bold text-slate-900 block mb-1">Observation for SERIALIZABLE (Handout Page 7-8):</strong>
+          The most restrictive isolation level. Solves the <strong>phantom read problem</strong>! 
+          It places range locks on the key space. Transaction 1 does not allow Transaction 2 to even INSERT a new entry ('Iphone 11') into the table until T1 completes. 
+          Protects from Dirty Reads, Non-repeatable Reads, and Phantom Reads!
+        `,
+        run: function(callback) {
+          setQueryStatus('t1', 'Executing update & holding range lock...', 'text-amber-400');
+          setQueryStatus('t2', 'Executing INSERT... (BLOCKED: Range lock prevents phantoms)', 'text-amber-400');
+
+          renderTableOutput('grid-iso-t1', [{ ID: 1, Name: 'Samsung S10', Quantity: 11 }]);
+
+          document.getElementById('grid-iso-t2').innerHTML = `
+            <div class="flex items-center gap-2 text-rose-400 font-bold p-2">
+              <span class="animate-spin text-sm">↻</span>
+              <span>INSERT blocked by range lock! Prevents phantom rows until T1 commits.</span>
+            </div>
+          `;
+
+          setTimeout(() => {
+            setQueryStatus('t1', 'T1 COMMITTED successfully.', 'text-emerald-400');
+            setQueryStatus('t2', 'INSERT completed successfully after T1 committed.', 'text-emerald-400');
+
+            renderTableOutput('grid-iso-t1', [
+              { ID: 1, Name: 'Samsung S10', Quantity: 11 }
+            ]);
+
+            renderTableOutput('grid-iso-t2', [
+              { ID: 1, Name: 'Samsung S10', Quantity: 11 },
+              { ID: 3, Name: 'Iphone 11', Quantity: 3 }
+            ], false, "New row inserted only AFTER T1 finished.");
+
+            if (callback) callback();
+          }, 3000);
+        }
+      }
+    };
+
+    function setQueryStatus(tx, text, color) {
+      const badge = document.getElementById(`badge-${tx}-query-status`);
+      if (badge) {
+        badge.innerText = text;
+        badge.className = `text-[10px] px-2 py-0.5 rounded bg-slate-800 ${color}`;
+      }
+    }
+
+    function renderTableOutput(containerId, rows, isDirty = false, note = "") {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+
+      let html = `
+        <table class="w-full text-left text-[11px] font-mono border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400 text-[10px]">
+              <th class="pb-1 pr-3">ID</th>
+              <th class="pb-1 pr-3">Name</th>
+              <th class="pb-1 text-right">Quantity</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+      `;
+
+      rows.forEach(r => {
+        html += `
+          <tr class="${isDirty ? 'text-amber-300 font-bold' : 'text-slate-200'}">
+            <td class="py-1 pr-3">${r.ID}</td>
+            <td class="py-1 pr-3 font-sans">${r.Name}</td>
+            <td class="py-1 text-right font-bold">${r.Quantity}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      if (note) {
+        html += `<div class="mt-2 text-[10px] ${isDirty ? 'text-amber-400 font-bold' : 'text-emerald-400'}">ℹ ${note}</div>`;
+      }
+
+      el.innerHTML = html;
+    }
+
+    function changeActiveIsoLevel() {
+      const level = document.getElementById('sel-active-iso').value;
+      const scenario = isoScenarios[level];
+
+      document.getElementById('box-iso-t1-code').innerText = scenario.t1Code;
+      document.getElementById('box-iso-t2-code').innerText = scenario.t2Code;
+      document.getElementById('box-iso-explanation').innerHTML = scenario.explanation;
+
+      // Reset outputs
+      resetIsoSimulator();
+
+      // Highlight matrix row
+      ['uncommitted', 'committed', 'repeatable', 'serializable'].forEach(k => {
+        const row = document.getElementById(`row-iso-${k}`);
+        if (row) row.classList.remove('bg-indigo-100', 'ring-2', 'ring-indigo-400');
+      });
+
+      if (level === 'READ_UNCOMMITTED') document.getElementById('row-iso-uncommitted').classList.add('bg-indigo-100', 'ring-2', 'ring-indigo-400');
+      if (level === 'READ_COMMITTED') document.getElementById('row-iso-committed').classList.add('bg-indigo-100', 'ring-2', 'ring-indigo-400');
+      if (level === 'REPEATABLE_READ') document.getElementById('row-iso-repeatable').classList.add('bg-indigo-100', 'ring-2', 'ring-indigo-400');
+      if (level === 'SERIALIZABLE') document.getElementById('row-iso-serializable').classList.add('bg-indigo-100', 'ring-2', 'ring-indigo-400');
+    }
+
+    function resetIsoSimulator() {
+      setQueryStatus('t1', 'Ready', 'text-slate-400');
+      setQueryStatus('t2', 'Ready', 'text-slate-400');
+      document.getElementById('grid-iso-t1').innerHTML = `<div class="text-slate-500 italic">No output yet. Click 'Run Concurrently'.</div>`;
+      document.getElementById('grid-iso-t2').innerHTML = `<div class="text-slate-500 italic">No output yet. Click 'Run Concurrently'.</div>`;
+    }
+
+    function runIsoConcurrent() {
+      const level = document.getElementById('sel-active-iso').value;
+      const scenario = isoScenarios[level];
+      const btn = document.getElementById('btn-run-iso-both');
+      btn.disabled = true;
+      btn.innerText = "Executing concurrent queries...";
+
+      scenario.run(() => {
+        btn.disabled = false;
+        btn.innerText = "⚡ Run Concurrently (Handout Demonstration)";
+      });
+    }
+
+    function runIsoT1() {
+      setQueryStatus('t1', 'Running T1 query...', 'text-indigo-400');
+      setTimeout(() => {
+        setQueryStatus('t1', 'T1 Query executed alone.', 'text-emerald-400');
+        renderTableOutput('grid-iso-t1', [{ ID: 1, Name: 'Samsung S10', Quantity: 10 }]);
+      }, 800);
+    }
+
+    /* ==========================================================================
+       MODULE 5: QUIZ ASSESSMENT JAVASCRIPT
+       ========================================================================== */
+    const quizData = [
+      {
+        question: "1. Which transaction property requires that ALL operations of a transaction must complete, otherwise the entire transaction is aborted and rolled back?",
+        options: [
+          "Consistency",
+          "Atomicity",
+          "Durability",
+          "Isolation"
+        ],
+        correct: 1,
+        explanation: "Atomicity (Page 1) requires all operations to complete ('all or nothing'). If one SQL request fails, the whole transaction aborts."
+      },
+      {
+        question: "2. In SQL Server, which function returns the number of active BEGIN TRANSACTION statements on the current connection?",
+        options: [
+          "@@ROWCOUNT",
+          "@@LOCKCOUNT",
+          "@@TRANCOUNT",
+          "@@DBSTATUS"
+        ],
+        correct: 2,
+        explanation: "@@TRANCOUNT (Page 2) returns the count of active BEGIN TRANSACTION statements in the current session."
+      },
+      {
+        question: "3. What is the default transaction isolation level in Microsoft SQL Server?",
+        options: [
+          "READ UNCOMMITTED",
+          "READ COMMITTED",
+          "REPEATABLE READ",
+          "SERIALIZABLE"
+        ],
+        correct: 1,
+        explanation: "READ COMMITTED is the default isolation level in SQL Server (Page 5-6). It prevents dirty reads."
+      },
+      {
+        question: "4. What concurrency problem occurs when Transaction 1 reads Mary's uncommitted ₱20,000 salary, and then the treasurer rolls back the change back to ₱15,000?",
+        options: [
+          "Lost Update",
+          "Dirty Read (Uncommitted Data)",
+          "Phantom Read",
+          "Inconsistent Retrievals"
+        ],
+        correct: 1,
+        explanation: "Dirty Read (Page 4) occurs when a transaction reads data modified by another transaction that has not been committed yet."
+      },
+      {
+        question: "5. When a deadlock occurs and the DBMS tests the Wait-For Graph, how does Deadlock Detection resolve the circular wait?",
+        options: [
+          "It locks the entire database permanently",
+          "It aborts and rolls back a designated 'victim' transaction so the other can proceed",
+          "It converts all exclusive locks into binary locks",
+          "It ignores the transactions until the user restarts the computer"
+        ],
+        correct: 1,
+        explanation: "Deadlock Detection (Page 4) periodically inspects the graph, identifies the cycle, and rolls back the 'victim' transaction."
+      }
+    ];
+
+    let userAnswers = {};
+
+    function renderQuiz() {
+      const container = document.getElementById('quiz-questions-list');
+      container.innerHTML = '';
+
+      quizData.forEach((q, qIndex) => {
+        const card = document.createElement('div');
+        card.className = "p-5 rounded-xl border border-slate-200 bg-slate-50 space-y-3";
+        card.id = `quiz-card-${qIndex}`;
+
+        let optionsHtml = '<div class="space-y-2 mt-2">';
+        q.options.forEach((opt, optIndex) => {
+          optionsHtml += `
+            <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 cursor-pointer text-xs font-medium transition-colors">
+              <input type="radio" name="q_${qIndex}" value="${optIndex}" onchange="selectQuizAnswer(${qIndex}, ${optIndex})" class="text-indigo-600 focus:ring-indigo-500">
+              <span>${opt}</span>
+            </label>
+          `;
+        });
+        optionsHtml += '</div>';
+
+        card.innerHTML = `
+          <div class="font-bold text-sm text-slate-900">${q.question}</div>
+          ${optionsHtml}
+          <div id="quiz-feedback-${qIndex}" class="text-xs p-2.5 rounded-lg hidden"></div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function selectQuizAnswer(qIndex, optIndex) {
+      userAnswers[qIndex] = optIndex;
+      const q = quizData[qIndex];
+      const feedbackEl = document.getElementById(`quiz-feedback-${qIndex}`);
+
+      feedbackEl.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-900', 'bg-rose-100', 'text-rose-900');
+      if (optIndex === q.correct) {
+        feedbackEl.classList.add('bg-emerald-100', 'text-emerald-900');
+        feedbackEl.innerHTML = `<strong>✔ Correct!</strong> ${q.explanation}`;
+      } else {
+        feedbackEl.classList.add('bg-rose-100', 'text-rose-900');
+        feedbackEl.innerHTML = `<strong>✖ Incorrect.</strong> ${q.explanation}`;
+      }
+
+      // Calculate total score
+      let score = 0;
+      Object.entries(userAnswers).forEach(([idx, ans]) => {
+        if (quizData[idx].correct === ans) score++;
+      });
+      document.getElementById('quiz-score').innerText = `${score} / ${quizData.length}`;
+    }
+
+    function resetQuiz() {
+      userAnswers = {};
+      document.getElementById('quiz-score').innerText = `0 / ${quizData.length}`;
+      renderQuiz();
+    }
+
+    window.onload = function() {
+      // 1. Init Fund Transfer Lab
+      updateFundUI();
+
+      // 2. Init Concurrency Problems
+      selectProblem('lost_update');
+
+      // 3. Init Locks Workbench
+      setLockGranularity('database');
+      calcLockCompatibility();
+      resetDeadlockSim();
+
+      // 4. Init Isolation Simulator
+      changeActiveIsoLevel();
+
+      // 5. Init Quiz
+      renderQuiz();
+    };
+  </script>
+</body>
+</html>
