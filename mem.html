@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OS Memory Management & Allocation Visualizer</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --disk-color: #64748b;
+      --disk-light: #f1f5f9;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px 14px;
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      margin-top: 4px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 18px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      background: none;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .analogy-banner {
+      background: var(--primary-light);
+      border-left: 4px solid var(--primary);
+      padding: 12px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      color: #1e40af;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .editor-section {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+    }
+
+    .input-row label {
+      font-weight: 600;
+      min-width: 150px;
+      color: #334155;
+    }
+
+    input[type="text"], input[type="number"], select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.9rem;
+      background: #ffffff;
+      outline: none;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button.btn {
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    button.btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: #334155; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-outline { background: transparent; border: 1px solid #cbd5e1 !important; color: #475569; }
+    .btn-outline:hover { background: #f1f5f9; }
+
+    /* Visualizer memory strips */
+    .mem-strip {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      min-height: 130px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 10px;
+      overflow-x: auto;
+      border: 1px dashed #cbd5e1;
+      align-items: stretch;
+    }
+
+    .mem-block {
+      display: flex;
+      flex-direction: column;
+      border: 2px solid #94a3b8;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #ffffff;
+      transition: all 0.25s ease;
+      min-width: 105px;
+    }
+
+    .mem-block.active-evaluated {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+    }
+
+    .mem-block.chosen {
+      border-color: var(--success);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.25);
+    }
+
+    .block-header {
+      background: #e2e8f0;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 4px;
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    .block-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sub-chunk {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 4px 6px;
+      word-break: break-word;
+    }
+
+    .chunk-used {
+      background-color: var(--primary);
+      color: #ffffff;
+    }
+
+    .chunk-free {
+      background-color: #f8fafc;
+      color: var(--text-muted);
+      border-top: 1px dashed #cbd5e1;
+      flex: 1;
+    }
+
+    .chunk-ext-free {
+      background-color: #d1fae5;
+      color: #065f46;
+      flex: 1;
+    }
+
+    .chunk-internal-frag {
+      background: repeating-linear-gradient(
+        45deg,
+        #fee2e2,
+        #fee2e2 6px,
+        #ef4444 6px,
+        #ef4444 12px
+      );
+      color: #7f1d1d;
+      font-weight: 800;
+    }
+
+    .decision-panel {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 14px;
+    }
+
+    .decision-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .eval-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .eval-card {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      background: #f8fafc;
+    }
+
+    .eval-card.fit-candidate {
+      border-color: #93c5fd;
+      background: #f0f7ff;
+    }
+
+    .eval-card.selected-candidate {
+      border-color: #86efac;
+      background: #f0fdf4;
+      font-weight: 600;
+    }
+
+    .eval-card.failed-candidate {
+      border-color: #fca5a5;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .log-box {
+      background: #0f172a;
+      color: #38bdf8;
+      font-family: monospace;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      min-height: 52px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .metric-card {
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .metric-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-box {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+    }
+
+    /* Swapping visualizer elements */
+    .swap-stage {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .swap-stage {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .storage-box {
+      background: #ffffff;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .storage-header {
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    .storage-bar-outer {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      min-height: 130px;
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      position: relative;
+    }
+
+    .swap-process-block {
+      border-radius: 6px;
+      padding: 8px;
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>OS Memory Management Visualizer</h1>
+      <p>Interactive playground for allocation strategies, assignment logic, swapping, and fragmentation.</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('allocation')">1. Placement Algorithms</button>
+      <button class="tab-btn" onclick="switchTab('swapping')">2. Memory Swapping</button>
+      <button class="tab-btn" onclick="switchTab('internal')">3. Internal Fragmentation</button>
+      <button class="tab-btn" onclick="switchTab('external')">4. External Fragmentation</button>
+    </div>
+
+    <!-- TAB 1: PLACEMENT ALGORITHMS & DECISION INSPECTION -->
+    <div id="tab-allocation">
+      <div class="analogy-banner">
+        <strong>Luggage & Lockers Analogy:</strong> Think of memory blocks ($B1-B5$) as airport baggage lockers, and processes ($P1-P4$) as bags.
+        Each algorithm uses a distinct rulebook to assign bags. The decision inspector below shows the step-by-step reasoning the OS uses to choose a specific block.
+      </div>
+
+      <div class="card">
+        <div class="editor-section">
+          <div class="input-row">
+            <label for="blockInput">Memory Blocks (KB):</label>
+            <input type="text" id="blockInput" value="100, 500, 200, 300, 600" style="flex: 1; min-width: 220px;" />
+          </div>
+          <div class="input-row">
+            <label for="processInput">Processes (KB):</label>
+            <input type="text" id="processInput" value="212, 417, 112, 426" style="flex: 1; min-width: 220px;" />
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="applyCustomAllocation()">Apply Values</button>
+            <button class="btn btn-outline" onclick="resetDefaultAllocation()">Load Handout Defaults</button>
+          </div>
+        </div>
+
+        <div class="controls btn-group" style="margin-bottom: 12px;">
+          <label for="algoSelect" style="font-weight: 600; font-size: 0.9rem;">Strategy:</label>
+          <select id="algoSelect" onchange="restartSimulation()">
+            <option value="first">First Fit</option>
+            <option value="best">Best Fit</option>
+            <option value="worst">Worst Fit</option>
+            <option value="next">Next Fit</option>
+          </select>
+
+          <button class="btn btn-primary" onclick="stepAllocation()">Step Process</button>
+          <button class="btn btn-secondary" onclick="restartSimulation()">Restart</button>
+          <span id="stepCounter" style="font-size: 0.85rem; color: var(--text-muted); margin-left: auto;">Step 0 of 4</span>
+        </div>
+
+        <div class="mem-strip" id="allocBlocksContainer"></div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="legend-box" style="background:var(--primary);"></div> Allocated Process</div>
+          <div class="legend-item"><div class="legend-box" style="background:#f8fafc; border:1px solid #cbd5e1;"></div> Remaining Free Space</div>
+          <div class="legend-item"><div class="legend-box" style="background:#86efac; border:1px solid #059669;"></div> Chosen Block</div>
+        </div>
+
+        <!-- Dynamic Decision Breakdown -->
+        <div class="decision-panel">
+          <div class="decision-title">
+            <span>🔍 Placement Decision Inspector</span>
+          </div>
+          <div class="eval-cards" id="evalCardsContainer">
+            <div style="font-size:0.85rem; color:var(--text-muted);">Click "Step Process" to see why a block is chosen or rejected.</div>
+          </div>
+          <div class="log-box" id="allocLog">Ready. Select an algorithm and click "Step Process".</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: MEMORY SWAPPING (RAM <-> DISK) -->
+    <div id="tab-swapping">
+      <div class="analogy-banner">
+        <strong>The Desk & Filing Cabinet Analogy:</strong>
+        RAM is like your <em>desk surface</em>: super-fast to work on, but limited in space. Secondary storage (hard drive/SSD) is the <em>filing cabinet</em> across the room.
+        When your desk is full and an urgent task arrives, you don't throw away your current work; you <strong>swap it out</strong> to the filing cabinet temporarily, and <strong>swap it back in</strong> when needed.
+      </div>
+
+      <div class="card">
+        <div class="editor-section">
+          <div class="input-row">
+            <label for="swapRamLimit">RAM Capacity (KB):</label>
+            <input type="number" id="swapRamLimit" value="500" min="100" style="width: 120px;" />
+            <span style="font-size:0.8rem; color:var(--text-muted);">(Handout: 500 KB limit)</span>
+          </div>
+          <div class="input-row">
+            <label for="swapProcQueue">Process Queue (KB):</label>
+            <input type="text" id="swapProcQueue" value="P1:200, P2:300, P3:200" style="flex: 1; min-width: 240px;" />
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="applyCustomSwap()">Apply & Reset</button>
+            <button class="btn btn-outline" onclick="resetDefaultSwap()">Load Handout Swapping Example</button>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-bottom: 12px;">
+          <button class="btn btn-primary" id="swapNextBtn" onclick="nextSwapStep()">Next Swapping Step</button>
+          <button class="btn btn-secondary" onclick="resetSwapSim()">Restart Swapping Demo</button>
+          <span id="swapStepIndicator" style="font-size:0.85rem; font-weight:600; color:var(--text-muted); margin-left: auto;">Step 0</span>
+        </div>
+
+        <!-- Swapping Visual Representation -->
+        <div class="swap-stage">
+          <!-- Main Memory (RAM) -->
+          <div class="storage-box">
+            <div class="storage-header">
+              <span>⚡ Main Memory (RAM)</span>
+              <span id="ramUsageBadge" style="font-size:0.8rem; color:var(--primary); font-weight:700;">0 / 500 KB</span>
+            </div>
+            <div class="storage-bar-outer" id="ramContainer">
+              <div style="margin:auto; font-size:0.85rem; color:var(--text-muted);">RAM is Empty</div>
+            </div>
+          </div>
+
+          <!-- Secondary Storage (Disk / Swap Space) -->
+          <div class="storage-box">
+            <div class="storage-header">
+              <span>💾 Secondary Storage (Swap Disk)</span>
+              <span id="diskUsageBadge" style="font-size:0.8rem; color:var(--disk-color); font-weight:700;">0 Processes</span>
+            </div>
+            <div class="storage-bar-outer" id="diskContainer" style="background:#f8fafc;">
+              <div style="margin:auto; font-size:0.85rem; color:var(--text-muted);">Swap Disk is Empty</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="log-box" id="swapLog">Click "Next Swapping Step" to begin the step-by-step handout example.</div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-title">Active Process in CPU Focus</div>
+            <div class="metric-value" id="activeSwapProc">None</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Swapped-Out Processes</div>
+            <div class="metric-value" id="swappedCount">0</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Why Use Swapping?</div>
+            <div class="metric-value" style="font-size:0.9rem; font-weight:600; color:var(--primary);">Enables Multiprogramming beyond physical RAM bounds</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: INTERNAL FRAGMENTATION -->
+    <div id="tab-internal" style="display:none;">
+      <div class="analogy-banner">
+        <strong>Fixed Compartments Analogy:</strong> When a memory architecture allocates fixed-sized partitions to smaller tasks, the unused capacity trapped inside that partition cannot be shared. That dead space is <strong>Internal Fragmentation</strong>.
+      </div>
+
+      <div class="card">
+        <div class="editor-section">
+          <div class="input-row">
+            <label for="fixedPartitionSize">Partition Size (KB):</label>
+            <input type="number" id="fixedPartitionSize" value="100" min="10" style="width: 100px;" />
+          </div>
+          <div class="input-row">
+            <label for="internalProcessInput">Process Sizes (KB):</label>
+            <input type="text" id="internalProcessInput" value="70, 85, 60" style="flex: 1; min-width: 200px;" />
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="applyInternalValues()">Apply & Calculate</button>
+            <button class="btn btn-outline" onclick="resetDefaultInternal()">Reset Defaults</button>
+          </div>
+        </div>
+
+        <div class="mem-strip" id="internalBlocksContainer"></div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="legend-box" style="background:var(--primary);"></div> Space Used by Process</div>
+          <div class="legend-item"><div class="legend-box chunk-internal-frag" style="border: 1px solid #ef4444;"></div> Internal Wasted Space</div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-title">Total Allocated Space</div>
+            <div class="metric-value" id="internalAllocatedVal">0 KB</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Actual Used Space</div>
+            <div class="metric-value" id="internalUsedVal">0 KB</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Total Internal Waste</div>
+            <div class="metric-value" style="color:var(--danger);" id="internalWastedVal">0 KB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: EXTERNAL FRAGMENTATION -->
+    <div id="tab-external" style="display:none;">
+      <div class="analogy-banner">
+        <strong>Street Parking Analogy:</strong> Even when the sum of free spots across the entire block exceeds the vehicle's length, the vehicle cannot park if none of the contiguous individual slots are large enough.
+      </div>
+
+      <div class="card">
+        <div class="editor-section">
+          <div class="input-row">
+            <label for="extLayoutInput">Layout (Status:Size):</label>
+            <input type="text" id="extLayoutInput" value="U:100, F:50, U:200, F:70, U:150, F:80" style="flex: 1; min-width: 260px;" title="U = Used, F = Free" />
+          </div>
+          <div class="input-row">
+            <label for="extProcSize">Incoming Process (KB):</label>
+            <input type="number" id="extProcSize" value="180" min="1" style="width: 100px;" />
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-outline" onclick="applyExternalValues()">Apply Configuration</button>
+            <button class="btn btn-outline" onclick="resetDefaultExternal()">Reset Defaults</button>
+          </div>
+        </div>
+
+        <div class="controls btn-group" style="margin-bottom: 12px;">
+          <button class="btn btn-primary" onclick="testExternalFit()">Test Contiguous Allocation</button>
+        </div>
+
+        <div class="mem-strip" id="externalBlocksContainer"></div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="legend-box" style="background:var(--primary);"></div> Occupied Memory Block</div>
+          <div class="legend-item"><div class="legend-box" style="background:#d1fae5; border: 1px solid #10b981;"></div> Scattered Free Block</div>
+        </div>
+
+        <div class="log-box" id="externalLog">Configure values and click "Test Contiguous Allocation".</div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-title">Total Available Free</div>
+            <div class="metric-value" style="color:var(--success);" id="extTotalFreeVal">0 KB</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Largest Single Hole</div>
+            <div class="metric-value" id="extMaxHoleVal">0 KB</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Requested Size</div>
+            <div class="metric-value" id="extReqVal">0 KB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // TAB SWITCHING
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('tab-allocation').style.display = 'none';
+      document.getElementById('tab-swapping').style.display = 'none';
+      document.getElementById('tab-internal').style.display = 'none';
+      document.getElementById('tab-external').style.display = 'none';
+
+      if (tab === 'allocation') {
+        document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('tab-allocation').style.display = 'block';
+      } else if (tab === 'swapping') {
+        document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('tab-swapping').style.display = 'block';
+        resetSwapSim();
+      } else if (tab === 'internal') {
+        document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
+        document.getElementById('tab-internal').style.display = 'block';
+        applyInternalValues();
+      } else if (tab === 'external') {
+        document.querySelector('.tab-btn:nth-child(4)').classList.add('active');
+        document.getElementById('tab-external').style.display = 'block';
+        applyExternalValues();
+      }
+    }
+
+    // --- TAB 1: ALLOCATION LOGIC WITH EXPLANATIONS ---
+    let blockSizes = [100, 500, 200, 300, 600];
+    let procSizes = [212, 417, 112, 426];
+    let allocStateBlocks = [];
+    let currentStep = 0;
+    let nextFitPointer = 0;
+    let lastChosenIndex = -1;
+
+    function parseNumericList(str) {
+      return str.split(',')
+        .map(v => parseInt(v.trim(), 10))
+        .filter(v => !isNaN(v) && v > 0);
+    }
+
+    function initAllocBlocks() {
+      allocStateBlocks = blockSizes.map((size, idx) => ({
+        id: `B${idx + 1}`,
+        size: size,
+        remaining: size,
+        allocations: []
+      }));
+    }
+
+    function applyCustomAllocation() {
+      const parsedBlocks = parseNumericList(document.getElementById('blockInput').value);
+      const parsedProcs = parseNumericList(document.getElementById('processInput').value);
+
+      if (parsedBlocks.length === 0 || parsedProcs.length === 0) {
+        alert("Please enter valid comma-separated positive numbers.");
+        return;
+      }
+
+      blockSizes = parsedBlocks;
+      procSizes = parsedProcs;
+      restartSimulation();
+    }
+
+    function resetDefaultAllocation() {
+      document.getElementById('blockInput').value = "100, 500, 200, 300, 600";
+      document.getElementById('processInput').value = "212, 417, 112, 426";
+      applyCustomAllocation();
+    }
+
+    function restartSimulation() {
+      initAllocBlocks();
+      currentStep = 0;
+      nextFitPointer = 0;
+      lastChosenIndex = -1;
+      document.getElementById('stepCounter').textContent = `Step 0 of ${procSizes.length}`;
+      document.getElementById('allocLog').textContent = "Ready. Select an algorithm and click 'Step Process'.";
+      document.getElementById('evalCardsContainer').innerHTML =
+        '<div style="font-size:0.85rem; color:var(--text-muted);">Click "Step Process" to inspect the evaluation and decision rationale.</div>';
+      renderAllocBlocks();
+    }
+
+    function renderAllocBlocks() {
+      const container = document.getElementById('allocBlocksContainer');
+      container.innerHTML = '';
+
+      allocStateBlocks.forEach((block, idx) => {
+        const el = document.createElement('div');
+        el.className = 'mem-block';
+        if (idx === lastChosenIndex) {
+          el.classList.add('chosen');
+        }
+        el.style.flex = `${block.size} 0 0%`;
+
+        let content = `<div class="block-header">${block.id} (${block.size} KB)</div><div class="block-content">`;
+        block.allocations.forEach(p => {
+          const pct = ((p.size / block.size) * 100).toFixed(1);
+          content += `<div class="sub-chunk chunk-used" style="height:${pct}%;">${p.id}: ${p.size} KB</div>`;
+        });
+
+        if (block.remaining > 0) {
+          const freePct = ((block.remaining / block.size) * 100).toFixed(1);
+          content += `<div class="sub-chunk chunk-free" style="height:${freePct}%;">Free: ${block.remaining} KB</div>`;
+        }
+        content += `</div>`;
+        el.innerHTML = content;
+        container.appendChild(el);
+      });
+    }
+
+    function stepAllocation() {
+      if (currentStep >= procSizes.length) {
+        document.getElementById('allocLog').textContent = "All processes in the queue have been evaluated. Click 'Restart' to run again or change values.";
+        return;
+      }
+
+      const pSize = procSizes[currentStep];
+      const pId = `P${currentStep + 1}`;
+      const algo = document.getElementById('algoSelect').value;
+
+      let targetIdx = -1;
+      let evaluations = [];
+      let explanation = "";
+
+      const n = allocStateBlocks.length;
+
+      if (algo === 'first') {
+        for (let i = 0; i < n; i++) {
+          const b = allocStateBlocks[i];
+          const fits = b.remaining >= pSize;
+          if (fits) {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Selected',
+              reason: `Fits (${b.remaining} KB >= ${pSize} KB). First one encountered from top!`
+            });
+            targetIdx = i;
+            break;
+          } else {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Skipped',
+              reason: `Too small (${b.remaining} KB < ${pSize} KB)`
+            });
+          }
+        }
+        if (targetIdx !== -1) {
+          explanation = `First Fit scanned from the beginning (B1). It skipped blocks that were too small and stopped at ${allocStateBlocks[targetIdx].id} because it was the FIRST block with enough space.`;
+        }
+      } else if (algo === 'best') {
+        let bestDiff = Infinity;
+        for (let i = 0; i < n; i++) {
+          const b = allocStateBlocks[i];
+          const fits = b.remaining >= pSize;
+          if (fits) {
+            const diff = b.remaining - pSize;
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              diff: diff,
+              status: 'Candidate',
+              reason: `Fits! Leftover waste would be ${diff} KB`
+            });
+            if (diff < bestDiff) {
+              bestDiff = diff;
+              targetIdx = i;
+            }
+          } else {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Skipped',
+              reason: `Too small (${b.remaining} KB < ${pSize} KB)`
+            });
+          }
+        }
+        if (targetIdx !== -1) {
+          evaluations.forEach(ev => {
+            if (ev.id === allocStateBlocks[targetIdx].id) {
+              ev.status = 'Selected';
+              ev.reason = `SMALLEST leftover space (${bestDiff} KB). Optimal fit!`;
+            }
+          });
+          explanation = `Best Fit scanned ALL blocks to find candidates that could fit ${pSize} KB. It selected ${allocStateBlocks[targetIdx].id} because it leaves the SMALLEST leftover space (${bestDiff} KB), minimizing wasted partition space.`;
+        }
+      } else if (algo === 'worst') {
+        let maxRem = -1;
+        for (let i = 0; i < n; i++) {
+          const b = allocStateBlocks[i];
+          const fits = b.remaining >= pSize;
+          if (fits) {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Candidate',
+              reason: `Fits! Remaining after: ${b.remaining - pSize} KB`
+            });
+            if (b.remaining > maxRem) {
+              maxRem = b.remaining;
+              targetIdx = i;
+            }
+          } else {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Skipped',
+              reason: `Too small (${b.remaining} KB < ${pSize} KB)`
+            });
+          }
+        }
+        if (targetIdx !== -1) {
+          evaluations.forEach(ev => {
+            if (ev.id === allocStateBlocks[targetIdx].id) {
+              ev.status = 'Selected';
+              ev.reason = `LARGEST block available (${allocStateBlocks[targetIdx].remaining} KB). Leaves largest remaining hole!`;
+            }
+          });
+          explanation = `Worst Fit searched all blocks and selected ${allocStateBlocks[targetIdx].id} because it had the LARGEST remaining capacity. Its philosophy is to leave the biggest remaining hole for other programs.`;
+        }
+      } else if (algo === 'next') {
+        const startPtr = nextFitPointer;
+        for (let offset = 0; offset < n; offset++) {
+          const idx = (startPtr + offset) % n;
+          const b = allocStateBlocks[idx];
+          const fits = b.remaining >= pSize;
+          if (fits) {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Selected',
+              reason: `Found fitting block starting after pointer (last at B${startPtr === 0 ? 1 : startPtr + 1})`
+            });
+            targetIdx = idx;
+            nextFitPointer = idx;
+            break;
+          } else {
+            evaluations.push({
+              id: b.id,
+              remaining: b.remaining,
+              status: 'Skipped',
+              reason: `Checked position B${idx + 1}, but too small (${b.remaining} KB < ${pSize} KB)`
+            });
+          }
+        }
+        if (targetIdx !== -1) {
+          explanation = `Next Fit started its search from the last allocated block position, avoiding rescanning the beginning of memory each time. It placed ${pId} in ${allocStateBlocks[targetIdx].id} and advanced the search pointer.`;
+        }
+      }
+
+      lastChosenIndex = targetIdx;
+
+      // Render Evaluation Cards
+      const evalContainer = document.getElementById('evalCardsContainer');
+      evalContainer.innerHTML = '';
+      evaluations.forEach(ev => {
+        const card = document.createElement('div');
+        let cardClass = 'eval-card';
+        if (ev.status === 'Selected') cardClass += ' selected-candidate';
+        else if (ev.status === 'Candidate') cardClass += ' fit-candidate';
+        else cardClass += ' failed-candidate';
+        card.className = cardClass;
+        card.innerHTML = `
+          <strong>${ev.id} (${ev.remaining} KB free)</strong><br/>
+          <span style="font-size:0.75rem;">${ev.reason}</span>
+        `;
+        evalContainer.appendChild(card);
+      });
+
+      let logMsg = "";
+      if (targetIdx !== -1) {
+        allocStateBlocks[targetIdx].allocations.push({ id: pId, size: pSize });
+        allocStateBlocks[targetIdx].remaining -= pSize;
+        logMsg = `ALLOCATED: ${pId} (${pSize} KB) -> ${allocStateBlocks[targetIdx].id}\n` +
+                 `WHY: ${explanation}\n` +
+                 `Remaining in ${allocStateBlocks[targetIdx].id}: ${allocStateBlocks[targetIdx].remaining} KB.`;
+      } else {
+        logMsg = `FAILED: ${pId} (${pSize} KB) cannot fit anywhere in memory!\n` +
+                 `None of the remaining free partitions are large enough.`;
+        explanation = `No block had >= ${pSize} KB available.`;
+      }
+
+      currentStep++;
+      document.getElementById('stepCounter').textContent = `Step ${currentStep} of ${procSizes.length}`;
+      document.getElementById('allocLog').textContent = logMsg;
+      renderAllocBlocks();
+    }
+
+    // --- TAB 2: SWAPPING LOGIC ---
+    let swapRamLimit = 500;
+    let swapQueue = [
+      { id: 'P1', size: 200, color: '#2563eb' },
+      { id: 'P2', size: 300, color: '#7c3aed' },
+      { id: 'P3', size: 200, color: '#059669' }
+    ];
+
+    let swapRam = [];
+    let swapDisk = [];
+    let swapCurrentStep = 0;
+
+    const swapStepsScript = [
+      {
+        stepNum: 1,
+        title: "Load P1 into RAM",
+        action: () => {
+          swapRam.push(swapQueue[0]);
+        },
+        log: "STEP 1: Load Process P1 (200 KB) into Main Memory.\n" +
+             "RAM Usage: 200 KB / 500 KB. Plenty of room left for other tasks."
+      },
+      {
+        stepNum: 2,
+        title: "Load P2 into RAM",
+        action: () => {
+          swapRam.push(swapQueue[1]);
+        },
+        log: "STEP 2: Load Process P2 (300 KB) into Main Memory.\n" +
+             "RAM Status: 200 KB (P1) + 300 KB (P2) = 500 KB / 500 KB.\n" +
+             "⚠️ MEMORY IS NOW FULL! No additional process can enter RAM without freeing space."
+      },
+      {
+        stepNum: 3,
+        title: "P3 Arrives (Memory Full)",
+        action: () => {
+          // No RAM changes yet, state of arrival
+        },
+        log: "STEP 3: Incoming Process P3 (200 KB) arrives!\n" +
+             "The CPU needs to execute P3, but RAM is completely saturated (500 KB used).\n" +
+             "The OS decision: We must temporarily swap out an inactive or lower-priority process to secondary storage."
+      },
+      {
+        stepNum: 4,
+        title: "Swap Out P1 to Disk",
+        action: () => {
+          const removed = swapRam.shift(); // remove P1
+          swapDisk.push(removed);
+        },
+        log: "STEP 4: SWAP OUT: OS moves P1 (200 KB) from RAM to the Swap Space on Disk.\n" +
+             "P1 is NOT deleted! Its execution context and state are safely stored on the drive.\n" +
+             "Freed space in RAM: 200 KB is now open."
+      },
+      {
+        stepNum: 5,
+        title: "Swap In / Load P3 into Freed RAM",
+        action: () => {
+          swapRam.push(swapQueue[2]);
+        },
+        log: "STEP 5: SWAP IN: Load P3 (200 KB) into the newly freed space in RAM!\n" +
+             "RAM now holds P2 (300 KB) and P3 (200 KB).\n" +
+             "When P1 needs CPU time again later, the OS will swap another process out and reload P1 from disk."
+      }
+    ];
+
+    function renderSwapStage() {
+      const ramBox = document.getElementById('ramContainer');
+      const diskBox = document.getElementById('diskContainer');
+
+      ramBox.innerHTML = '';
+      diskBox.innerHTML = '';
+
+      let usedRam = 0;
+      swapRam.forEach(p => {
+        usedRam += p.size;
+        const widthPct = ((p.size / swapRamLimit) * 100).toFixed(1);
+        const el = document.createElement('div');
+        el.className = 'swap-process-block';
+        el.style.backgroundColor = p.color;
+        el.style.width = `${widthPct}%`;
+        el.innerHTML = `<span>${p.id}</span><span>${p.size} KB</span>`;
+        ramBox.appendChild(el);
+      });
+
+      if (swapRam.length === 0) {
+        ramBox.innerHTML = '<div style="margin:auto; font-size:0.85rem; color:var(--text-muted);">RAM is Empty</div>';
+      }
+
+      swapDisk.forEach(p => {
+        const el = document.createElement('div');
+        el.className = 'swap-process-block';
+        el.style.backgroundColor = '#64748b';
+        el.style.minWidth = '90px';
+        el.innerHTML = `<span>${p.id} (Swapped)</span><span>${p.size} KB</span>`;
+        diskBox.appendChild(el);
+      });
+
+      if (swapDisk.length === 0) {
+        diskBox.innerHTML = '<div style="margin:auto; font-size:0.85rem; color:var(--text-muted);">Swap Disk is Empty</div>';
+      }
+
+      document.getElementById('ramUsageBadge').textContent = `${usedRam} / ${swapRamLimit} KB`;
+      document.getElementById('diskUsageBadge').textContent = `${swapDisk.length} Process(es) on Disk`;
+      document.getElementById('swappedCount').textContent = `${swapDisk.length}`;
+
+      if (swapRam.length > 0) {
+        document.getElementById('activeSwapProc').textContent = swapRam.map(p => p.id).join(', ');
+      } else {
+        document.getElementById('activeSwapProc').textContent = 'None';
+      }
+    }
+
+    function nextSwapStep() {
+      if (swapCurrentStep >= swapStepsScript.length) {
+        document.getElementById('swapLog').textContent = "Swapping demonstration complete! Click 'Restart Swapping Demo' to replay.";
+        return;
+      }
+
+      const current = swapStepsScript[swapCurrentStep];
+      current.action();
+      document.getElementById('swapStepIndicator').textContent = `Step ${current.stepNum} of 5: ${current.title}`;
+      document.getElementById('swapLog').textContent = current.log;
+
+      swapCurrentStep++;
+      renderSwapStage();
+    }
+
+    function resetSwapSim() {
+      swapRam = [];
+      swapDisk = [];
+      swapCurrentStep = 0;
+      document.getElementById('swapStepIndicator').textContent = "Step 0";
+      document.getElementById('swapLog').textContent = "Ready. Click 'Next Swapping Step' to begin the step-by-step handout example.";
+      renderSwapStage();
+    }
+
+    function applyCustomSwap() {
+      const ramVal = parseInt(document.getElementById('swapRamLimit').value, 10);
+      const queueStr = document.getElementById('swapProcQueue').value;
+      const tokens = queueStr.split(',').map(s => s.trim()).filter(Boolean);
+
+      const colors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777'];
+      const newQueue = [];
+
+      tokens.forEach((t, i) => {
+        const parts = t.split(':').map(p => p.trim());
+        if (parts.length === 2) {
+          const sz = parseInt(parts[1], 10);
+          if (!isNaN(sz) && sz > 0) {
+            newQueue.push({ id: parts[0], size: sz, color: colors[i % colors.length] });
+          }
+        }
+      });
+
+      if (isNaN(ramVal) || ramVal <= 0 || newQueue.length < 2) {
+        alert("Please provide a valid RAM size and at least 2 processes formatted as 'P1:200, P2:300'.");
+        return;
+      }
+
+      swapRamLimit = ramVal;
+      swapQueue = newQueue;
+
+      // Rebuild dynamic steps
+      swapStepsScript.length = 0;
+      let acc = 0;
+      let pIdx = 0;
+
+      // Step: fill RAM
+      while (pIdx < swapQueue.length && (acc + swapQueue[pIdx].size <= swapRamLimit)) {
+        const p = swapQueue[pIdx];
+        const stepNum = swapStepsScript.length + 1;
+        swapStepsScript.push({
+          stepNum: stepNum,
+          title: `Load ${p.id} into RAM`,
+          action: () => { swapRam.push(p); },
+          log: `STEP ${stepNum}: Loaded ${p.id} (${p.size} KB) into RAM.`
+        });
+        acc += p.size;
+        pIdx++;
+      }
+
+      // If next process exceeds RAM, trigger swap
+      if (pIdx < swapQueue.length) {
+        const nextP = swapQueue[pIdx];
+        const stepNumA = swapStepsScript.length + 1;
+        swapStepsScript.push({
+          stepNum: stepNumA,
+          title: `${nextP.id} arrives (${nextP.size} KB)`,
+          action: () => {},
+          log: `STEP ${stepNumA}: ${nextP.id} (${nextP.size} KB) arrives, but RAM doesn't have enough free room!\nSwapping is required.`
+        });
+
+        const stepNumB = swapStepsScript.length + 1;
+        swapStepsScript.push({
+          stepNum: stepNumB,
+          title: `Swap out earliest process`,
+          action: () => {
+            const out = swapRam.shift();
+            if (out) swapDisk.push(out);
+          },
+          log: `STEP ${stepNumB}: SWAP OUT: Moved active process from RAM to Swap Disk to clear space.`
+        });
+
+        const stepNumC = swapStepsScript.length + 1;
+        swapStepsScript.push({
+          stepNum: stepNumC,
+          title: `Load ${nextP.id} into RAM`,
+          action: () => { swapRam.push(nextP); },
+          log: `STEP ${stepNumC}: SWAP IN: Loaded ${nextP.id} (${nextP.size} KB) into freed RAM space!`
+        });
+      }
+
+      resetSwapSim();
+    }
+
+    function resetDefaultSwap() {
+      document.getElementById('swapRamLimit').value = "500";
+      document.getElementById('swapProcQueue').value = "P1:200, P2:300, P3:200";
+      applyCustomSwap();
+    }
+
+    // --- TAB 3: INTERNAL FRAGMENTATION LOGIC ---
+    function applyInternalValues() {
+      const partitionSize = parseInt(document.getElementById('fixedPartitionSize').value, 10);
+      const procs = parseNumericList(document.getElementById('internalProcessInput').value);
+
+      if (isNaN(partitionSize) || partitionSize <= 0 || procs.length === 0) {
+        alert("Please specify a valid partition size and comma-separated process sizes.");
+        return;
+      }
+
+      const container = document.getElementById('internalBlocksContainer');
+      container.innerHTML = '';
+
+      let totalAlloc = 0;
+      let totalUsed = 0;
+      let totalFrag = 0;
+
+      procs.forEach((pSize, idx) => {
+        totalAlloc += partitionSize;
+        const used = Math.min(pSize, partitionSize);
+        const wasted = Math.max(0, partitionSize - pSize);
+        const isOverflow = pSize > partitionSize;
+
+        totalUsed += used;
+        totalFrag += wasted;
+
+        const el = document.createElement('div');
+        el.className = 'mem-block';
+        el.style.flex = '1 1 0%';
+        el.style.minWidth = '130px';
+
+        const usedPct = ((used / partitionSize) * 100).toFixed(1);
+        const wastedPct = ((wasted / partitionSize) * 100).toFixed(1);
+
+        let content = `<div class="block-header">Partition ${idx + 1} (${partitionSize} KB)</div><div class="block-content">`;
+
+        if (isOverflow) {
+          content += `<div class="sub-chunk chunk-used" style="background:#dc2626; height:100%;">P${idx + 1}: ${pSize} KB<br/>(Exceeds Slot!)</div>`;
+        } else {
+          content += `<div class="sub-chunk chunk-used" style="height:${usedPct}%;">P${idx + 1}: ${used} KB</div>`;
+          if (wasted > 0) {
+            content += `<div class="sub-chunk chunk-internal-frag" style="height:${wastedPct}%;">Waste: ${wasted} KB</div>`;
+          }
+        }
+        content += `</div>`;
+
+        el.innerHTML = content;
+        container.appendChild(el);
+      });
+
+      document.getElementById('internalAllocatedVal').textContent = `${totalAlloc} KB`;
+      document.getElementById('internalUsedVal').textContent = `${totalUsed} KB`;
+      document.getElementById('internalWastedVal').textContent = `${totalFrag} KB`;
+    }
+
+    function resetDefaultInternal() {
+      document.getElementById('fixedPartitionSize').value = "100";
+      document.getElementById('internalProcessInput').value = "70, 85, 60";
+      applyInternalValues();
+    }
+
+    // --- TAB 4: EXTERNAL FRAGMENTATION LOGIC ---
+    let parsedExtBlocks = [];
+
+    function parseExtLayout(layoutStr) {
+      const parts = layoutStr.split(',').map(s => s.trim()).filter(Boolean);
+      const res = [];
+      parts.forEach((item, idx) => {
+        const tokens = item.split(':').map(t => t.trim());
+        if (tokens.length === 2) {
+          const status = tokens[0].toUpperCase() === 'U' ? 'used' : 'free';
+          const size = parseInt(tokens[1], 10);
+          if (!isNaN(size) && size > 0) {
+            res.push({ id: `B${idx + 1}`, status, size });
+          }
+        }
+      });
+      return res;
+    }
+
+    function applyExternalValues() {
+      const layoutStr = document.getElementById('extLayoutInput').value;
+      const reqSize = parseInt(document.getElementById('extProcSize').value, 10);
+      const parsed = parseExtLayout(layoutStr);
+
+      if (parsed.length === 0 || isNaN(reqSize) || reqSize <= 0) {
+        alert("Please check layout formatting (e.g. U:100, F:50) and positive requested size.");
+        return;
+      }
+
+      parsedExtBlocks = parsed;
+
+      let totalFree = 0;
+      let maxHole = 0;
+      parsedExtBlocks.forEach(b => {
+        if (b.status === 'free') {
+          totalFree += b.size;
+          if (b.size > maxHole) maxHole = b.size;
+        }
+      });
+
+      document.getElementById('extTotalFreeVal').textContent = `${totalFree} KB`;
+      document.getElementById('extMaxHoleVal').textContent = `${maxHole} KB`;
+      document.getElementById('extReqVal').textContent = `${reqSize} KB`;
+
+      renderExternalBlocks();
+      document.getElementById('externalLog').textContent = "Ready. Click 'Test Contiguous Allocation' to run.";
+    }
+
+    function renderExternalBlocks() {
+      const container = document.getElementById('externalBlocksContainer');
+      container.innerHTML = '';
+
+      parsedExtBlocks.forEach(block => {
+        const el = document.createElement('div');
+        el.className = 'mem-block';
+        el.style.flex = `${block.size} 0 0%`;
+
+        const isFree = block.status === 'free';
+        const cssClass = isFree ? 'chunk-ext-free' : 'chunk-used';
+        const label = isFree ? `Free (${block.size} KB)` : `Used (${block.size} KB)`;
+
+        el.innerHTML = `
+          <div class="block-header">${block.id}</div>
+          <div class="block-content">
+            <div class="sub-chunk ${cssClass}">${label}</div>
+          </div>
+        `;
+        container.appendChild(el);
+      });
+    }
+
+    function testExternalFit() {
+      const reqSize = parseInt(document.getElementById('extProcSize').value, 10);
+      let totalFree = 0;
+      let fitsIn = null;
+      let breakdown = [];
+
+      parsedExtBlocks.forEach(b => {
+        if (b.status === 'free') {
+          totalFree += b.size;
+          const fits = b.size >= reqSize;
+          breakdown.push(`• ${b.id} (${b.size} KB) &rarr; ${fits ? 'Fits contiguously!' : 'Too small'}`);
+          if (fits && !fitsIn) {
+            fitsIn = b.id;
+          }
+        }
+      });
+
+      let logMsg = `Checking contiguous free blocks for Process (${reqSize} KB):\n` + breakdown.join('\n') + `\n\n`;
+
+      if (fitsIn) {
+        logMsg += `SUCCESS: Process fits contiguously into Block ${fitsIn}!`;
+      } else {
+        logMsg += `ALLOCATION FAILED (External Fragmentation):\n` +
+                  `Total Free Memory = ${totalFree} KB.\n` +
+                  `Although total free memory ${totalFree >= reqSize ? 'is mathematically enough' : 'is insufficient'}, ` +
+                  `there is NO single contiguous block large enough to fit ${reqSize} KB.`;
+      }
+
+      document.getElementById('externalLog').textContent = logMsg;
+    }
+
+    function resetDefaultExternal() {
+      document.getElementById('extLayoutInput').value = "U:100, F:50, U:200, F:70, U:150, F:80";
+      document.getElementById('extProcSize').value = "180";
+      applyExternalValues();
+    }
+
+    // Initialize with defaults on load
+    applyCustomAllocation();
+    applyCustomSwap();
+  </script>
+</body>
+</html>

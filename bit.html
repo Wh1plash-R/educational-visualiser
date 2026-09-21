@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bits, Binary & Java Data Sizes Visualizer</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono {
+      font-family: 'Fira Code', monospace;
+    }
+    .switch-toggle {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glow-amber {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+    }
+    .grid-cell {
+      transition: transform 0.15s ease, background-color 0.2s ease;
+    }
+    .grid-cell:hover {
+      transform: scale(1.08);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-xl shadow-lg shadow-cyan-900/30">
+          <i data-lucide="binary" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            Bits to Gigabytes <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">IT2402 Companion</span>
+          </h1>
+          <p class="text-xs text-slate-400">Demystifying 0s, 1s, and Java Memory Allocation for Beginners</p>
+        </div>
+      </div>
+
+      <!-- Quick Nav Pills -->
+      <nav class="flex items-center gap-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs font-medium">
+        <button onclick="scrollToSection('lightbulb-lab')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">
+          1. Light Switch Lab
+        </button>
+        <button onclick="scrollToSection('byte-explorer')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">
+          2. The 8-Bit Byte
+        </button>
+        <button onclick="scrollToSection('type-stadium')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">
+          3. Java Type Scale
+        </button>
+        <button onclick="scrollToSection('signed-magic')" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">
+          4. Signed & Overflow
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12 flex-1">
+
+    <!-- HERO INTRO: The Real-world Analogy -->
+    <section class="bg-gradient-to-br from-slate-900 via-slate-900/90 to-indigo-950/50 rounded-2xl p-6 sm:p-8 border border-slate-800 shadow-xl relative overflow-hidden">
+      <div class="absolute right-0 top-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="max-w-3xl space-y-4">
+        <span class="text-xs uppercase tracking-widest text-cyan-400 font-semibold bg-cyan-950/60 px-2.5 py-1 rounded-md border border-cyan-800">
+          The Real-World Analogy
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          Computers Don't Have Ears; They Have <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-amber-400">Light Switches</span>.
+        </h2>
+        <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+          Inside your computer chip are billions of microscopic microscopic electric switches (transistors). 
+          They can only be in one of two physical states: <strong class="text-slate-100">OFF (0 volts)</strong> or <strong class="text-amber-300">ON (electric voltage)</strong>.
+          Every single letter, decimal number, 3D game graphic, and audio track is just an organized row of these switches.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 flex items-start gap-3">
+            <div class="text-xl">💡</div>
+            <div>
+              <div class="text-xs font-semibold text-slate-200">1 Bit (Binary Digit)</div>
+              <div class="text-xs text-slate-400">Single switch: <code class="text-cyan-300">0</code> or <code class="text-amber-300">1</code>. 2 possible states.</div>
+            </div>
+          </div>
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 flex items-start gap-3">
+            <div class="text-xl">📦</div>
+            <div>
+              <div class="text-xs font-semibold text-slate-200">1 Byte = 8 Bits</div>
+              <div class="text-xs text-slate-400">A bundle of 8 switches: <code class="text-cyan-300">2⁸ = 256</code> possible combinations.</div>
+            </div>
+          </div>
+          <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3.5 flex items-start gap-3">
+            <div class="text-xl">☕</div>
+            <div>
+              <div class="text-xs font-semibold text-slate-200">Java Data Types</div>
+              <div class="text-xs text-slate-400">Fixed-size buckets allocated in RAM: 8, 16, 32, or 64 bits wide.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: INTERACTIVE LIGHT SWITCH LAB -->
+    <section id="lightbulb-lab" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 border-b border-slate-800 pb-4">
+        <div>
+          <span class="text-cyan-400 text-xs font-bold uppercase tracking-wider">Module 1</span>
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            The 8-Bit Interactive Light Switch Board
+          </h3>
+          <p class="text-xs text-slate-400">
+            Click on individual switches or the bulbs to flip them ON/OFF. Watch how powers of 2 calculate the final decimal value!
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="resetSwitches(0)" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">
+            Turn All OFF (0)
+          </button>
+          <button onclick="resetSwitches(255)" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg transition">
+            Turn All ON (255)
+          </button>
+          <button onclick="randomizeSwitches()" class="px-3 py-1.5 text-xs bg-cyan-900/60 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-700/50 rounded-lg transition flex items-center gap-1.5">
+            <i data-lucide="shuffle" class="w-3.5 h-3.5"></i> Random
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Switch Board -->
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-7 space-y-6 shadow-xl">
+        
+        <!-- Live Readout Deck -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Binary Representation</div>
+            <div id="binary-readout" class="font-mono text-xl sm:text-2xl font-bold text-cyan-400 tracking-widest">
+              0000 0000
+            </div>
+            <div class="text-[10px] text-slate-500 mt-1">Base-2 (Machine Code)</div>
+          </div>
+
+          <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Unsigned Decimal</div>
+            <div id="decimal-readout" class="font-mono text-2xl sm:text-3xl font-black text-amber-400">
+              0
+            </div>
+            <div class="text-[10px] text-slate-500 mt-1">Sum of all ON weights</div>
+          </div>
+
+          <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Java `byte` (Signed)</div>
+            <div id="signed-readout" class="font-mono text-2xl sm:text-3xl font-black text-emerald-400">
+              0
+            </div>
+            <div class="text-[10px] text-slate-500 mt-1">Two's Complement (-128 to +127)</div>
+          </div>
+
+          <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-center">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Hexadecimal (0x)</div>
+            <div id="hex-readout" class="font-mono text-2xl sm:text-3xl font-black text-purple-400">
+              0x00
+            </div>
+            <div class="text-[10px] text-slate-500 mt-1">Compact 2-digit representation</div>
+          </div>
+        </div>
+
+        <!-- 8 Bit Switch Cells -->
+        <div class="grid grid-cols-8 gap-2 sm:gap-4 select-none">
+          <!-- Dynamically generated or static template for 8 bits -->
+          <!-- Bit 7 (128) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="7">
+            <span class="text-[10px] font-mono text-slate-500">Bit 7</span>
+            <button onclick="toggleBit(7)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2⁷ = 128</span>
+            </div>
+          </div>
+
+          <!-- Bit 6 (64) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="6">
+            <span class="text-[10px] font-mono text-slate-500">Bit 6</span>
+            <button onclick="toggleBit(6)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2⁶ = 64</span>
+            </div>
+          </div>
+
+          <!-- Bit 5 (32) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="5">
+            <span class="text-[10px] font-mono text-slate-500">Bit 5</span>
+            <button onclick="toggleBit(5)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2⁵ = 32</span>
+            </div>
+          </div>
+
+          <!-- Bit 4 (16) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="4">
+            <span class="text-[10px] font-mono text-slate-500">Bit 4</span>
+            <button onclick="toggleBit(4)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2⁴ = 16</span>
+            </div>
+          </div>
+
+          <!-- Bit 3 (8) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="3">
+            <span class="text-[10px] font-mono text-slate-500">Bit 3</span>
+            <button onclick="toggleBit(3)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2³ = 8</span>
+            </div>
+          </div>
+
+          <!-- Bit 2 (4) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="2">
+            <span class="text-[10px] font-mono text-slate-500">Bit 2</span>
+            <button onclick="toggleBit(2)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2² = 4</span>
+            </div>
+          </div>
+
+          <!-- Bit 1 (2) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="1">
+            <span class="text-[10px] font-mono text-slate-500">Bit 1</span>
+            <button onclick="toggleBit(1)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2¹ = 2</span>
+            </div>
+          </div>
+
+          <!-- Bit 0 (1) -->
+          <div class="bit-column flex flex-col items-center gap-2.5 p-2 sm:p-3 rounded-xl bg-slate-950/60 border border-slate-800" data-bit="0">
+            <span class="text-[10px] font-mono text-slate-500">Bit 0 (LSB)</span>
+            <button onclick="toggleBit(0)" class="bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600">
+              <i data-lucide="lightbulb" class="w-6 h-6 sm:w-8 sm:h-8"></i>
+            </button>
+            <div class="text-sm sm:text-base font-mono font-bold bit-state text-slate-500">0</div>
+            <div class="w-full text-center border-t border-slate-800 pt-2">
+              <span class="text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label">2⁰ = 1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Calculation Formula Display -->
+        <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2 text-slate-400">
+            <i data-lucide="calculator" class="w-4 h-4 text-cyan-400"></i>
+            <span>Active Math Equation:</span>
+          </div>
+          <div id="math-equation" class="font-mono text-cyan-300 text-center font-medium">
+            (0 × 128) + (0 × 64) + (0 × 32) + (0 × 16) + (0 × 8) + (0 × 4) + (0 × 2) + (0 × 1) = 0
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 2: WHY 256? THE COMBINATORIAL EXPANSION -->
+    <section id="byte-explorer" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <span class="text-indigo-400 text-xs font-bold uppercase tracking-wider">Module 2</span>
+        <h3 class="text-xl font-bold text-white">
+          Why Does Adding Bits Exponentially Explode Memory?
+        </h3>
+        <p class="text-xs text-slate-400">
+          Every time you add just 1 bit, you double the possible patterns. Slide the slider below to witness exponential scale.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl items-center">
+        
+        <!-- Interactive Controls -->
+        <div class="lg:col-span-5 space-y-5">
+          <div>
+            <div class="flex justify-between items-center mb-2">
+              <label class="text-sm font-semibold text-slate-200">Number of Available Bits:</label>
+              <span id="slider-bits-val" class="font-mono text-lg font-bold text-cyan-400">4 Bits</span>
+            </div>
+            <input 
+              type="range" 
+              id="bit-range-slider" 
+              min="1" 
+              max="8" 
+              value="4" 
+              class="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              oninput="updateBitSlider(this.value)"
+            />
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+              <span>1 bit</span>
+              <span>2 bits</span>
+              <span>3 bits</span>
+              <span>4 bits (Nibble)</span>
+              <span>6 bits</span>
+              <span>8 bits (Byte)</span>
+            </div>
+          </div>
+
+          <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-400">Formula:</span>
+              <span id="formula-display" class="font-mono text-indigo-300 font-bold">2⁴ = 16 States</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-400">Unsigned Range:</span>
+              <span id="unsigned-range-display" class="font-mono text-amber-300 font-bold">0 to 15</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-400">Signed Range (Java Style):</span>
+              <span id="signed-range-display" class="font-mono text-emerald-300 font-bold">-8 to +7</span>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            <strong class="text-slate-200">The Pattern:</strong> 
+            A single light switch gives 2 possibilities (ON/OFF). 2 switches give 4 combinations (00, 01, 10, 11). 
+            By the time you reach an 8-bit <code class="text-cyan-300 font-mono">byte</code>, you have 256 unique patterns!
+          </p>
+        </div>
+
+        <!-- Pattern Visualizer Box Grid -->
+        <div class="lg:col-span-7 bg-slate-950 p-4 sm:p-5 rounded-xl border border-slate-800">
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <i data-lucide="layout-grid" class="w-4 h-4 text-cyan-400"></i>
+              Visual Representation of All Possible Patterns
+            </span>
+            <span id="grid-pattern-count" class="text-xs font-mono text-cyan-400 font-semibold">16 combinations</span>
+          </div>
+
+          <!-- Dynamic Container for pattern blocks -->
+          <div id="combinations-grid" class="grid grid-cols-4 sm:grid-cols-8 gap-1.5 max-h-64 overflow-y-auto p-1.5 bg-slate-900/60 rounded-lg border border-slate-800/80">
+            <!-- Populated via JavaScript -->
+          </div>
+          <p class="text-[11px] text-slate-500 mt-2 text-center">
+            Hover over any cell above to see its binary pattern and corresponding decimal number!
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 3: JAVA DATA TYPE ARENA (HOW SIZES RELATE) -->
+    <section id="type-stadium" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+        <div>
+          <span class="text-emerald-400 text-xs font-bold uppercase tracking-wider">Module 3</span>
+          <h3 class="text-xl font-bold text-white">
+            Java Data Types Memory Stadium (1 Byte vs 2 vs 4 vs 8)
+          </h3>
+          <p class="text-xs text-slate-400">
+            Comparing the exact bit capacities across all Java numeric primitives. Click any card to visualize its bit-width comparison!
+          </p>
+        </div>
+      </div>
+
+      <!-- Type Selectors -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- Byte -->
+        <button onclick="selectTypeViz('byte')" id="btn-type-byte" class="type-btn p-4 rounded-xl border border-cyan-500 bg-cyan-950/40 text-left transition relative overflow-hidden group">
+          <div class="flex justify-between items-start mb-2">
+            <span class="font-mono text-base font-bold text-cyan-400">byte</span>
+            <span class="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded font-mono">8 bits (1B)</span>
+          </div>
+          <div class="text-xs text-slate-300">Small numbers: Age, month, RGB color</div>
+          <div class="text-[11px] font-mono text-slate-400 mt-2">-128 to 127</div>
+        </button>
+
+        <!-- Short -->
+        <button onclick="selectTypeViz('short')" id="btn-type-short" class="type-btn p-4 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition relative overflow-hidden hover:border-slate-700 group">
+          <div class="flex justify-between items-start mb-2">
+            <span class="font-mono text-base font-bold text-slate-200">short</span>
+            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">16 bits (2B)</span>
+          </div>
+          <div class="text-xs text-slate-300">Medium counts: School population</div>
+          <div class="text-[11px] font-mono text-slate-400 mt-2">-32,768 to 32,767</div>
+        </button>
+
+        <!-- Int -->
+        <button onclick="selectTypeViz('int')" id="btn-type-int" class="type-btn p-4 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition relative overflow-hidden hover:border-slate-700 group">
+          <div class="flex justify-between items-start mb-2">
+            <span class="font-mono text-base font-bold text-slate-200">int</span>
+            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">32 bits (4B)</span>
+          </div>
+          <div class="text-xs text-slate-300">Java Default: User ID, salaries, scores</div>
+          <div class="text-[11px] font-mono text-slate-400 mt-2">±2.14 Billion</div>
+        </button>
+
+        <!-- Long -->
+        <button onclick="selectTypeViz('long')" id="btn-type-long" class="type-btn p-4 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition relative overflow-hidden hover:border-slate-700 group">
+          <div class="flex justify-between items-start mb-2">
+            <span class="font-mono text-base font-bold text-slate-200">long</span>
+            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">64 bits (8B)</span>
+          </div>
+          <div class="text-xs text-slate-300">Astronomical: Distance to Mars, timestamps</div>
+          <div class="text-[11px] font-mono text-slate-400 mt-2">±9 Quintillion (9×10¹⁸)</div>
+        </button>
+      </div>
+
+      <!-- Comparative Bit-Bar Scale -->
+      <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-6">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div>
+            <h4 id="selected-type-title" class="text-lg font-bold text-white flex items-center gap-2">
+              Showing: <span class="font-mono text-cyan-400">byte (8 Bits = 1 Byte)</span>
+            </h4>
+            <p id="selected-type-desc" class="text-xs text-slate-400 mt-0.5">
+              Requires exactly 1 byte memory slot. Ideal for saving memory in massive collections.
+            </p>
+          </div>
+          <div class="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 text-right">
+            <div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Total Combinations</div>
+            <div id="selected-type-combos" class="font-mono text-base sm:text-lg font-bold text-amber-400">
+              2⁸ = 256 values
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparative Proportion Diagram -->
+        <div class="space-y-4">
+          <div class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <span>Physical Bit Width in RAM:</span>
+            <span class="text-[11px] text-slate-500 font-mono">1 block = 1 bit</span>
+          </div>
+
+          <!-- 64 bit visual row container -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+            <div id="bit-boxes-row" class="flex flex-wrap gap-1">
+              <!-- Dynamically rendered 64 bit blocks indicating active vs inactive -->
+            </div>
+            
+            <!-- Legend -->
+            <div class="flex flex-wrap items-center gap-4 text-xs pt-2 border-t border-slate-800/80">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-cyan-500 shadow-sm shadow-cyan-500/50 inline-block"></span>
+                <span class="text-slate-300">Allocated Bit Space</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-slate-800 inline-block border border-slate-700"></span>
+                <span class="text-slate-500">Unused Bit Space (relative to a 64-bit word)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-world Storage Analogy Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+          <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
+            <div class="text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+              <i data-lucide="box" class="w-3.5 h-3.5 text-cyan-400"></i> Container Size
+            </div>
+            <div id="analogy-container" class="text-xs text-slate-400">
+              Like a <strong class="text-slate-200">single egg slot</strong> in an egg carton. Only takes 1 memory cell.
+            </div>
+          </div>
+          <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
+            <div class="text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i> Overflow Risk
+            </div>
+            <div id="analogy-overflow" class="text-xs text-slate-400">
+              If you store 128 into this variable, it overflows instantly to -128!
+            </div>
+          </div>
+          <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800">
+            <div class="text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+              <i data-lucide="code-2" class="w-3.5 h-3.5 text-emerald-400"></i> Java Syntax
+            </div>
+            <div id="analogy-syntax" class="text-xs font-mono text-emerald-400">
+              byte age = 21;
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 4: SIGNED NUMBERS & THE "ODOMETER" OVERFLOW -->
+    <section id="signed-magic" class="space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <span class="text-amber-400 text-xs font-bold uppercase tracking-wider">Module 4</span>
+        <h3 class="text-xl font-bold text-white">
+          Why Does <code class="text-cyan-400">byte</code> Only Go Up to 127? (Signed Odometer Effect)
+        </h3>
+        <p class="text-xs text-slate-400">
+          Java integer primitives do not have unsigned types[cite: 1]. The leftmost bit (High-Order Bit) is reserved as the <strong class="text-amber-300">Sign Bit</strong>[cite: 1].
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+        
+        <!-- Interactive Step-By-Step Incrementer -->
+        <div class="space-y-4">
+          <h4 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="gauge" class="w-4 h-4 text-amber-400"></i>
+            The Car Odometer Analogy
+          </h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            When a car odometer hits <code class="font-mono text-cyan-300">999,999</code> and you drive 1 more mile, it rolls over to <code class="font-mono text-cyan-300">000,000</code>.
+            In Java, when an 8-bit byte hits its ceiling of <code class="font-mono text-emerald-300">+127</code> (binary <code class="font-mono text-emerald-300">01111111</code>) and you add 1, the sign bit flips to <code class="font-mono text-rose-400">10000000</code>, turning the number into <strong class="text-rose-400">-128</strong>!
+          </p>
+
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Interactive Byte Counter:</span>
+              <div class="flex items-center gap-2">
+                <button onclick="stepByte(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center transition">
+                  -1
+                </button>
+                <button onclick="setByteValue(126)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 transition">
+                  Jump to 126
+                </button>
+                <button onclick="stepByte(1)" class="w-8 h-8 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold flex items-center justify-center transition">
+                  +1
+                </button>
+              </div>
+            </div>
+
+            <!-- Visual Value Display -->
+            <div class="grid grid-cols-2 gap-3 text-center">
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Decimal Value</div>
+                <div id="odometer-val" class="font-mono text-2xl sm:text-3xl font-black text-amber-400">126</div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                <div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Sign Bit Status</div>
+                <div id="odometer-sign-status" class="text-xs font-semibold text-emerald-400 mt-2">
+                  0 (Positive Number)
+                </div>
+              </div>
+            </div>
+
+            <!-- Bit Pattern -->
+            <div class="text-center font-mono text-lg tracking-widest p-2 bg-slate-900 rounded-lg border border-slate-800 text-cyan-300" id="odometer-bits">
+              01111110
+            </div>
+
+            <div id="overflow-warning" class="hidden p-2.5 rounded-lg bg-rose-950/70 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+              <i data-lucide="alert-octagon" class="w-4 h-4 flex-shrink-0 text-rose-400"></i>
+              <span><strong>OVERFLOW OCCURRED!</strong> You flipped the 8th bit into 1, plunging into negative numbers!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Two's Complement Explanation -->
+        <div class="space-y-4">
+          <h4 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="split" class="w-4 h-4 text-cyan-400"></i>
+            How the 8 Bits Are Split
+          </h4>
+          
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4 text-xs">
+            <div class="grid grid-cols-8 gap-1 text-center font-mono">
+              <div class="p-2 rounded bg-rose-950/60 border border-rose-700 text-rose-300 font-bold">
+                <div class="text-[9px] text-rose-400">Bit 7</div>
+                <div>SIGN</div>
+              </div>
+              <div class="col-span-7 grid grid-cols-7 gap-1 bg-cyan-950/30 p-1 rounded border border-cyan-800/60 text-cyan-300">
+                <div class="p-1 rounded bg-slate-900">64</div>
+                <div class="p-1 rounded bg-slate-900">32</div>
+                <div class="p-1 rounded bg-slate-900">16</div>
+                <div class="p-1 rounded bg-slate-900">8</div>
+                <div class="p-1 rounded bg-slate-900">4</div>
+                <div class="p-1 rounded bg-slate-900">2</div>
+                <div class="p-1 rounded bg-slate-900">1</div>
+              </div>
+            </div>
+            
+            <div class="space-y-2 text-slate-300">
+              <p>
+                • <strong class="text-rose-400">Bit 7 (Sign Bit):</strong> A <code class="text-slate-100">0</code> means positive, and a <code class="text-rose-300">1</code> means negative. That takes away half the numbers from positive range!
+              </p>
+              <p>
+                • <strong class="text-cyan-400">Bits 0-6 (Value Bits):</strong> Max positive is <code class="font-mono">0111 1111 = 64+32+16+8+4+2+1 = 127</code>.
+              </p>
+              <p>
+                • That is why a byte holds <strong class="text-amber-300">-128 to +127</strong>, NOT 0 to 255.
+              </p>
+            </div>
+
+            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 flex items-center justify-between text-xs">
+              <span class="text-slate-400">Total Distinct Values:</span>
+              <span class="font-mono text-cyan-400 font-bold">128 negatives + 1 zero + 127 positives = 256</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 5: INTERACTIVE PRACTICE DRILL -->
+    <section class="space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <span class="text-purple-400 text-xs font-bold uppercase tracking-wider">Practice Challenge</span>
+        <h3 class="text-xl font-bold text-white">
+          Can You Encode the Number?
+        </h3>
+        <p class="text-xs text-slate-400">
+          Match the target decimal number by switching on the right combination of binary switches!
+        </p>
+      </div>
+
+      <div class="bg-gradient-to-br from-slate-900 to-slate-950 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-6">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <div class="text-xs text-slate-400 font-medium">Your Challenge Target:</div>
+            <div class="flex items-center gap-3">
+              <span id="target-number-badge" class="text-3xl font-black text-amber-400 font-mono">42</span>
+              <button onclick="generateNewTarget()" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition flex items-center gap-1.5">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Next Target
+              </button>
+            </div>
+          </div>
+
+          <div id="challenge-status-card" class="px-5 py-3 rounded-xl border bg-slate-950 border-slate-800 text-center">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Current Your Sum</div>
+            <div id="game-current-sum" class="font-mono text-2xl font-black text-cyan-400">0</div>
+          </div>
+        </div>
+
+        <!-- Mini Interactive Switches for Game -->
+        <div class="grid grid-cols-8 gap-2 select-none">
+          <!-- Game Bit 7 -->
+          <button onclick="toggleGameBit(7)" id="gbit-7" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">128</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 6 -->
+          <button onclick="toggleGameBit(6)" id="gbit-6" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">64</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 5 -->
+          <button onclick="toggleGameBit(5)" id="gbit-5" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">32</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 4 -->
+          <button onclick="toggleGameBit(4)" id="gbit-4" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">16</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 3 -->
+          <button onclick="toggleGameBit(3)" id="gbit-3" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">8</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 2 -->
+          <button onclick="toggleGameBit(2)" id="gbit-2" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">4</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 1 -->
+          <button onclick="toggleGameBit(1)" id="gbit-1" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">2</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+          <!-- Game Bit 0 -->
+          <button onclick="toggleGameBit(0)" id="gbit-0" class="gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition">
+            <span class="text-[10px] text-slate-500 font-mono">1</span>
+            <span class="text-base font-bold font-mono text-slate-600 mt-1 gval">0</span>
+          </button>
+        </div>
+
+        <div id="game-feedback-msg" class="text-center text-xs font-semibold text-slate-400">
+          Click the numbers whose sum equals the target!
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
+    <p>IT2402 Computer Programming 1 • Interactive Binary & Memory Size Visualizer</p>
+    <p class="mt-1 text-slate-600">Designed for intuitive conceptual mastery of bits, bytes, and Java primitive storage.</p>
+  </footer>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // Initialize icons
+    lucide.createIcons();
+
+    // Smooth Scroll Helper
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    // ----------------------------------------------------
+    // MODULE 1: INTERACTIVE 8-BIT SWITCHBOARD
+    // ----------------------------------------------------
+    const bits = [0, 0, 0, 0, 0, 0, 0, 0]; // bit 0 (LSB) to bit 7 (MSB)
+    const weights = [1, 2, 4, 8, 16, 32, 64, 128];
+
+    function toggleBit(index) {
+      bits[index] = bits[index] === 0 ? 1 : 0;
+      updateBoard();
+    }
+
+    function resetSwitches(val) {
+      for (let i = 0; i < 8; i++) {
+        bits[i] = val === 255 ? 1 : 0;
+      }
+      updateBoard();
+    }
+
+    function randomizeSwitches() {
+      for (let i = 0; i < 8; i++) {
+        bits[i] = Math.random() > 0.5 ? 1 : 0;
+      }
+      updateBoard();
+    }
+
+    function updateBoard() {
+      let unsignedVal = 0;
+      let binaryStrArr = [];
+      let equationParts = [];
+
+      for (let i = 7; i >= 0; i--) {
+        const bitVal = bits[i];
+        binaryStrArr.push(bitVal);
+        if (bitVal === 1) {
+          unsignedVal += weights[i];
+          equationParts.push(`(1 × ${weights[i]})`);
+        } else {
+          equationParts.push(`(0 × ${weights[i]})`);
+        }
+
+        // DOM Updates for columns
+        const col = document.querySelector(`.bit-column[data-bit="${i}"]`);
+        const btn = col.querySelector('.bulb-btn');
+        const stateText = col.querySelector('.bit-state');
+        const weightLabel = col.querySelector('.weight-label');
+
+        if (bitVal === 1) {
+          btn.className = "bulb-btn p-3 rounded-full transition-all duration-300 bg-amber-400 text-slate-950 glow-amber scale-105";
+          stateText.className = "text-sm sm:text-base font-mono font-bold bit-state text-amber-400";
+          stateText.textContent = "1";
+          weightLabel.className = "text-[11px] sm:text-xs font-mono font-bold text-amber-300 weight-label";
+        } else {
+          btn.className = "bulb-btn p-3 rounded-full transition-all duration-300 bg-slate-800 text-slate-600";
+          stateText.className = "text-sm sm:text-base font-mono font-bold bit-state text-slate-500";
+          stateText.textContent = "0";
+          weightLabel.className = "text-[11px] sm:text-xs font-mono font-semibold text-slate-400 weight-label";
+        }
+      }
+
+      // Signed 2's complement calculation for 8-bit
+      let signedVal = unsignedVal;
+      if (bits[7] === 1) {
+        signedVal = unsignedVal - 256;
+      }
+
+      // Readouts
+      const bStr = binaryStrArr.slice(0, 4).join('') + ' ' + binaryStrArr.slice(4).join('');
+      document.getElementById('binary-readout').textContent = bStr;
+      document.getElementById('decimal-readout').textContent = unsignedVal;
+      document.getElementById('signed-readout').textContent = signedVal;
+      document.getElementById('hex-readout').textContent = '0x' + unsignedVal.toString(16).toUpperCase().padStart(2, '0');
+
+      // Equation
+      const eqEl = document.getElementById('math-equation');
+      if (unsignedVal === 0) {
+        eqEl.textContent = "All switches OFF = 0";
+      } else {
+        eqEl.textContent = equationParts.join(' + ') + ' = ' + unsignedVal;
+      }
+    }
+
+    // ----------------------------------------------------
+    // MODULE 2: BIT RANGE SLIDER & COMBINATIONS GRID
+    // ----------------------------------------------------
+    function updateBitSlider(n) {
+      n = parseInt(n);
+      const totalStates = Math.pow(2, n);
+      const maxUnsigned = totalStates - 1;
+      const minSigned = -Math.pow(2, n - 1);
+      const maxSigned = Math.pow(2, n - 1) - 1;
+
+      document.getElementById('slider-bits-val').textContent = `${n} Bit${n > 1 ? 's' : ''}`;
+      document.getElementById('formula-display').textContent = `2^${n} = ${totalStates} States`;
+      document.getElementById('unsigned-range-display').textContent = `0 to ${maxUnsigned}`;
+      document.getElementById('signed-range-display').textContent = `${minSigned} to +${maxSigned}`;
+      document.getElementById('grid-pattern-count').textContent = `${totalStates} combinations`;
+
+      // Render combinations in the grid
+      const grid = document.getElementById('combinations-grid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < totalStates; i++) {
+        const bin = i.toString(2).padStart(n, '0');
+        const cell = document.createElement('div');
+        cell.className = "grid-cell bg-slate-800/90 hover:bg-cyan-600 text-slate-300 hover:text-white rounded py-1 px-1 text-center font-mono text-[10px] cursor-default border border-slate-700/50";
+        cell.title = `Binary: ${bin} | Decimal: ${i}`;
+        cell.textContent = bin;
+        grid.appendChild(cell);
+      }
+    }
+
+    // ----------------------------------------------------
+    // MODULE 3: JAVA DATA TYPE ARENA
+    // ----------------------------------------------------
+    const typeData = {
+      byte: {
+        title: "byte (8 Bits = 1 Byte)",
+        desc: "Requires only 1 byte memory cell. Used for saving memory in huge arrays or streaming bytes from files.",
+        combos: "2⁸ = 256 values",
+        bits: 8,
+        container: "Like a single egg slot in an egg carton.",
+        overflow: "Goes from -128 to +127. If you add 1 to 127, it becomes -128!",
+        syntax: "byte age = 21;"
+      },
+      short: {
+        title: "short (16 Bits = 2 Bytes)",
+        desc: "Uses 2 bytes (16 bits) of memory. Twice the size of a byte, capable of holding up to 65,536 patterns.",
+        combos: "2¹⁶ = 65,536 values",
+        bits: 16,
+        container: "Like a twin-slot toaster. Holds twice the space of a single byte.",
+        overflow: "Range is -32,768 to +32,767.",
+        syntax: "short total_students = 1192;"
+      },
+      int: {
+        title: "int (32 Bits = 4 Bytes)",
+        desc: "The default, gold-standard integer type in Java. Automatically promoted in expressions for optimal CPU performance.",
+        combos: "2³² = 4,294,967,296 values",
+        bits: 32,
+        container: "Like a 4-liter gallon jug. Plenty of room for almost every everyday count.",
+        overflow: "Range is -2,147,483,648 to +2,147,483,647.",
+        syntax: "int days = 279;"
+      },
+      long: {
+        title: "long (64 Bits = 8 Bytes)",
+        desc: "Massive 8-byte container. Used when numbers exceed 2 billion (like global timestamps or distances in space).",
+        combos: "2⁶⁴ = 1.84 × 10¹⁹ values",
+        bits: 64,
+        container: "Like a massive warehouse cargo shipping crate. Can hold astronomical numbers.",
+        overflow: "Requires 'L' suffix at end of literal (e.g. 84564L).",
+        syntax: "long distance = 84564L;"
+      }
+    };
+
+    function selectTypeViz(typeName) {
+      // Update Tab Styles
+      ['byte', 'short', 'int', 'long'].forEach(t => {
+        const btn = document.getElementById(`btn-type-${t}`);
+        if (t === typeName) {
+          btn.className = "type-btn p-4 rounded-xl border border-cyan-500 bg-cyan-950/40 text-left transition relative overflow-hidden group";
+          btn.querySelector('.font-mono').className = "font-mono text-base font-bold text-cyan-400";
+        } else {
+          btn.className = "type-btn p-4 rounded-xl border border-slate-800 bg-slate-900/60 text-left transition relative overflow-hidden hover:border-slate-700 group";
+          btn.querySelector('.font-mono').className = "font-mono text-base font-bold text-slate-200";
+        }
+      });
+
+      const data = typeData[typeName];
+      document.getElementById('selected-type-title').innerHTML = `Showing: <span class="font-mono text-cyan-400">${data.title}</span>`;
+      document.getElementById('selected-type-desc').textContent = data.desc;
+      document.getElementById('selected-type-combos').textContent = data.combos;
+      document.getElementById('analogy-container').innerHTML = data.container;
+      document.getElementById('analogy-overflow').textContent = data.overflow;
+      document.getElementById('analogy-syntax').textContent = data.syntax;
+
+      render64BitGrid(data.bits);
+    }
+
+    function render64BitGrid(activeCount) {
+      const container = document.getElementById('bit-boxes-row');
+      container.innerHTML = '';
+      for (let i = 0; i < 64; i++) {
+        const box = document.createElement('div');
+        if (i < activeCount) {
+          box.className = "w-3 h-5 sm:w-3.5 sm:h-6 rounded-sm bg-cyan-500 shadow-sm shadow-cyan-500/50";
+          box.title = `Bit ${i} (Active in type)`;
+        } else {
+          box.className = "w-3 h-5 sm:w-3.5 sm:h-6 rounded-sm bg-slate-800 border border-slate-700/60 opacity-40";
+          box.title = `Bit ${i} (Unused space)`;
+        }
+        container.appendChild(box);
+      }
+    }
+
+    // ----------------------------------------------------
+    // MODULE 4: CAR ODOMETER OVERFLOW
+    // ----------------------------------------------------
+    let currentByteVal = 126;
+
+    function stepByte(delta) {
+      setByteValue(currentByteVal + delta);
+    }
+
+    function setByteValue(v) {
+      // Simulate 8-bit signed overflow wrap-around
+      if (v > 127) {
+        v = -128 + (v - 128);
+      } else if (v < -128) {
+        v = 127 - (-129 - v);
+      }
+      currentByteVal = v;
+      updateOdometer();
+    }
+
+    function updateOdometer() {
+      const odoValEl = document.getElementById('odometer-val');
+      const odoSignEl = document.getElementById('odometer-sign-status');
+      const odoBitsEl = document.getElementById('odometer-bits');
+      const warnEl = document.getElementById('overflow-warning');
+
+      odoValEl.textContent = currentByteVal;
+
+      // Convert signed to 8-bit binary
+      let unsignedEquivalent = currentByteVal >= 0 ? currentByteVal : 256 + currentByteVal;
+      let binStr = unsignedEquivalent.toString(2).padStart(8, '0');
+
+      odoBitsEl.textContent = binStr.slice(0, 4) + ' ' + binStr.slice(4);
+
+      if (binStr[0] === '1') {
+        odoSignEl.textContent = "1 (Negative Number!)";
+        odoSignEl.className = "text-xs font-semibold text-rose-400 mt-2";
+      } else {
+        odoSignEl.textContent = "0 (Positive Number)";
+        odoSignEl.className = "text-xs font-semibold text-emerald-400 mt-2";
+      }
+
+      if (currentByteVal < 0) {
+        warnEl.classList.remove('hidden');
+      } else {
+        warnEl.classList.add('hidden');
+      }
+    }
+
+    // ----------------------------------------------------
+    // MODULE 5: GAME DRILL
+    // ----------------------------------------------------
+    let gameBits = [0, 0, 0, 0, 0, 0, 0, 0];
+    let gameTarget = 42;
+
+    function generateNewTarget() {
+      // Random number between 5 and 150
+      gameTarget = Math.floor(Math.random() * 145) + 5;
+      document.getElementById('target-number-badge').textContent = gameTarget;
+      gameBits = [0, 0, 0, 0, 0, 0, 0, 0];
+      updateGameUI();
+    }
+
+    function toggleGameBit(index) {
+      gameBits[index] = gameBits[index] === 0 ? 1 : 0;
+      updateGameUI();
+    }
+
+    function updateGameUI() {
+      let sum = 0;
+      for (let i = 0; i < 8; i++) {
+        const btn = document.getElementById(`gbit-${i}`);
+        const valSpan = btn.querySelector('.gval');
+        if (gameBits[i] === 1) {
+          sum += weights[i];
+          btn.className = "gbit-btn flex flex-col items-center p-3 rounded-xl bg-cyan-600 border border-cyan-400 glow-cyan transition scale-105";
+          valSpan.textContent = "1";
+          valSpan.className = "text-base font-bold font-mono text-white mt-1 gval";
+        } else {
+          btn.className = "gbit-btn flex flex-col items-center p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition";
+          valSpan.textContent = "0";
+          valSpan.className = "text-base font-bold font-mono text-slate-600 mt-1 gval";
+        }
+      }
+
+      const sumEl = document.getElementById('game-current-sum');
+      const statusCard = document.getElementById('challenge-status-card');
+      const feedback = document.getElementById('game-feedback-msg');
+
+      sumEl.textContent = sum;
+
+      if (sum === gameTarget) {
+        statusCard.className = "px-5 py-3 rounded-xl border bg-emerald-950/70 border-emerald-500 text-center animate-pulse";
+        sumEl.className = "font-mono text-2xl font-black text-emerald-300";
+        feedback.innerHTML = `<span class="text-emerald-400 font-bold">🎉 EXACT MATCH! You encoded ${gameTarget} in binary!</span> Click "Next Target" to play again.`;
+      } else if (sum > gameTarget) {
+        statusCard.className = "px-5 py-3 rounded-xl border bg-rose-950/50 border-rose-700 text-center";
+        sumEl.className = "font-mono text-2xl font-black text-rose-400";
+        feedback.innerHTML = `<span class="text-rose-400">Too high by ${sum - gameTarget}! Turn off some switches.</span>`;
+      } else {
+        statusCard.className = "px-5 py-3 rounded-xl border bg-slate-950 border-slate-800 text-center";
+        sumEl.className = "font-mono text-2xl font-black text-cyan-400";
+        feedback.innerHTML = `<span class="text-slate-400">Add ${gameTarget - sum} more to reach the target.</span>`;
+      }
+    }
+
+    // INITIAL SETUP ON LOAD
+    window.addEventListener('DOMContentLoaded', () => {
+      updateBoard();
+      updateBitSlider(4);
+      selectTypeViz('byte');
+      updateOdometer();
+      updateGameUI();
+    });
+  </script>
+</body>
+</html>
