@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operating Systems: Process Scheduling & Coordination Visualizer</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars and subtle animations */
+    ::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .gantt-block {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .gantt-block:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+            <i data-lucide="cpu" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              Process Scheduling & Coordination
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">Interactive Lab</span>
+            </h1>
+            <p class="text-xs text-slate-500 hidden sm:block">Master CPU scheduling, Gantt charts, formulas, and concurrency</p>
+          </div>
+        </div>
+
+        <!-- Main Navigation Tabs -->
+        <nav class="flex items-center space-x-1 sm:space-x-2">
+          <button onclick="switchTab('simulator')" id="tab-btn-simulator" class="tab-btn px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-semibold rounded-lg text-sky-700 bg-sky-50 flex items-center gap-1.5 transition">
+            <i data-lucide="play-circle" class="w-4 h-4"></i>
+            <span>Simulator</span>
+          </button>
+          <button onclick="switchTab('analogies')" id="tab-btn-analogies" class="tab-btn px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5 transition">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Analogies</span>
+          </button>
+          <button onclick="switchTab('coordination')" id="tab-btn-coordination" class="tab-btn px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5 transition">
+            <i data-lucide="shield-alert" class="w-4 h-4"></i>
+            <span>Coordination & Deadlock</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- TAB 1: SCHEDULING SIMULATOR -->
+    <section id="tab-content-simulator" class="tab-content space-y-6">
+      
+      <!-- Top banner: Real-time status / Goal -->
+      <div class="bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 opacity-10">
+          <i data-lucide="activity" class="w-64 h-64"></i>
+        </div>
+        <div class="relative z-10 max-w-3xl">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-sm mb-3">
+            <i data-lucide="zap" class="w-3.5 h-3.5"></i> Short-Term CPU Scheduler
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">CPU Execution Visualizer & Gantt Engine</h2>
+          <p class="mt-2 text-sky-100 text-sm sm:text-base leading-relaxed">
+            The CPU can only execute one task at a time (on a single core). Watch how different algorithms decide who gets the CPU next, track the Ready Queue in real-time, and calculate Turnaround and Waiting Times step-by-step!
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls & Algorithm Selection Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left: Algorithm Picker & Parameters (4 cols) -->
+        <div class="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-5">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">1. Choose Scheduling Algorithm</label>
+            <div class="grid grid-cols-1 gap-2" id="algo-selection">
+              <button onclick="selectAlgo('FCFS')" class="algo-btn text-left p-3 rounded-lg border-2 border-sky-500 bg-sky-50/50 flex items-center justify-between" data-algo="FCFS">
+                <div>
+                  <div class="font-bold text-slate-900 text-sm">FCFS (First-Come, First-Served)</div>
+                  <div class="text-xs text-slate-500">Non-preemptive • FIFO queue order</div>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">Simple</span>
+              </button>
+
+              <button onclick="selectAlgo('SJF')" class="algo-btn text-left p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between" data-algo="SJF">
+                <div>
+                  <div class="font-bold text-slate-900 text-sm">SJF (Shortest Job First)</div>
+                  <div class="text-xs text-slate-500">Non-preemptive • Shortest burst first</div>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Min Wait</span>
+              </button>
+
+              <button onclick="selectAlgo('NPP')" class="algo-btn text-left p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between" data-algo="NPP">
+                <div>
+                  <div class="font-bold text-slate-900 text-sm">NPP (Non-Preemptive Priority)</div>
+                  <div class="text-xs text-slate-500">Priority order (1 = Highest) • No interrupts</div>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800">Priority</span>
+              </button>
+
+              <button onclick="selectAlgo('PP')" class="algo-btn text-left p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between" data-algo="PP">
+                <div>
+                  <div class="font-bold text-slate-900 text-sm">PP (Preemptive Priority)</div>
+                  <div class="text-xs text-slate-500">Higher priority preempts running job immediately</div>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-800">Preemptive</span>
+              </button>
+
+              <button onclick="selectAlgo('SRTF')" class="algo-btn text-left p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between" data-algo="SRTF">
+                <div>
+                  <div class="font-bold text-slate-900 text-sm">SRTF (Shortest Remaining Time First)</div>
+                  <div class="text-xs text-slate-500">Preemptive SJF • Interrupts for shorter burst</div>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800">Optimal</span>
+              </button>
+
+              <button onclick="selectAlgo('RR')" class="algo-btn text-left p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between" data-algo="RR">
+                <div>
+                  <div class="font-bold text-slate-900 text-sm">RR (Round Robin)</div>
+                  <div class="text-xs text-slate-500">Time-sliced quantum • Fair circular queue</div>
+                </div>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">Time Slice</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="rr-quantum-control" class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg hidden">
+            <div class="flex items-center justify-between">
+              <label for="quantum-input" class="text-xs font-bold text-indigo-900">Time Slice (Quantum <i>q</i>):</label>
+              <div class="flex items-center gap-2">
+                <input type="number" id="quantum-input" value="3" min="1" max="15" class="w-16 px-2 py-1 text-center font-bold text-indigo-950 bg-white border border-indigo-300 rounded shadow-inner text-sm" onchange="runSimulation()">
+                <span class="text-xs text-indigo-700 font-medium">units</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-indigo-700 mt-1">From handout default: Time Slice = 3 units.</p>
+          </div>
+
+          <!-- Presets buttons -->
+          <div class="pt-2 border-t border-slate-100">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Preset Scenarios</span>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="loadPreset('handout')" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                Handout (J1–J5)
+              </button>
+              <button onclick="loadPreset('convoy')" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="1 huge job followed by fast jobs">
+                Convoy Effect
+              </button>
+              <button onclick="loadPreset('starvation')" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Long job delayed by stream of short jobs">
+                Starvation Test
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Process Table & Execution Controls (8 cols) -->
+        <div class="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="list-ordered" class="w-5 h-5 text-sky-600"></i>
+                Job / Process Queue Data
+              </h3>
+              <p class="text-xs text-slate-500">Edit values below to experiment. Priority: 1 is the highest priority.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="addJobRow()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 flex items-center gap-1 transition">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Job
+              </button>
+              <button onclick="resetToHandout()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1 transition">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Default
+              </button>
+            </div>
+          </div>
+
+          <!-- Process Input Table -->
+          <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50 text-slate-600 text-xs font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3 text-left">Color</th>
+                  <th class="px-4 py-3 text-left">Job Name</th>
+                  <th class="px-4 py-3 text-left">Arrival Time (A<sub>t</sub>)</th>
+                  <th class="px-4 py-3 text-left">Burst Time (BT)</th>
+                  <th class="px-4 py-3 text-left">Priority (1=High)</th>
+                  <th class="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="job-table-body" class="divide-y divide-slate-200 bg-white font-medium">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Playback & Stepper Control Bar -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+              <button id="btn-play" onclick="togglePlay()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-semibold text-sm flex items-center gap-2 shadow-sm transition">
+                <i data-lucide="play" class="w-4 h-4"></i> <span id="play-btn-text">Auto Play</span>
+              </button>
+              <button onclick="stepPrev()" class="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition" title="Step Back 1 Unit">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <button onclick="stepNext()" class="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition" title="Step Forward 1 Unit">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+              <button onclick="resetPlayback()" class="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition" title="Reset to Time 0">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 font-semibold">Speed:</span>
+                <input type="range" id="speed-slider" min="200" max="1500" value="700" step="100" class="w-24 accent-sky-600 cursor-pointer">
+              </div>
+              <div class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 font-mono text-sm">
+                <span class="text-slate-400">Time:</span> <span id="current-sim-time" class="font-bold text-sky-600 text-base">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Gantt Chart & Ready Queue Status -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-600"></i>
+              Gantt Chart (Timeline of CPU Processing)
+            </h3>
+            <p class="text-xs text-slate-500">Visual breakdown of which process holds the processor at every time unit.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-semibold">
+            <span class="inline-flex items-center gap-1 text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i> Total Elapsed: <span id="total-time-badge" class="font-bold text-slate-900 ml-1">37</span>
+            </span>
+            <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+              <i data-lucide="gauge" class="w-3.5 h-3.5"></i> CPU Utilization: <span id="cpu-util-badge" class="font-bold text-emerald-800 ml-1">100%</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Gantt Chart Container -->
+        <div class="space-y-2">
+          <div id="gantt-chart-bar" class="w-full flex h-14 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-inner relative">
+            <!-- Dynamic Gantt blocks injected here -->
+          </div>
+
+          <!-- Time Ticks Axis -->
+          <div id="gantt-time-axis" class="w-full flex justify-between text-[11px] font-mono font-semibold text-slate-400 px-1 relative">
+            <!-- Dynamic markers -->
+          </div>
+        </div>
+
+        <!-- Ready Queue & Execution Snapshot at Current Time -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2">
+          <!-- Currently Running on CPU -->
+          <div class="md:col-span-4 bg-sky-50/60 border border-sky-200/80 rounded-xl p-4 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shadow-sky-600/20 shrink-0">
+              <i data-lucide="cpu" class="w-6 h-6 animate-pulse"></i>
+            </div>
+            <div>
+              <span class="text-[11px] font-bold text-sky-700 uppercase tracking-wider block">Running on CPU (Time <span class="sim-time-ref font-mono">0</span>)</span>
+              <div id="active-cpu-job" class="font-bold text-slate-900 text-base flex items-center gap-2">
+                <span>None (Idle)</span>
+              </div>
+              <p id="active-cpu-meta" class="text-xs text-slate-500 mt-0.5">Awaiting schedule tick</p>
+            </div>
+          </div>
+
+          <!-- Ready Queue Status at this timestamp -->
+          <div class="md:col-span-8 bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
+                <i data-lucide="layers" class="w-4 h-4 text-indigo-600"></i>
+                Ready Queue (Waiting for CPU) at Time <span class="sim-time-ref font-mono text-sky-600">0</span>
+              </span>
+              <span id="ready-queue-count" class="text-xs font-medium text-slate-500">0 jobs waiting</span>
+            </div>
+            <div id="ready-queue-chips" class="flex flex-wrap items-center gap-2 min-h-[38px]">
+              <span class="text-xs text-slate-400 italic">No processes in ready queue yet.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Step Explanation Box -->
+        <div id="step-narration" class="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 text-indigo-950 text-sm leading-relaxed flex items-start gap-3">
+          <i data-lucide="info" class="w-5 h-5 text-indigo-600 shrink-0 mt-0.5"></i>
+          <div>
+            <span class="font-bold text-indigo-900 block mb-0.5">Scheduler Decision Walkthrough:</span>
+            <span id="step-narration-text">Loading scheduling events...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytical Results Table & Exact Formulas -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="calculator" class="w-5 h-5 text-emerald-600"></i>
+              Calculated Metrics & Step-by-Step Math
+            </h3>
+            <p class="text-xs text-slate-500">Formulas strictly derived from OS principles and course notes.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium">
+              Formula: TT = T<sub>end</sub> - A<sub>t</sub> | WT = TT - BT
+            </span>
+          </div>
+        </div>
+
+        <!-- Metric Table -->
+        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50 text-slate-600 text-xs font-bold uppercase tracking-wider">
+              <tr>
+                <th class="px-4 py-3 text-left">Job</th>
+                <th class="px-4 py-3 text-left">Arrival (A<sub>t</sub>)</th>
+                <th class="px-4 py-3 text-left">Burst (BT)</th>
+                <th class="px-4 py-3 text-left">Completion Time (T<sub>end</sub>)</th>
+                <th class="px-4 py-3 text-left">Turnaround Time (T<sub>end</sub> - A<sub>t</sub>)</th>
+                <th class="px-4 py-3 text-left">Waiting Time (TT - BT)</th>
+              </tr>
+            </thead>
+            <tbody id="metrics-table-body" class="divide-y divide-slate-200 bg-white font-medium">
+              <!-- Dynamically populated -->
+            </tbody>
+            <tfoot class="bg-slate-100/80 font-bold text-slate-900 text-sm border-t-2 border-slate-300">
+              <tr>
+                <td colspan="4" class="px-4 py-3 text-right">Averages:</td>
+                <td class="px-4 py-3 text-indigo-700 font-semibold" id="avg-tt-cell">tt<sub>ave</sub> = --</td>
+                <td class="px-4 py-3 text-emerald-700 font-semibold" id="avg-wt-cell">wt<sub>ave</sub> = --</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Formulas Legend & CPU Utilization Card -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <i data-lucide="timer" class="w-4 h-4 text-sky-600"></i> Turnaround Time (TT)
+            </h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Total residence time spent in system from submission to completion:
+            </p>
+            <div class="mt-2 font-mono text-xs font-bold bg-white p-2 rounded border border-slate-200 text-sky-800">
+              TT = Completion Time (T<sub>end</sub>) - Arrival Time (A<sub>t</sub>)
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <i data-lucide="hourglass" class="w-4 h-4 text-amber-600"></i> Waiting Time (WT)
+            </h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Total time spent idling in ready queue waiting for CPU:
+            </p>
+            <div class="mt-2 font-mono text-xs font-bold bg-white p-2 rounded border border-slate-200 text-amber-800">
+              WT = Turnaround Time (TT) - Burst Time (BT)
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+              <i data-lucide="percent" class="w-4 h-4 text-emerald-600"></i> CPU Utilization
+            </h4>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Fraction of elapsed time during which the processor was executing jobs:
+            </p>
+            <div class="mt-2 font-mono text-xs font-bold bg-white p-2 rounded border border-slate-200 text-emerald-800" id="cpu-util-formula">
+              Utilization = (Total Burst / Total Elapsed) * 100%
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: REAL WORLD ANALOGIES & NOVICE GUIDE -->
+    <section id="tab-content-analogies" class="tab-content hidden space-y-6">
+      <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-sm mb-3">
+          <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Intuitive Learning
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Understanding CPU Scheduling with Everyday Life</h2>
+        <p class="mt-2 text-amber-100 text-sm sm:text-base max-w-3xl leading-relaxed">
+          Algorithms feel abstract until you connect them to what you experience every day: waiting at the grocery checkout, doctor visits, and restaurant orders.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Analogy 1: FCFS -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-sky-300 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xl">
+              🛒
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">FCFS = Supermarket Checkout Line</h3>
+              <span class="text-xs font-semibold text-sky-600 uppercase tracking-wide">First-Come, First-Served</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Whoever stands in line first gets scanned first. If person #1 has a full cart with 200 items (a huge CPU burst time of 13), everyone behind them with just a pack of gum must wait agonizingly long.
+          </p>
+          <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800">
+            <strong>The "Convoy Effect":</strong> In our handout, J1 takes 13 units. All fast jobs (J2, J3) are stuck waiting behind the big truck!
+          </div>
+        </div>
+
+        <!-- Analogy 2: SJF -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-emerald-300 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl">
+              ⚡
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">SJF = Express Counter Preference</h3>
+              <span class="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Shortest Job First</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            The cashier scans customers who only have 1 or 2 items first before moving to people with large baskets. This dramatically cuts the average wait time for the crowd!
+          </p>
+          <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
+            <strong>The Risk (Starvation):</strong> What if quick customers keep walking in constantly? The customer with 100 items might wait forever!
+          </div>
+        </div>
+
+        <!-- Analogy 3: Priority -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-amber-300 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xl">
+              🏥
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Priority = Hospital Emergency Triage</h3>
+              <span class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Priority 1 = Critical Emergency</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            A patient arriving with a heart attack (Priority 1) skips past patients with a mild headache (Priority 5), even if the headache patient arrived hours earlier.
+          </p>
+          <div class="p-3 bg-slate-100 border border-slate-200 rounded-lg text-xs text-slate-700">
+            <strong>Non-Preemptive vs. Preemptive:</strong> In Non-Preemptive, if the doctor is currently bandaging an arm, they finish the bandage first. In <em>Preemptive</em>, the doctor drops the bandage immediately to treat the heart attack!
+          </div>
+        </div>
+
+        <!-- Analogy 4: Round Robin -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4 hover:border-purple-300 transition">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xl">
+              ⏱️
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Round Robin = Arcade / Chess Timer</h3>
+              <span class="text-xs font-semibold text-purple-600 uppercase tracking-wide">Time Quantum = 3 Minutes</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Each kid gets exactly 3 minutes on the arcade game. When the buzzer beeps, they must step off and walk to the end of the line if they still want more play time. No single kid can hog the console!
+          </p>
+          <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-900">
+            <strong>Why it feels responsive:</strong> Every process gets a turn very quickly, making modern multitasking and interactive desktops smooth.
+          </div>
+        </div>
+      </div>
+
+      <!-- Criteria Breakdown Card -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+        <h3 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i>
+          The 5 Cardinal Rules of CPU Scheduling Performance
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-1">1. CPU Utilization</div>
+            <div class="font-extrabold text-slate-900 text-sm">Keep CPU Busy</div>
+            <p class="text-xs text-slate-500 mt-1">Goal: Maximize % of time CPU executes jobs instead of idling.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">2. Throughput</div>
+            <div class="font-extrabold text-slate-900 text-sm">More Jobs Finished</div>
+            <p class="text-xs text-slate-500 mt-1">Goal: Maximize number of processes completed per unit time.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-1">3. Turnaround Time</div>
+            <div class="font-extrabold text-slate-900 text-sm">Shorter Residence</div>
+            <p class="text-xs text-slate-500 mt-1">Goal: Minimize T<sub>end</sub> - A<sub>t</sub> (submission to complete).</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="text-xs font-bold uppercase tracking-wider text-amber-700 mb-1">4. Waiting Time</div>
+            <div class="font-extrabold text-slate-900 text-sm">Less Queue Wait</div>
+            <p class="text-xs text-slate-500 mt-1">Goal: Minimize time idling in the ready queue.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="text-xs font-bold uppercase tracking-wider text-purple-700 mb-1">5. Response Time</div>
+            <div class="font-extrabold text-slate-900 text-sm">Fast First Reaction</div>
+            <p class="text-xs text-slate-500 mt-1">Goal: Minimize time until first response is produced.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: ALGORITHM CODE IMPLEMENTATIONS -->
+    <section id="tab-content-code" class="tab-content hidden space-y-6">
+      <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-6 text-white shadow-lg">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-sky-300 backdrop-blur-sm mb-3">
+          <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Clean Implementations
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">How Operating Systems Code These Schedulers</h2>
+        <p class="mt-2 text-slate-300 text-sm sm:text-base max-w-3xl leading-relaxed">
+          Explore complete, readable code examples written in Python and C that match the handout's exact calculation logic.
+        </p>
+      </div>
+
+      <!-- Code Language & Algorithm Selector -->
+      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase text-slate-500">Algorithm:</span>
+            <select id="code-algo-select" onchange="renderCodeBlock()" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white text-slate-800">
+              <option value="fcfs">First-Come, First-Served (FCFS)</option>
+              <option value="sjf">Shortest Job First (SJF Non-Preemptive)</option>
+              <option value="npp">Non-Preemptive Priority (NPP)</option>
+              <option value="pp">Preemptive Priority (PP)</option>
+              <option value="srtf">Shortest Remaining Time First (SRTF)</option>
+              <option value="rr">Round Robin (RR, Quantum = 3)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase text-slate-500">Language:</span>
+            <div class="inline-flex p-1 bg-slate-100 rounded-lg">
+              <button onclick="setCodeLang('python')" id="btn-lang-python" class="px-3 py-1 text-xs font-bold rounded-md bg-white text-sky-700 shadow-sm transition">Python</button>
+              <button onclick="setCodeLang('c')" id="btn-lang-c" class="px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 transition">C / C++</button>
+            </div>
+            <button onclick="copyCurrentCode()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 transition">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Code
+            </button>
+          </div>
+        </div>
+
+        <!-- Code Display Window -->
+        <div class="relative rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+          <div class="px-4 py-2 bg-slate-900/80 border-b border-slate-800 text-xs font-mono text-slate-400 flex items-center justify-between">
+            <span id="code-filename">scheduler_fcfs.py</span>
+            <span class="text-slate-500">Runnable Script</span>
+          </div>
+          <pre class="p-4 text-xs sm:text-sm font-mono text-slate-200 overflow-x-auto leading-relaxed"><code id="code-content">// Code loading...</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: PROCESS COORDINATION & DEADLOCK LAB -->
+    <section id="tab-content-coordination" class="tab-content hidden space-y-6">
+      <div class="bg-gradient-to-r from-rose-600 via-pink-600 to-red-600 rounded-2xl p-6 text-white shadow-lg">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-sm mb-3">
+          <i data-lucide="lock" class="w-3.5 h-3.5"></i> Concurrency & Synchronization
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Process Coordination & Deadlock Prevention</h2>
+        <p class="mt-2 text-rose-100 text-sm sm:text-base max-w-3xl leading-relaxed">
+          When multiple processes run simultaneously and share printers, scanners, and memory, conflicts arise. Learn about Mutex Locks, Semaphores, IPC, and how to recover from deadlocks!
+        </p>
+      </div>
+
+      <!-- Interactive Mutex & Printer Sharing Demo -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <div class="border-b border-slate-100 pb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Interactive Concept 1</span>
+          <h3 class="text-lg font-bold text-slate-900">Mutual Exclusion & Mutex Locks in Action (The Shared Printer)</h3>
+          <p class="text-xs text-slate-500">Only one process is allowed inside the Critical Section at any time!</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+          <!-- Process A -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-800">Process A (Report.pdf)</span>
+              <span id="proc-a-state" class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">Idle</span>
+            </div>
+            <p class="text-xs text-slate-500">Wants to print financial report on the office printer.</p>
+            <div class="flex gap-2">
+              <button onclick="requestResource('A')" class="px-3 py-1.5 text-xs font-semibold rounded bg-sky-600 text-white hover:bg-sky-700 w-full transition">
+                Request Printer
+              </button>
+              <button onclick="releaseResource('A')" class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-200 text-slate-700 hover:bg-slate-300 w-full transition">
+                Release
+              </button>
+            </div>
+          </div>
+
+          <!-- Central Resource (Critical Section) -->
+          <div class="p-6 rounded-2xl border-2 border-dashed border-rose-300 bg-rose-50/50 text-center space-y-3 relative">
+            <div class="w-16 h-16 mx-auto rounded-full bg-white shadow-md border border-rose-200 flex items-center justify-center text-rose-600">
+              <i data-lucide="printer" class="w-8 h-8"></i>
+            </div>
+            <div>
+              <div class="font-extrabold text-slate-900 text-sm">Critical Section: Office Printer</div>
+              <div id="printer-lock-status" class="text-xs font-semibold text-emerald-600 mt-1 flex items-center justify-center gap-1">
+                <i data-lucide="unlock" class="w-3.5 h-3.5"></i> MUTEX UNLOCKED (Available)
+              </div>
+            </div>
+            <div id="printer-holder-badge" class="text-xs font-mono bg-white px-3 py-1 rounded-full border border-slate-200 text-slate-600 inline-block">
+              Current Holder: None
+            </div>
+          </div>
+
+          <!-- Process B -->
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-800">Process B (Photo.png)</span>
+              <span id="proc-b-state" class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">Idle</span>
+            </div>
+            <p class="text-xs text-slate-500">Wants to print full-bleed graphic banners.</p>
+            <div class="flex gap-2">
+              <button onclick="requestResource('B')" class="px-3 py-1.5 text-xs font-semibold rounded bg-indigo-600 text-white hover:bg-indigo-700 w-full transition">
+                Request Printer
+              </button>
+              <button onclick="releaseResource('B')" class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-200 text-slate-700 hover:bg-slate-300 w-full transition">
+                Release
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="mutex-feedback" class="p-3 bg-slate-100 rounded-lg text-xs text-slate-700 font-mono">
+          Click "Request Printer" on either process to see Mutex lock acquisition.
+        </div>
+      </div>
+
+      <!-- Interactive Deadlock Sandbox: Printer vs Scanner Circular Wait -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <div class="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Interactive Concept 2</span>
+            <h3 class="text-lg font-bold text-slate-900">The Classic Deadlock Scenario & 4 Strategies</h3>
+            <p class="text-xs text-slate-500">Process A holds Printer and waits for Scanner. Process B holds Scanner and waits for Printer.</p>
+          </div>
+          <button onclick="resetDeadlockDemo()" class="px-3 py-1 text-xs font-semibold rounded bg-slate-100 text-slate-600 hover:bg-slate-200">Reset Demo</button>
+        </div>
+
+        <!-- Deadlock Diagram Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div id="deadlock-card-a" class="p-4 rounded-xl border-2 border-slate-200 bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-900">Process A</span>
+              <span id="badge-hold-a" class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Holds: Printer 🖨️</span>
+            </div>
+            <div class="text-xs text-slate-600">
+              Needs: <span id="badge-need-a" class="font-bold text-amber-700">Scanner 📠</span>
+            </div>
+            <div class="text-[11px] text-slate-500" id="status-text-a">Waiting indefinitely for Process B to release Scanner.</div>
+          </div>
+
+          <div id="deadlock-card-b" class="p-4 rounded-xl border-2 border-slate-200 bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-900">Process B</span>
+              <span id="badge-hold-b" class="text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800">Holds: Scanner 📠</span>
+            </div>
+            <div class="text-xs text-slate-600">
+              Needs: <span id="badge-need-b" class="font-bold text-amber-700">Printer 🖨️</span>
+            </div>
+            <div class="text-[11px] text-slate-500" id="status-text-b">Waiting indefinitely for Process A to release Printer.</div>
+          </div>
+        </div>
+
+        <!-- Deadlock State Alert Banner -->
+        <div id="deadlock-warning" class="p-4 rounded-xl bg-rose-50 border border-rose-300 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
+              <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="font-bold text-rose-950 text-sm">CIRCULAR WAIT DETECTED! SYSTEM DEADLOCKED.</div>
+              <p class="text-xs text-rose-700">Neither process can advance. Select an Operating System recovery strategy below:</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- The 4 OS Strategies from the Handout -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+          <button onclick="applyStrategy('prevention')" class="p-3 text-left rounded-xl border border-slate-200 hover:border-sky-500 hover:bg-sky-50 transition group">
+            <div class="font-bold text-xs text-slate-900 group-hover:text-sky-700 flex items-center gap-1.5 mb-1">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-sky-600"></i> 1. Deadlock Prevention
+            </div>
+            <p class="text-[11px] text-slate-500 leading-normal">Require processes to request both Printer AND Scanner at startup.</p>
+          </button>
+
+          <button onclick="applyStrategy('avoidance')" class="p-3 text-left rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 transition group">
+            <div class="font-bold text-xs text-slate-900 group-hover:text-emerald-700 flex items-center gap-1.5 mb-1">
+              <i data-lucide="compass" class="w-3.5 h-3.5 text-emerald-600"></i> 2. Deadlock Avoidance
+            </div>
+            <p class="text-[11px] text-slate-500 leading-normal">Banker's Algorithm: Only grant a resource if state remains safe.</p>
+          </button>
+
+          <button onclick="applyStrategy('terminate')" class="p-3 text-left rounded-xl border border-slate-200 hover:border-rose-500 hover:bg-rose-50 transition group">
+            <div class="font-bold text-xs text-slate-900 group-hover:text-rose-700 flex items-center gap-1.5 mb-1">
+              <i data-lucide="skull" class="w-3.5 h-3.5 text-rose-600"></i> 3. Recovery: Terminate
+            </div>
+            <p class="text-[11px] text-slate-500 leading-normal">Terminate Process B, freeing Scanner so Process A completes.</p>
+          </button>
+
+          <button onclick="applyStrategy('preempt')" class="p-3 text-left rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50 transition group">
+            <div class="font-bold text-xs text-slate-900 group-hover:text-purple-700 flex items-center gap-1.5 mb-1">
+              <i data-lucide="refresh-ccw" class="w-3.5 h-3.5 text-purple-600"></i> 4. Recovery: Preempt / Rollback
+            </div>
+            <p class="text-[11px] text-slate-500 leading-normal">Forcibly reclaim resource & rollback process to saved checkpoint.</p>
+          </button>
+        </div>
+      </div>
+
+      <!-- IPC (Interprocess Communication) Reference Grid -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="share-2" class="w-5 h-5 text-indigo-600"></i>
+          Interprocess Communication (IPC) Mechanisms
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-500"></span> Shared Memory
+            </div>
+            <p class="text-xs text-slate-600 mt-1">Fastest method. Processes read & write to a shared region of RAM directly.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Pipes & Named Pipes
+            </div>
+            <p class="text-xs text-slate-600 mt-1">One-way unidirectional streams. Named pipes allow unrelated processes to talk.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Message Queues
+            </div>
+            <p class="text-xs text-slate-600 mt-1">Processes post and retrieve messages from an OS-managed mailbox queue.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span> Sockets
+            </div>
+            <p class="text-xs text-slate-600 mt-1">Enables communication across different network machines via IP & port.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span> Signals
+            </div>
+            <p class="text-xs text-slate-600 mt-1">Asynchronous notification alerting a process that a specific event occurred.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-slate-200 bg-slate-50">
+            <div class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span> Semaphores & Mutex
+            </div>
+            <p class="text-xs text-slate-600 mt-1">Integer counters and ownership locks preventing race conditions in critical code.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-slate-500 text-xs">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <i data-lucide="cpu" class="w-4 h-4 text-sky-600"></i>
+        <span>Operating Systems Process Scheduling & Coordination Interactive Visualizer</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* Default Handout Dataset */
+    const DEFAULT_HANDOUT_JOBS = [
+      { id: 'J1', arrival: 0, burst: 13, priority: 4, color: '#6366f1' }, // Indigo
+      { id: 'J2', arrival: 3, burst: 5,  priority: 3, color: '#10b981' }, // Emerald
+      { id: 'J3', arrival: 8, burst: 4,  priority: 5, color: '#f59e0b' }, // Amber
+      { id: 'J4', arrival: 15, burst: 6, priority: 1, color: '#f43f5e' }, // Rose
+      { id: 'J5', arrival: 17, burst: 9, priority: 2, color: '#8b5cf6' }  // Purple
+    ];
+
+    let currentJobs = JSON.parse(JSON.stringify(DEFAULT_HANDOUT_JOBS));
+    let selectedAlgorithm = 'FCFS';
+    let simulationTimeline = [];
+    let currentStepIndex = 0;
+    let isPlaying = false;
+    let playInterval = null;
+    let isDynamicTurnMode = true; // Sequential turn-by-turn vs full preview
+
+    /* Color Palette for dynamically added jobs */
+    const JOB_PALETTE = ['#0ea5e9', '#ec4899', '#14b8a6', '#f97316', '#84cc16', '#64748b'];
+
+    /**
+     * Core Algorithm Simulators strictly adhering to OS logic
+     */
+    function simulateFCFS(jobs) {
+      // Non-preemptive, arrival order
+      const sorted = [...jobs].sort((a, b) => a.arrival - b.arrival || a.id.localeCompare(b.id));
+      const timeline = [];
+      let time = 0;
+      const completed = [];
+      const waitingQueueHistory = [];
+
+      while (completed.length < sorted.length) {
+        // Find arrived jobs not completed
+        const ready = sorted.filter(j => j.arrival <= time && !completed.includes(j.id));
+        if (ready.length === 0) {
+          // CPU Idle tick
+          const nextArrival = Math.min(...sorted.filter(j => !completed.includes(j.id)).map(j => j.arrival));
+          for (let t = time; t < nextArrival; t++) {
+            timeline.push({ time: t, job: null, readyQueue: [] });
+          }
+          time = nextArrival;
+          continue;
+        }
+
+        // FCFS selects first arrived
+        const current = ready[0];
+        const queueOthers = ready.slice(1).map(j => j.id);
+
+        for (let b = 0; b < current.burst; b++) {
+          const activeReady = sorted.filter(j => j.arrival <= (time + b) && !completed.includes(j.id) && j.id !== current.id).map(j => j.id);
+          timeline.push({
+            time: time + b,
+            job: current.id,
+            jobObj: current,
+            readyQueue: activeReady,
+            narration: `At time ${time + b}: ${current.id} is executing. Arrived at ${current.arrival} with burst ${current.burst}. Ready queue has: [${activeReady.join(', ') || 'None'}].`
+          });
+        }
+        time += current.burst;
+        completed.push(current.id);
+      }
+      return timeline;
+    }
+
+    function simulateSJF(jobs) {
+      // Non-preemptive Shortest Job First
+      const sorted = [...jobs];
+      const timeline = [];
+      let time = 0;
+      const completed = [];
+
+      while (completed.length < sorted.length) {
+        const ready = sorted.filter(j => j.arrival <= time && !completed.includes(j.id));
+        if (ready.length === 0) {
+          const nextArr = Math.min(...sorted.filter(j => !completed.includes(j.id)).map(j => j.arrival));
+          for (let t = time; t < nextArr; t++) {
+            timeline.push({ time: t, job: null, readyQueue: [] });
+          }
+          time = nextArr;
+          continue;
+        }
+
+        // Shortest burst, tie-break by arrival time, then ID
+        ready.sort((a, b) => a.burst - b.burst || a.arrival - b.arrival || a.id.localeCompare(b.id));
+        const current = ready[0];
+
+        for (let b = 0; b < current.burst; b++) {
+          const activeReady = sorted.filter(j => j.arrival <= (time + b) && !completed.includes(j.id) && j.id !== current.id).map(j => j.id);
+          timeline.push({
+            time: time + b,
+            job: current.id,
+            jobObj: current,
+            readyQueue: activeReady,
+            narration: `At time ${time + b}: ${current.id} executing (Burst ${current.burst}). Selected because it has the shortest burst among ready candidates.`
+          });
+        }
+        time += current.burst;
+        completed.push(current.id);
+      }
+      return timeline;
+    }
+
+    function simulateNPP(jobs) {
+      // Non-preemptive Priority (1 = highest)
+      const sorted = [...jobs];
+      const timeline = [];
+      let time = 0;
+      const completed = [];
+
+      while (completed.length < sorted.length) {
+        const ready = sorted.filter(j => j.arrival <= time && !completed.includes(j.id));
+        if (ready.length === 0) {
+          const nextArr = Math.min(...sorted.filter(j => !completed.includes(j.id)).map(j => j.arrival));
+          for (let t = time; t < nextArr; t++) {
+            timeline.push({ time: t, job: null, readyQueue: [] });
+          }
+          time = nextArr;
+          continue;
+        }
+
+        // Highest priority = lowest number. Tie-break: arrival time
+        ready.sort((a, b) => a.priority - b.priority || a.arrival - b.arrival || a.id.localeCompare(b.id));
+        const current = ready[0];
+
+        for (let b = 0; b < current.burst; b++) {
+          const activeReady = sorted.filter(j => j.arrival <= (time + b) && !completed.includes(j.id) && j.id !== current.id).map(j => j.id);
+          timeline.push({
+            time: time + b,
+            job: current.id,
+            jobObj: current,
+            readyQueue: activeReady,
+            narration: `At time ${time + b}: ${current.id} executing (Priority ${current.priority}). It will not be interrupted even if a higher priority job arrives (Non-Preemptive).`
+          });
+        }
+        time += current.burst;
+        completed.push(current.id);
+      }
+      return timeline;
+    }
+
+    function simulatePP(jobs) {
+      // Preemptive Priority
+      const timeline = [];
+      const remaining = {};
+      jobs.forEach(j => remaining[j.id] = j.burst);
+      let time = 0;
+      let completedCount = 0;
+      const totalJobs = jobs.length;
+
+      while (completedCount < totalJobs) {
+        const ready = jobs.filter(j => j.arrival <= time && remaining[j.id] > 0);
+        if (ready.length === 0) {
+          timeline.push({ time, job: null, readyQueue: [], narration: `CPU Idle at time ${time}.` });
+          time++;
+          continue;
+        }
+
+        // Lowest priority number = highest priority. Tie breaker = arrival time
+        ready.sort((a, b) => a.priority - b.priority || a.arrival - b.arrival || a.id.localeCompare(b.id));
+        const current = ready[0];
+        remaining[current.id]--;
+
+        const activeReady = ready.filter(j => j.id !== current.id).map(j => j.id);
+
+        timeline.push({
+          time: time,
+          job: current.id,
+          jobObj: current,
+          remainingBurst: remaining[current.id],
+          readyQueue: activeReady,
+          narration: `At time ${time}: ${current.id} has highest priority (${current.priority}). Remaining burst: ${remaining[current.id]}.`
+        });
+
+        if (remaining[current.id] === 0) {
+          completedCount++;
+        }
+        time++;
+      }
+      return timeline;
+    }
+
+    function simulateSRTF(jobs) {
+      // Shortest Remaining Time First (Preemptive SJF)
+      const timeline = [];
+      const remaining = {};
+      jobs.forEach(j => remaining[j.id] = j.burst);
+      let time = 0;
+      let completedCount = 0;
+      const totalJobs = jobs.length;
+
+      while (completedCount < totalJobs) {
+        const ready = jobs.filter(j => j.arrival <= time && remaining[j.id] > 0);
+        if (ready.length === 0) {
+          timeline.push({ time, job: null, readyQueue: [], narration: `CPU Idle at time ${time}.` });
+          time++;
+          continue;
+        }
+
+        // Shortest remaining time. Tie-break: arrival time
+        ready.sort((a, b) => remaining[a.id] - remaining[b.id] || a.arrival - b.arrival || a.id.localeCompare(b.id));
+        const current = ready[0];
+        remaining[current.id]--;
+
+        const activeReady = ready.filter(j => j.id !== current.id).map(j => j.id);
+
+        timeline.push({
+          time: time,
+          job: current.id,
+          jobObj: current,
+          remainingBurst: remaining[current.id],
+          readyQueue: activeReady,
+          narration: `At time ${time}: ${current.id} has shortest remaining burst (${remaining[current.id] + 1} -> ${remaining[current.id]}).`
+        });
+
+        if (remaining[current.id] === 0) {
+          completedCount++;
+        }
+        time++;
+      }
+      return timeline;
+    }
+
+    function simulateRR(jobs, quantum = 3) {
+      // Circular queue with quantum slicing
+      const timeline = [];
+      const remaining = {};
+      jobs.forEach(j => remaining[j.id] = j.burst);
+      
+      const sortedArrival = [...jobs].sort((a, b) => a.arrival - b.arrival || a.id.localeCompare(b.id));
+      const queue = [];
+      let time = 0;
+      let completedCount = 0;
+      const totalJobs = jobs.length;
+      let arrivalIndex = 0;
+
+      // Seed jobs arriving at time 0
+      while (arrivalIndex < sortedArrival.length && sortedArrival[arrivalIndex].arrival <= time) {
+        queue.push(sortedArrival[arrivalIndex]);
+        arrivalIndex++;
+      }
+
+      while (completedCount < totalJobs) {
+        if (queue.length === 0) {
+          if (arrivalIndex < sortedArrival.length) {
+            time = sortedArrival[arrivalIndex].arrival;
+            while (arrivalIndex < sortedArrival.length && sortedArrival[arrivalIndex].arrival <= time) {
+              queue.push(sortedArrival[arrivalIndex]);
+              arrivalIndex++;
+            }
+          }
+          continue;
+        }
+
+        const current = queue.shift();
+        const executeTime = Math.min(quantum, remaining[current.id]);
+
+        for (let step = 0; step < executeTime; step++) {
+          remaining[current.id]--;
+          const snapshotTime = time + step;
+
+          // Check if any jobs arrive DURING this tick (excluding jobs already queued)
+          while (arrivalIndex < sortedArrival.length && sortedArrival[arrivalIndex].arrival <= snapshotTime + 1) {
+            if (sortedArrival[arrivalIndex].id !== current.id && !queue.some(q => q.id === sortedArrival[arrivalIndex].id)) {
+              queue.push(sortedArrival[arrivalIndex]);
+            }
+            arrivalIndex++;
+          }
+
+          const currentQueueNames = queue.map(q => q.id);
+
+          timeline.push({
+            time: snapshotTime,
+            job: current.id,
+            jobObj: current,
+            remainingBurst: remaining[current.id],
+            readyQueue: [...currentQueueNames],
+            narration: `At time ${snapshotTime}: ${current.id} executing on Time Slice (Quantum ${quantum}). Burst left: ${remaining[current.id]}. Ready Queue: [${currentQueueNames.join(', ') || 'Empty'}].`
+          });
+        }
+
+        time += executeTime;
+
+        if (remaining[current.id] === 0) {
+          completedCount++;
+        } else {
+          // Re-append preempted job to tail of ready queue
+          queue.push(current);
+        }
+      }
+
+      return timeline;
+    }
+
+    /**
+     * Compute Completion Time, Turnaround Time, Waiting Time for every job
+     */
+    function computeMetrics(jobs, timeline) {
+      const results = {};
+      jobs.forEach(j => {
+        results[j.id] = {
+          id: j.id,
+          arrival: j.arrival,
+          burst: j.burst,
+          priority: j.priority,
+          color: j.color,
+          completion: 0,
+          turnaround: 0,
+          waiting: 0
+        };
+      });
+
+      // Completion time is the last time unit in timeline where job was active + 1
+      timeline.forEach(step => {
+        if (step.job) {
+          results[step.job].completion = Math.max(results[step.job].completion, step.time + 1);
+        }
+      });
+
+      let totalTT = 0;
+      let totalWT = 0;
+
+      Object.values(results).forEach(item => {
+        item.turnaround = item.completion - item.arrival;
+        item.waiting = item.turnaround - item.burst;
+        totalTT += item.turnaround;
+        totalWT += item.waiting;
+      });
+
+      const avgTT = (totalTT / jobs.length).toFixed(2);
+      const avgWT = (totalWT / jobs.length).toFixed(2);
+      const totalElapsed = timeline.length;
+      const totalBurst = jobs.reduce((sum, j) => sum + j.burst, 0);
+      const cpuUtilization = totalElapsed > 0 ? ((totalBurst / totalElapsed) * 100).toFixed(1) : 100;
+
+      return {
+        jobs: Object.values(results),
+        avgTT,
+        avgWT,
+        totalBurst,
+        totalElapsed,
+        cpuUtilization
+      };
+    }
+
+    /**
+     * Group contiguous time blocks for Gantt display
+     */
+    function getGanttBlocks(timeline) {
+      if (timeline.length === 0) return [];
+      const blocks = [];
+      let current = {
+        job: timeline[0].job,
+        jobObj: timeline[0].jobObj,
+        start: timeline[0].time,
+        duration: 1
+      };
+
+      for (let i = 1; i < timeline.length; i++) {
+        if (timeline[i].job === current.job) {
+          current.duration++;
+        } else {
+          current.end = current.start + current.duration;
+          blocks.push(current);
+          current = {
+            job: timeline[i].job,
+            jobObj: timeline[i].jobObj,
+            start: timeline[i].time,
+            duration: 1
+          };
+        }
+      }
+      current.end = current.start + current.duration;
+      blocks.push(current);
+      return blocks;
+    }
+
+    /**
+     * Master Simulation Runner: Executes chosen algorithm and refreshes all visual components
+     */
+    function runSimulation() {
+      const quantumInput = document.getElementById('quantum-input');
+      const quantum = quantumInput ? parseInt(quantumInput.value) || 3 : 3;
+
+      if (selectedAlgorithm === 'FCFS') {
+        simulationTimeline = simulateFCFS(currentJobs);
+      } else if (selectedAlgorithm === 'SJF') {
+        simulationTimeline = simulateSJF(currentJobs);
+      } else if (selectedAlgorithm === 'NPP') {
+        simulationTimeline = simulateNPP(currentJobs);
+      } else if (selectedAlgorithm === 'PP') {
+        simulationTimeline = simulatePP(currentJobs);
+      } else if (selectedAlgorithm === 'SRTF') {
+        simulationTimeline = simulateSRTF(currentJobs);
+      } else if (selectedAlgorithm === 'RR') {
+        simulationTimeline = simulateRR(currentJobs, quantum);
+      }
+
+      // Keep step index safe and within valid bounds
+      if (currentStepIndex >= simulationTimeline.length) {
+        currentStepIndex = Math.max(0, simulationTimeline.length - 1);
+      }
+
+      // Compute and render analytical mathematical results
+      const metrics = computeMetrics(currentJobs, simulationTimeline);
+      renderMetricsTable(metrics);
+
+      // Render Gantt timeline and state snapshot
+      renderGanttUI();
+      updateStepUI();
+    }
+
+    /**
+     * Populate mathematical results and step-by-step table
+     */
+    function renderMetricsTable(metrics) {
+      const tbody = document.getElementById('metrics-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      metrics.jobs.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-4 py-3 flex items-center gap-2 font-bold text-slate-800">
+            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${item.color}"></span>
+            <span>${item.id}</span>
+          </td>
+          <td class="px-4 py-3 font-mono">${item.arrival}</td>
+          <td class="px-4 py-3 font-mono">${item.burst}</td>
+          <td class="px-4 py-3 font-mono font-semibold text-slate-900">${item.completion}</td>
+          <td class="px-4 py-3 font-mono font-bold text-indigo-700">${item.completion} - ${item.arrival} = ${item.turnaround}</td>
+          <td class="px-4 py-3 font-mono font-bold text-emerald-700">${item.turnaround} - ${item.burst} = ${item.waiting}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const avgTtCell = document.getElementById('avg-tt-cell');
+      const avgWtCell = document.getElementById('avg-wt-cell');
+      if (avgTtCell) avgTtCell.innerHTML = `tt<sub>ave</sub> = ${metrics.avgTT}`;
+      if (avgWtCell) avgWtCell.innerHTML = `wt<sub>ave</sub> = ${metrics.avgWT}`;
+
+      const cpuBadge = document.getElementById('cpu-util-badge');
+      if (cpuBadge) cpuBadge.textContent = `${metrics.cpuUtilization}%`;
+
+      const cpuFormula = document.getElementById('cpu-util-formula');
+      if (cpuFormula) {
+        cpuFormula.textContent = `Utilization = (${metrics.totalBurst} / ${metrics.totalElapsed}) * 100% = ${metrics.cpuUtilization}%`;
+      }
+    }
+
+    function renderGanttUI() {
+      const container = document.getElementById('gantt-chart-bar');
+      const timeAxis = document.getElementById('gantt-time-axis');
+      const playhead = document.getElementById('gantt-playhead');
+      const playheadLabel = document.getElementById('playhead-time-label');
+      const timerPill = document.getElementById('gantt-timer-pill');
+      const progressPercent = document.getElementById('progress-percent');
+      const statusEvent = document.getElementById('gantt-status-event');
+
+      if (!container || !timeAxis) return;
+      container.innerHTML = '';
+      timeAxis.innerHTML = '';
+
+      const totalDuration = simulationTimeline.length;
+      if (totalDuration === 0) return;
+
+      const totalBadge = document.getElementById('total-time-badge');
+      if (totalBadge) totalBadge.textContent = totalDuration;
+
+      // Current active time tick
+      const currentTime = Math.min(currentStepIndex, totalDuration - 1);
+      const displayCurrentTime = Math.min(currentStepIndex, totalDuration);
+      
+      if (timerPill) timerPill.textContent = `t = ${displayCurrentTime}`;
+      if (playheadLabel) playheadLabel.textContent = `t=${displayCurrentTime}`;
+
+      const pct = totalDuration > 0 ? Math.min(100, Math.round((displayCurrentTime / totalDuration) * 100)) : 0;
+      if (progressPercent) progressPercent.textContent = `${pct}% Complete`;
+
+      // Update playhead horizontal position
+      const playheadPct = totalDuration > 0 ? (displayCurrentTime / totalDuration) * 100 : 0;
+      if (playhead) {
+        playhead.style.left = `${playheadPct}%`;
+      }
+
+      // Slice timeline according to mode:
+      // In dynamic turn-by-turn mode, only render jobs that have taken their turn up to currentStepIndex
+      const activeTimelineSlice = isDynamicTurnMode 
+        ? simulationTimeline.slice(0, currentStepIndex + 1)
+        : simulationTimeline;
+
+      const fullBlocks = getGanttBlocks(simulationTimeline);
+      const executedBlocks = getGanttBlocks(activeTimelineSlice);
+
+      // Render executed blocks
+      executedBlocks.forEach((block, idx) => {
+        const widthPercent = (block.duration / totalDuration) * 100;
+        const blockEl = document.createElement('div');
+        const isCurrentBlock = idx === executedBlocks.length - 1;
+
+        blockEl.className = `gantt-block h-full flex flex-col items-center justify-center text-white font-bold relative cursor-pointer select-none border-r border-white/20 transition-all duration-300 ${
+          isCurrentBlock && isDynamicTurnMode ? 'ring-2 ring-sky-400 ring-inset shadow-md' : ''
+        }`;
+        blockEl.style.width = `${widthPercent}%`;
+        blockEl.style.backgroundColor = block.job ? (block.jobObj ? block.jobObj.color : '#64748b') : '#94a3b8';
+        blockEl.title = `${block.job || 'Idle'}: Time ${block.start} -> ${block.end} (Duration: ${block.duration} units)`;
+
+        // Responsive font styling
+        blockEl.innerHTML = `
+          <div class="flex items-center gap-1 justify-center w-full px-1">
+            <span class="truncate text-[10px] sm:text-xs md:text-sm font-bold">${block.job || 'IDLE'}</span>
+            ${isCurrentBlock && isDynamicTurnMode ? '<span class="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>' : ''}
+          </div>
+          <span class="text-[9px] sm:text-[10px] opacity-90 font-mono font-normal">${block.duration}u</span>
+        `;
+        container.appendChild(blockEl);
+      });
+
+      // If in dynamic mode and not completed, render ghost "Awaiting Turn" container
+      if (isDynamicTurnMode && currentStepIndex + 1 < totalDuration) {
+        const remainingUnits = totalDuration - (currentStepIndex + 1);
+        const remainingPercent = (remainingUnits / totalDuration) * 100;
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'h-full flex items-center justify-center text-slate-400 text-[10px] sm:text-xs font-mono font-medium border-l border-dashed border-slate-300 bg-slate-100/70 select-none';
+        placeholder.style.width = `${remainingPercent}%`;
+        placeholder.innerHTML = `
+          <span class="hidden sm:inline italic">Queued (${remainingUnits}u left)</span>
+          <span class="sm:hidden italic">...</span>
+        `;
+        container.appendChild(placeholder);
+      }
+
+      // Render visible timeline ticks along the axis with percentage positioning
+      const tickSet = new Set([0, totalDuration]);
+      fullBlocks.forEach(b => {
+        tickSet.add(b.start);
+        tickSet.add(b.end);
+      });
+
+      const sortedTicks = Array.from(tickSet).sort((a, b) => a - b);
+      sortedTicks.forEach(tickVal => {
+        const tickPct = (tickVal / totalDuration) * 100;
+        const tickEl = document.createElement('div');
+        const isReached = tickVal <= displayCurrentTime;
+
+        tickEl.className = `absolute transform -translate-x-1/2 flex flex-col items-center transition-colors ${
+          isReached ? 'text-sky-700 font-bold' : 'text-slate-400 font-medium'
+        }`;
+        tickEl.style.left = `${tickPct}%`;
+        tickEl.innerHTML = `
+          <span class="w-0.5 h-1.5 ${isReached ? 'bg-sky-600' : 'bg-slate-300'} mb-0.5"></span>
+          <span class="text-[10px] sm:text-[11px]">${tickVal}</span>
+        `;
+        timeAxis.appendChild(tickEl);
+      });
+
+      // Update narration status snippet in header
+      if (simulationTimeline[currentTime] && statusEvent) {
+        const curJob = simulationTimeline[currentTime].job;
+        if (curJob) {
+          statusEvent.textContent = `Turn: ${curJob} is executing on CPU`;
+        } else {
+          statusEvent.textContent = `Turn: CPU is currently Idle`;
+        }
+      }
+    }
+
+    function toggleGanttMode() {
+      isDynamicTurnMode = !isDynamicTurnMode;
+      const btnText = document.getElementById('mode-toggle-text');
+      const badge = document.getElementById('turn-badge');
+
+      if (isDynamicTurnMode) {
+        if (btnText) btnText.textContent = 'Show Full Overview';
+        if (badge) {
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Turn-by-Turn Dynamic Mode`;
+          badge.className = 'px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1';
+        }
+      } else {
+        if (btnText) btnText.textContent = 'Switch to Turn-by-Turn';
+        if (badge) {
+          badge.innerHTML = `<i data-lucide="eye" class="w-3 h-3 text-slate-500"></i> Full Overview Mode`;
+          badge.className = 'px-2 py-0.5 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1';
+        }
+      }
+      renderGanttUI();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function updateStepUI() {
+      if (simulationTimeline.length === 0) return;
+      const step = simulationTimeline[currentStepIndex];
+
+      document.getElementById('current-sim-time').textContent = step.time;
+      document.querySelectorAll('.sim-time-ref').forEach(el => el.textContent = step.time);
+
+      // Re-render dynamic Gantt chart to progress the blocks and time playhead
+      renderGanttUI();
+
+      // Active CPU Badge
+      const activeEl = document.getElementById('active-cpu-job');
+      const metaEl = document.getElementById('active-cpu-meta');
+      if (step.job) {
+        activeEl.innerHTML = `
+          <span class="w-3.5 h-3.5 rounded-full inline-block" style="background-color: ${step.jobObj.color}"></span>
+          <span class="text-sky-950 font-bold text-sm sm:text-base">${step.job}</span>
+          ${step.remainingBurst !== undefined ? `<span class="text-[11px] sm:text-xs bg-sky-200 text-sky-900 px-2 py-0.5 rounded font-mono">Rem: ${step.remainingBurst}</span>` : ''}
+        `;
+        metaEl.textContent = `Burst: ${step.jobObj.burst} | Arrival: ${step.jobObj.arrival} | Priority: ${step.jobObj.priority}`;
+      } else {
+        activeEl.innerHTML = `<span class="text-slate-400 font-semibold italic text-sm sm:text-base">CPU Idle</span>`;
+        metaEl.textContent = 'Waiting for upcoming process arrival';
+      }
+
+      // Ready Queue chips
+      const chipsContainer = document.getElementById('ready-queue-chips');
+      const countLabel = document.getElementById('ready-queue-count');
+      chipsContainer.innerHTML = '';
+
+      if (step.readyQueue.length === 0) {
+        chipsContainer.innerHTML = `<span class="text-xs text-slate-400 italic">No processes waiting in ready queue.</span>`;
+        countLabel.textContent = '0 jobs waiting';
+      } else {
+        countLabel.textContent = `${step.readyQueue.length} jobs waiting`;
+        step.readyQueue.forEach(jobId => {
+          const jobObj = currentJobs.find(j => j.id === jobId);
+          const chip = document.createElement('span');
+          chip.className = 'px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-xs font-bold text-white shadow-sm flex items-center gap-1.5 transition-transform hover:scale-105';
+          chip.style.backgroundColor = jobObj ? jobObj.color : '#64748b';
+          chip.innerHTML = `<i data-lucide="clock" class="w-3 h-3"></i> ${jobId}`;
+          chipsContainer.appendChild(chip);
+        });
+      }
+
+      // Narration text
+      document.getElementById('step-narration-text').textContent = step.narration;
+      lucide.createIcons();
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('btn-play');
+      const btnText = document.getElementById('play-btn-text');
+
+      if (isPlaying) {
+        btnText.textContent = 'Pause';
+        btn.classList.replace('bg-sky-600', 'bg-amber-600');
+        btn.classList.replace('hover:bg-sky-700', 'hover:bg-amber-700');
+        const speed = 1600 - parseInt(document.getElementById('speed-slider').value);
+        playInterval = setInterval(() => {
+          if (currentStepIndex < simulationTimeline.length - 1) {
+            currentStepIndex++;
+            updateStepUI();
+          } else {
+            togglePlay(); // stop at end
+          }
+        }, speed);
+      } else {
+        btnText.textContent = 'Auto Play';
+        btn.classList.replace('bg-amber-600', 'bg-sky-600');
+        btn.classList.replace('hover:bg-amber-700', 'hover:bg-sky-700');
+        clearInterval(playInterval);
+      }
+      lucide.createIcons();
+    }
+
+    function stepNext() {
+      if (currentStepIndex < simulationTimeline.length - 1) {
+        currentStepIndex++;
+        updateStepUI();
+      }
+    }
+
+    function stepPrev() {
+      if (currentStepIndex > 0) {
+        currentStepIndex--;
+        updateStepUI();
+      }
+    }
+
+    function resetPlayback() {
+      if (isPlaying) togglePlay();
+      currentStepIndex = 0;
+      updateStepUI();
+    }
+
+    function renderJobTable() {
+      const tbody = document.getElementById('job-table-body');
+      tbody.innerHTML = '';
+
+      currentJobs.forEach((job, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-4 py-2">
+            <span class="w-4 h-4 rounded-full inline-block" style="background-color: ${job.color}"></span>
+          </td>
+          <td class="px-4 py-2 font-bold text-slate-800">${job.id}</td>
+          <td class="px-4 py-2">
+            <input type="number" min="0" max="99" value="${job.arrival}" onchange="updateJob(${index}, 'arrival', this.value)" class="w-16 px-2 py-1 bg-slate-50 border border-slate-300 rounded text-center text-xs font-mono">
+          </td>
+          <td class="px-4 py-2">
+            <input type="number" min="1" max="99" value="${job.burst}" onchange="updateJob(${index}, 'burst', this.value)" class="w-16 px-2 py-1 bg-slate-50 border border-slate-300 rounded text-center text-xs font-mono font-bold text-indigo-700">
+          </td>
+          <td class="px-4 py-2">
+            <input type="number" min="1" max="99" value="${job.priority}" onchange="updateJob(${index}, 'priority', this.value)" class="w-16 px-2 py-1 bg-slate-50 border border-slate-300 rounded text-center text-xs font-mono font-bold text-amber-700">
+          </td>
+          <td class="px-4 py-2 text-center">
+            <button onclick="removeJobRow(${index})" class="p-1 text-slate-400 hover:text-rose-600 transition" title="Delete job">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function updateJob(index, field, value) {
+      currentJobs[index][field] = parseInt(value) || 0;
+      runSimulation();
+    }
+
+    function addJobRow() {
+      const newId = `J${currentJobs.length + 1}`;
+      const color = JOB_PALETTE[currentJobs.length % JOB_PALETTE.length];
+      currentJobs.push({
+        id: newId,
+        arrival: currentJobs.length * 2,
+        burst: Math.floor(Math.random() * 6) + 3,
+        priority: currentJobs.length + 1,
+        color
+      });
+      renderJobTable();
+      runSimulation();
+    }
+
+    function removeJobRow(index) {
+      if (currentJobs.length <= 1) return;
+      currentJobs.splice(index, 1);
+      renderJobTable();
+      runSimulation();
+    }
+
+    function resetToHandout() {
+      currentJobs = JSON.parse(JSON.stringify(DEFAULT_HANDOUT_JOBS));
+      renderJobTable();
+      runSimulation();
+    }
+
+    function loadPreset(preset) {
+      if (preset === 'handout') {
+        resetToHandout();
+      } else if (preset === 'convoy') {
+        // Convoy Effect: Big job at 0, quick jobs queued behind
+        currentJobs = [
+          { id: 'J1', arrival: 0, burst: 24, priority: 3, color: '#f43f5e' },
+          { id: 'J2', arrival: 1, burst: 3,  priority: 2, color: '#10b981' },
+          { id: 'J3', arrival: 2, burst: 3,  priority: 1, color: '#6366f1' },
+        ];
+        selectAlgo('FCFS');
+      } else if (preset === 'starvation') {
+        // Starvation in SJF: Huge job starved by arrival of tiny jobs
+        currentJobs = [
+          { id: 'J1', arrival: 0, burst: 20, priority: 5, color: '#f43f5e' },
+          { id: 'J2', arrival: 2, burst: 2,  priority: 1, color: '#10b981' },
+          { id: 'J3', arrival: 4, burst: 2,  priority: 1, color: '#6366f1' },
+          { id: 'J4', arrival: 6, burst: 2,  priority: 1, color: '#f59e0b' },
+          { id: 'J5', arrival: 8, burst: 2,  priority: 1, color: '#8b5cf6' }
+        ];
+        selectAlgo('SJF');
+      }
+      renderJobTable();
+      runSimulation();
+    }
+
+    function selectAlgo(algo) {
+      selectedAlgorithm = algo;
+      document.querySelectorAll('.algo-btn').forEach(btn => {
+        if (btn.dataset.algo === algo) {
+          btn.className = 'algo-btn text-left p-3 rounded-lg border-2 border-sky-500 bg-sky-50/50 flex items-center justify-between';
+        } else {
+          btn.className = 'algo-btn text-left p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between';
+        }
+      });
+
+      const rrBox = document.getElementById('rr-quantum-control');
+      if (algo === 'RR') {
+        rrBox.classList.remove('hidden');
+      } else {
+        rrBox.classList.add('hidden');
+      }
+
+      runSimulation();
+    }
+
+    /**
+     * Algorithm Code Snippets (Python & C)
+     */
+    const CODE_SNIPPETS = {
+      fcfs: {
+        python: `# First Come First Serve (FCFS) Scheduling
+# Non-preemptive: Executes strictly in arrival order
+
+def calculate_fcfs(processes):
+    # Sort processes by arrival time
+    processes.sort(key=lambda p: (p['arrival'], p['id']))
+    
+    current_time = 0
+    results = []
+    
+    for p in processes:
+        if current_time < p['arrival']:
+            current_time = p['arrival'] # CPU idle gap
+            
+        start_time = current_time
+        completion_time = start_time + p['burst']
+        turnaround_time = completion_time - p['arrival']
+        waiting_time = turnaround_time - p['burst']
+        
+        current_time = completion_time
+        results.append({
+            'id': p['id'],
+            'completion': completion_time,
+            'tt': turnaround_time,
+            'wt': waiting_time
+        })
+    return results`,
+        c: `// First Come First Serve (FCFS) in C
+#include <stdio.h>
+
+struct Process {
+    char id[5];
+    int arrival, burst, completion, tt, wt;
+};
+
+void solveFCFS(struct Process p[], int n) {
+    int currentTime = 0;
+    for (int i = 0; i < n; i++) {
+        if (currentTime < p[i].arrival) {
+            currentTime = p[i].arrival; // Idle gap
+        }
+        p[i].completion = currentTime + p[i].burst;
+        p[i].tt = p[i].completion - p[i].arrival;
+        p[i].wt = p[i].tt - p[i].burst;
+        currentTime = p[i].completion;
+    }
+}`
+      },
+      sjf: {
+        python: `# Shortest Job First (SJF) Non-Preemptive
+def calculate_sjf(processes):
+    n = len(processes)
+    completed = []
+    current_time = 0
+    results = []
+    
+    while len(completed) < n:
+        # Arrived candidates that haven't finished
+        ready = [p for p in processes if p['arrival'] <= current_time and p['id'] not in completed]
+        
+        if not ready:
+            current_time += 1
+            continue
+            
+        # Select shortest burst (tie-break by arrival)
+        ready.sort(key=lambda p: (p['burst'], p['arrival']))
+        selected = ready[0]
+        
+        start = current_time
+        completion = start + selected['burst']
+        tt = completion - selected['arrival']
+        wt = tt - selected['burst']
+        
+        current_time = completion
+        completed.append(selected['id'])
+        results.append({'id': selected['id'], 'completion': completion, 'tt': tt, 'wt': wt})
+    return results`,
+        c: `// Shortest Job First (SJF Non-Preemptive) in C
+#include <stdio.h>
+
+void solveSJF(struct Process p[], int n) {
+    int completed = 0, currentTime = 0;
+    int isDone[10] = {0};
+    
+    while (completed < n) {
+        int idx = -1, minBurst = 9999;
+        for (int i = 0; i < n; i++) {
+            if (p[i].arrival <= currentTime && !isDone[i]) {
+                if (p[i].burst < minBurst) {
+                    minBurst = p[i].burst;
+                    idx = i;
+                }
+            }
+        }
+        if (idx == -1) { currentTime++; continue; }
+        
+        currentTime += p[idx].burst;
+        p[idx].completion = currentTime;
+        p[idx].tt = p[idx].completion - p[idx].arrival;
+        p[idx].wt = p[idx].tt - p[idx].burst;
+        isDone[idx] = 1;
+        completed++;
+    }
+}`
+      },
+      npp: {
+        python: `# Non-Preemptive Priority Scheduling (1 = Highest)
+def calculate_npp(processes):
+    completed = []
+    current_time = 0
+    results = []
+    
+    while len(completed) < len(processes):
+        ready = [p for p in processes if p['arrival'] <= current_time and p['id'] not in completed]
+        if not ready:
+            current_time += 1
+            continue
+            
+        # Select highest priority (lowest number)
+        ready.sort(key=lambda p: (p['priority'], p['arrival']))
+        current = ready[0]
+        
+        current_time += current['burst']
+        tt = current_time - current['arrival']
+        wt = tt - current['burst']
+        
+        completed.append(current['id'])
+        results.append({'id': current['id'], 'completion': current_time, 'tt': tt, 'wt': wt})
+    return results`,
+        c: `// Non-Preemptive Priority (1 = Highest) in C
+void solveNPP(struct Process p[], int n) {
+    int completed = 0, time = 0, isDone[10] = {0};
+    while (completed < n) {
+        int idx = -1, highestPrio = 9999;
+        for (int i = 0; i < n; i++) {
+            if (p[i].arrival <= time && !isDone[i] && p[i].priority < highestPrio) {
+                highestPrio = p[i].priority;
+                idx = i;
+            }
+        }
+        if (idx == -1) { time++; continue; }
+        time += p[idx].burst;
+        p[idx].completion = time;
+        p[idx].tt = p[idx].completion - p[idx].arrival;
+        p[idx].wt = p[idx].tt - p[idx].burst;
+        isDone[idx] = 1;
+        completed++;
+    }
+}`
+      },
+      pp: {
+        python: `# Preemptive Priority Scheduling
+def calculate_pp(processes):
+    remaining = {p['id']: p['burst'] for p in processes}
+    completion = {}
+    time = 0
+    total = len(processes)
+    completed = 0
+    
+    while completed < total:
+        ready = [p for p in processes if p['arrival'] <= time and remaining[p['id']] > 0]
+        if not ready:
+            time += 1
+            continue
+            
+        # Highest priority process preempts!
+        ready.sort(key=lambda p: (p['priority'], p['arrival']))
+        curr = ready[0]
+        remaining[curr['id']] -= 1
+        
+        if remaining[curr['id']] == 0:
+            completed += 1
+            completion[curr['id']] = time + 1
+        time += 1
+    return completion`,
+        c: `// Preemptive Priority Scheduling in C
+void solvePP(struct Process p[], int n) {
+    int remaining[10], completed = 0, time = 0;
+    for (int i = 0; i < n; i++) remaining[i] = p[i].burst;
+    
+    while (completed < n) {
+        int idx = -1, highestPrio = 9999;
+        for (int i = 0; i < n; i++) {
+            if (p[i].arrival <= time && remaining[i] > 0 && p[i].priority < highestPrio) {
+                highestPrio = p[i].priority;
+                idx = i;
+            }
+        }
+        if (idx == -1) { time++; continue; }
+        remaining[idx]--;
+        if (remaining[idx] == 0) {
+            p[idx].completion = time + 1;
+            p[idx].tt = p[idx].completion - p[idx].arrival;
+            p[idx].wt = p[idx].tt - p[idx].burst;
+            completed++;
+        }
+        time++;
+    }
+}`
+      },
+      srtf: {
+        python: `# Shortest Remaining Time First (SRTF / Preemptive SJF)
+def calculate_srtf(processes):
+    remaining = {p['id']: p['burst'] for p in processes}
+    completion = {}
+    time = 0
+    completed = 0
+    
+    while completed < len(processes):
+        ready = [p for p in processes if p['arrival'] <= time and remaining[p['id']] > 0]
+        if not ready:
+            time += 1
+            continue
+            
+        # Shortest remaining burst gets CPU immediately
+        ready.sort(key=lambda p: (remaining[p['id']], p['arrival']))
+        curr = ready[0]
+        remaining[curr['id']] -= 1
+        
+        if remaining[curr['id']] == 0:
+            completed += 1
+            completion[curr['id']] = time + 1
+        time += 1
+    return completion`,
+        c: `// Shortest Remaining Time First (SRTF) in C
+void solveSRTF(struct Process p[], int n) {
+    int rem[10], completed = 0, time = 0;
+    for (int i = 0; i < n; i++) rem[i] = p[i].burst;
+    
+    while (completed < n) {
+        int idx = -1, minRem = 9999;
+        for (int i = 0; i < n; i++) {
+            if (p[i].arrival <= time && rem[i] > 0 && rem[i] < minRem) {
+                minRem = rem[i];
+                idx = i;
+            }
+        }
+        if (idx == -1) { time++; continue; }
+        rem[idx]--;
+        if (rem[idx] == 0) {
+            p[idx].completion = time + 1;
+            p[idx].tt = p[idx].completion - p[idx].arrival;
+            p[idx].wt = p[idx].tt - p[idx].burst;
+            completed++;
+        }
+        time++;
+    }
+}`
+      },
+      rr: {
+        python: `# Round Robin (RR) with Time Slice (Quantum = 3)
+from collections import deque
+
+def calculate_round_robin(processes, quantum=3):
+    queue = deque()
+    time = 0
+    remaining = {p['id']: p['burst'] for p in processes}
+    sorted_p = sorted(processes, key=lambda x: x['arrival'])
+    arr_idx = 0
+    
+    # Push initial arrivals
+    while arr_idx < len(sorted_p) and sorted_p[arr_idx]['arrival'] <= time:
+        queue.append(sorted_p[arr_idx])
+        arr_idx += 1
+        
+    while queue:
+        curr = queue.popleft()
+        slice_time = min(quantum, remaining[curr['id']])
+        
+        for _ in range(slice_time):
+            time += 1
+            remaining[curr['id']] -= 1
+            # Add newly arrived jobs during this slice
+            while arr_idx < len(sorted_p) and sorted_p[arr_idx]['arrival'] <= time:
+                queue.append(sorted_p[arr_idx])
+                arr_idx += 1
+                
+        if remaining[curr['id']] > 0:
+            queue.append(curr) # Return to tail of ready queue
+        else:
+            print(f"Process {curr['id']} completed at time {time}")`,
+        c: `// Round Robin (RR) Queue in C
+#include <stdio.h>
+
+void solveRoundRobin(struct Process p[], int n, int quantum) {
+    int rem[10], time = 0, completed = 0;
+    for (int i = 0; i < n; i++) rem[i] = p[i].burst;
+    
+    while (completed < n) {
+        int executedAny = 0;
+        for (int i = 0; i < n; i++) {
+            if (p[i].arrival <= time && rem[i] > 0) {
+                executedAny = 1;
+                if (rem[i] > quantum) {
+                    time += quantum;
+                    rem[i] -= quantum;
+                } else {
+                    time += rem[i];
+                    p[i].completion = time;
+                    p[i].tt = p[i].completion - p[i].arrival;
+                    p[i].wt = p[i].tt - p[i].burst;
+                    rem[i] = 0;
+                    completed++;
+                }
+            }
+        }
+        if (!executedAny) time++;
+    }
+}`
+      }
+    };
+
+    function renderCodeBlock() {
+      const algoKey = document.getElementById('code-algo-select').value;
+      const snippet = CODE_SNIPPETS[algoKey][currentCodeLanguage];
+      document.getElementById('code-content').textContent = snippet;
+      document.getElementById('code-filename').textContent = `scheduler_${algoKey}.${currentCodeLanguage === 'python' ? 'py' : 'c'}`;
+    }
+
+    function setCodeLang(lang) {
+      currentCodeLanguage = lang;
+      const pyBtn = document.getElementById('btn-lang-python');
+      const cBtn = document.getElementById('btn-lang-c');
+
+      if (lang === 'python') {
+        pyBtn.className = 'px-3 py-1 text-xs font-bold rounded-md bg-white text-sky-700 shadow-sm transition';
+        cBtn.className = 'px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 transition';
+      } else {
+        cBtn.className = 'px-3 py-1 text-xs font-bold rounded-md bg-white text-sky-700 shadow-sm transition';
+        pyBtn.className = 'px-3 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 transition';
+      }
+      renderCodeBlock();
+    }
+
+    function copyCurrentCode() {
+      const code = document.getElementById('code-content').textContent;
+      const el = document.createElement('textarea');
+      el.value = code;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+
+      const feedback = document.getElementById('code-filename');
+      const orig = feedback.textContent;
+      feedback.textContent = '✓ Copied to Clipboard!';
+      setTimeout(() => { feedback.textContent = orig; }, 1800);
+    }
+
+    /**
+     * Interactive Mutex Lock Simulator
+     */
+    let printerMutexLocked = false;
+    let printerHolder = null;
+
+    function requestResource(proc) {
+      const feedback = document.getElementById('mutex-feedback');
+      const lockStatus = document.getElementById('printer-lock-status');
+      const holderBadge = document.getElementById('printer-holder-badge');
+      const stateBadge = document.getElementById(`proc-${proc.toLowerCase()}-state`);
+
+      if (!printerMutexLocked) {
+        printerMutexLocked = true;
+        printerHolder = proc;
+        lockStatus.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5 text-rose-600"></i> MUTEX LOCKED (Occupied)`;
+        lockStatus.className = 'text-xs font-semibold text-rose-600 mt-1 flex items-center justify-center gap-1';
+        holderBadge.textContent = `Current Holder: Process ${proc}`;
+        stateBadge.textContent = 'In Critical Section (Printing)';
+        stateBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+        feedback.textContent = `[MUTEX ACQUIRED] Process ${proc} entered critical section and acquired lock on Printer.`;
+      } else if (printerHolder === proc) {
+        feedback.textContent = `Process ${proc} already holds the lock on the printer!`;
+      } else {
+        stateBadge.textContent = 'Blocked (Waiting for Mutex)';
+        stateBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-800';
+        feedback.textContent = `[MUTEX DENIED] Process ${proc} attempted access, but printer is locked by Process ${printerHolder}! Process ${proc} must sleep.`;
+      }
+      lucide.createIcons();
+    }
+
+    function releaseResource(proc) {
+      const feedback = document.getElementById('mutex-feedback');
+      const lockStatus = document.getElementById('printer-lock-status');
+      const holderBadge = document.getElementById('printer-holder-badge');
+      const stateBadge = document.getElementById(`proc-${proc.toLowerCase()}-state`);
+
+      if (printerHolder === proc) {
+        printerMutexLocked = false;
+        printerHolder = null;
+        lockStatus.innerHTML = `<i data-lucide="unlock" class="w-3.5 h-3.5 text-emerald-600"></i> MUTEX UNLOCKED (Available)`;
+        lockStatus.className = 'text-xs font-semibold text-emerald-600 mt-1 flex items-center justify-center gap-1';
+        holderBadge.textContent = 'Current Holder: None';
+        stateBadge.textContent = 'Idle';
+        stateBadge.className = 'text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700';
+        feedback.textContent = `[MUTEX RELEASED] Process ${proc} finished printing and unlocked the mutex. Next waiting process can now acquire it.`;
+      } else {
+        feedback.textContent = `Process ${proc} cannot release the lock because it does not own it!`;
+      }
+      lucide.createIcons();
+    }
+
+    /**
+     * Deadlock Handling Simulator
+     */
+    function resetDeadlockDemo() {
+      document.getElementById('badge-hold-a').innerHTML = 'Holds: Printer 🖨️';
+      document.getElementById('badge-need-a').innerHTML = 'Scanner 📠';
+      document.getElementById('badge-hold-b').innerHTML = 'Holds: Scanner 📠';
+      document.getElementById('badge-need-b').innerHTML = 'Printer 🖨️';
+
+      document.getElementById('status-text-a').textContent = 'Waiting indefinitely for Process B to release Scanner.';
+      document.getElementById('status-text-b').textContent = 'Waiting indefinitely for Process A to release Printer.';
+
+      const warning = document.getElementById('deadlock-warning');
+      warning.className = 'p-4 rounded-xl bg-rose-50 border border-rose-300 flex items-center justify-between';
+      warning.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="font-bold text-rose-950 text-sm">CIRCULAR WAIT DETECTED! SYSTEM DEADLOCKED.</div>
+            <p class="text-xs text-rose-700">Neither process can advance. Select an Operating System recovery strategy below:</p>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function applyStrategy(strat) {
+      const warning = document.getElementById('deadlock-warning');
+
+      if (strat === 'prevention') {
+        warning.className = 'p-4 rounded-xl bg-sky-50 border border-sky-300 flex items-center gap-3';
+        warning.innerHTML = `
+          <i data-lucide="shield-check" class="w-6 h-6 text-sky-600 shrink-0"></i>
+          <div class="text-xs text-sky-900">
+            <strong>Deadlock Prevention Applied:</strong> "Hold and Wait" condition broken. The OS enforces all-or-nothing allocation: Process A was required to request both Printer AND Scanner at the exact same time before executing. Since Scanner was busy, Process A waited without holding the Printer!
+          </div>
+        `;
+        document.getElementById('badge-hold-a').textContent = 'Holds: None (Waiting)';
+        document.getElementById('status-text-a').textContent = 'Will not grab printer until scanner is also available.';
+      } else if (strat === 'avoidance') {
+        warning.className = 'p-4 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center gap-3';
+        warning.innerHTML = `
+          <i data-lucide="compass" class="w-6 h-6 text-emerald-600 shrink-0"></i>
+          <div class="text-xs text-emerald-900">
+            <strong>Banker's Algorithm Avoidance:</strong> When Process A requested the Scanner, the OS ran a safety algorithm, determined granting it would lead to an unsafe state, and delayed Process A safely until B finished!
+          </div>
+        `;
+      } else if (strat === 'terminate') {
+        warning.className = 'p-4 rounded-xl bg-purple-50 border border-purple-300 flex items-center gap-3';
+        warning.innerHTML = `
+          <i data-lucide="check-circle" class="w-6 h-6 text-purple-600 shrink-0"></i>
+          <div class="text-xs text-purple-900">
+            <strong>Recovery via Termination:</strong> Operating System terminated Process B! Scanner was reclaimed and given to Process A. Process A successfully completed its work.
+          </div>
+        `;
+        document.getElementById('badge-hold-b').textContent = 'Killed by OS ❌';
+        document.getElementById('badge-hold-a').textContent = 'Holds: Printer 🖨️ & Scanner 📠';
+        document.getElementById('status-text-a').textContent = 'Completed successfully!';
+        document.getElementById('status-text-b').textContent = 'Process killed to eliminate deadlock.';
+      } else if (strat === 'preempt') {
+        warning.className = 'p-4 rounded-xl bg-indigo-50 border border-indigo-300 flex items-center gap-3';
+        warning.innerHTML = `
+          <i data-lucide="history" class="w-6 h-6 text-indigo-600 shrink-0"></i>
+          <div class="text-xs text-indigo-900">
+            <strong>Resource Preemption & Rollback:</strong> OS forcibly reclaimed the Scanner from Process B and rolled B back to its previous checkpoint. Scanner was assigned to Process A. Once A completes, Process B restarts from checkpoint.
+          </div>
+        `;
+        document.getElementById('badge-hold-b').textContent = 'Rolled back to Checkpoint ⏱️';
+        document.getElementById('badge-hold-a').textContent = 'Holds: Printer 🖨️ & Scanner 📠';
+        document.getElementById('status-text-a').textContent = 'Executing with preempted scanner.';
+      }
+      lucide.createIcons();
+    }
+
+    /**
+     * Tab Navigation Switching
+     */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5 transition';
+      });
+
+      const targetContent = document.getElementById(`tab-content-${tabId}`);
+      if (targetContent) targetContent.classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.className = 'tab-btn px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-semibold rounded-lg text-sky-700 bg-sky-50 flex items-center gap-1.5 transition';
+      }
+
+      lucide.createIcons();
+    }
+
+    /**
+     * Window Initializer
+     */
+    window.onload = function() {
+      lucide.createIcons();
+      renderJobTable();
+      runSimulation();
+    };
+  </script>
+</body>
+</html>
