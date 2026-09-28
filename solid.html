@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOLID Principles Interactive Visualizer & Learning Lab</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Fira Code', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tab-active {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .glow-sm {
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.12);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo / Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
+            S
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900 leading-tight">SOLID Architecture Lab</h1>
+            <p class="text-xs text-slate-500">Interactive Object-Oriented Design Visualizer</p>
+          </div>
+        </div>
+
+        <!-- Quick navigation buttons -->
+        <div class="hidden md:flex items-center space-x-1">
+          <button onclick="switchTab('overview')" id="nav-btn-overview" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+            Overview & Smells
+          </button>
+          <button onclick="switchTab('srp')" id="nav-btn-srp" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+            <span class="font-bold text-blue-600">S</span>RP
+          </button>
+          <button onclick="switchTab('ocp')" id="nav-btn-ocp" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+            <span class="font-bold text-emerald-600">O</span>CP
+          </button>
+          <button onclick="switchTab('lsp')" id="nav-btn-lsp" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+            <span class="font-bold text-amber-600">L</span>SP
+          </button>
+          <button onclick="switchTab('isp')" id="nav-btn-isp" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+            <span class="font-bold text-purple-600">I</span>SP
+          </button>
+          <button onclick="switchTab('dip')" id="nav-btn-dip" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+            <span class="font-bold text-rose-600">D</span>IP
+          </button>
+          <button onclick="switchTab('quiz')" id="nav-btn-quiz" class="ml-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200">
+            Self-Check Quiz
+          </button>
+        </div>
+
+        <!-- Mobile Menu Quick Select -->
+        <div class="md:hidden">
+          <select id="mobile-nav-select" onchange="switchTab(this.value)" class="text-sm border border-slate-300 rounded-lg p-2 bg-white">
+            <option value="overview">Overview & Smells</option>
+            <option value="srp">S - Single Responsibility</option>
+            <option value="ocp">O - Open/Closed</option>
+            <option value="lsp">L - Liskov Substitution</option>
+            <option value="isp">I - Interface Segregation</option>
+            <option value="dip">D - Dependency Inversion</option>
+            <option value="quiz">Knowledge Quiz</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- TAB 0: OVERVIEW & 3 BAD ARCHITECTURAL SIGNS -->
+    <section id="tab-content-overview" class="tab-pane space-y-8">
+      <!-- Hero banner -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-xl">
+        <div class="max-w-3xl">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-400/30 mb-3">
+            Software Design & Architecture
+          </span>
+          <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
+            Why do we need design principles?
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+            In software development, requirements <strong class="text-white">always change</strong>. Clients ask for new payment options, HR updates calculation formulas, or databases migrate. Badly designed code breaks whenever requirements change. The <strong>SOLID</strong> principles are proven rules to build code that bends without breaking.
+          </p>
+        </div>
+      </div>
+
+      <!-- 3 Characteristics of Bad Architecture -->
+      <div>
+        <div class="mb-4">
+          <h3 class="text-xl font-bold text-slate-900">The 3 Deadly Traps of Bad Code Architecture</h3>
+          <p class="text-sm text-slate-500">Described by Robert C. Martin. If your software suffers from these, SOLID is the remedy.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Rigidity Card -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:border-red-300 hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-lg mb-3">
+              1
+            </div>
+            <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              Rigidity <span class="text-xs px-2 py-0.5 rounded bg-red-50 text-red-700 font-semibold border border-red-200">Hard to Change</span>
+            </h4>
+            <p class="text-sm text-slate-600 mt-2">
+              Every simple change feels like pushing concrete. Touching one class requires modifying 10 other files across the whole project.
+            </p>
+            <div class="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 border border-slate-100">
+              <strong class="text-slate-700">Analogy:</strong> A car where to change a flat tire, you must also unbolt the transmission and steering wheel.
+            </div>
+          </div>
+
+          <!-- Fragility Card -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:border-amber-300 hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-lg mb-3">
+              2
+            </div>
+            <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              Fragility <span class="text-xs px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-semibold border border-amber-200">Breaks Unexpectedly</span>
+            </h4>
+            <p class="text-sm text-slate-600 mt-2">
+              When applying a change in one place, totally unrelated parts of the software fail without warning.
+            </p>
+            <div class="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 border border-slate-100">
+              <strong class="text-slate-700">Analogy:</strong> You turn on your kitchen faucet, and unexpectedly your living room television turns off.
+            </div>
+          </div>
+
+          <!-- Immobility Card -->
+          <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:border-blue-300 hover:shadow-md transition">
+            <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mb-3">
+              3
+            </div>
+            <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              Immobility <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200">Hard to Reuse</span>
+            </h4>
+            <p class="text-sm text-slate-600 mt-2">
+              Modules are so tangled with the current application that you cannot extract them to use in another project.
+            </p>
+            <div class="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 border border-slate-100">
+              <strong class="text-slate-700">Analogy:</strong> A car radio that is permanently welded into the engine block and cannot be placed into another vehicle.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Summary Matrix of SOLID -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+        <h3 class="text-lg font-bold text-slate-900 mb-4">The SOLID Acronym at a Glance</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div onclick="switchTab('srp')" class="cursor-pointer p-4 rounded-xl border border-blue-100 bg-blue-50/50 hover:bg-blue-100/60 transition">
+            <span class="text-2xl font-black text-blue-600">S</span>
+            <div class="font-bold text-sm text-slate-900 mt-1">Single Responsibility</div>
+            <p class="text-xs text-slate-600 mt-1">A class should have only 1 reason to change (one actor/job).</p>
+          </div>
+          <div onclick="switchTab('ocp')" class="cursor-pointer p-4 rounded-xl border border-emerald-100 bg-emerald-50/50 hover:bg-emerald-100/60 transition">
+            <span class="text-2xl font-black text-emerald-600">O</span>
+            <div class="font-bold text-sm text-slate-900 mt-1">Open / Closed</div>
+            <p class="text-xs text-slate-600 mt-1">Open for extension, closed for modification.</p>
+          </div>
+          <div onclick="switchTab('lsp')" class="cursor-pointer p-4 rounded-xl border border-amber-100 bg-amber-50/50 hover:bg-amber-100/60 transition">
+            <span class="text-2xl font-black text-amber-600">L</span>
+            <div class="font-bold text-sm text-slate-900 mt-1">Liskov Substitution</div>
+            <p class="text-xs text-slate-600 mt-1">Subclasses must behave reliably when replacing parent classes.</p>
+          </div>
+          <div onclick="switchTab('isp')" class="cursor-pointer p-4 rounded-xl border border-purple-100 bg-purple-50/50 hover:bg-purple-100/60 transition">
+            <span class="text-2xl font-black text-purple-600">I</span>
+            <div class="font-bold text-sm text-slate-900 mt-1">Interface Segregation</div>
+            <p class="text-xs text-slate-600 mt-1">Don't force a class to depend on methods it does not use.</p>
+          </div>
+          <div onclick="switchTab('dip')" class="cursor-pointer p-4 rounded-xl border border-rose-100 bg-rose-50/50 hover:bg-rose-100/60 transition">
+            <span class="text-2xl font-black text-rose-600">D</span>
+            <div class="font-bold text-sm text-slate-900 mt-1">Dependency Inversion</div>
+            <p class="text-xs text-slate-600 mt-1">Depend on abstractions (interfaces), not direct concretions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-content-srp" class="tab-pane hidden space-y-6">
+      <!-- Title Banner -->
+      <div class="border-l-4 border-blue-600 bg-white rounded-r-xl p-6 border border-slate-200 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded">Letter S</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Single Responsibility Principle (SRP)</h2>
+          </div>
+          <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            Rule: "A module or class should have one, and only one, reason to change."
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 mt-3 leading-relaxed">
+          <strong>In simple words:</strong> Do not build "Swiss Army Knife" monster classes. A class should be dedicated to exactly <em>one specific actor or stakeholder</em> (like Accounting, HR, or Database Storage). When a business user asks for a change, only that person's class should change.
+        </p>
+      </div>
+
+      <!-- Real World Analogy Box -->
+      <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
+        <div class="text-2xl">👨‍🍳</div>
+        <div>
+          <h4 class="text-sm font-bold text-amber-900">Real-World Analogy: The Restaurant Staff</h4>
+          <p class="text-xs text-amber-800 mt-1">
+            Imagine an Italian restaurant where one single person cooks pasta, acts as the accountant calculating payroll, and cleans the sewer pipes. If that person changes their cleaning detergent, it might accidentally contaminate the pasta sauce! In good restaurants, you hire a <strong>Chef</strong>, an <strong>Accountant</strong>, and a <strong>Sanitation Expert</strong> separately.
+          </p>
+        </div>
+      </div>
+
+      <!-- Interactive Switcher: Violation vs Solution -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase">Interactive Handout Scenario:</span>
+            <span class="text-sm font-semibold text-slate-800">Payroll Employee Architecture</span>
+          </div>
+          <div class="inline-flex p-1 bg-slate-200 rounded-lg text-xs font-semibold">
+            <button onclick="toggleSRPView('bad')" id="srp-btn-bad" class="px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition">
+              Violating SRP (Figure 1)
+            </button>
+            <button onclick="toggleSRPView('good')" id="srp-btn-good" class="px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition">
+              Adhering to SRP (Figure 2)
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <!-- BAD VIEW -->
+          <div id="srp-view-bad" class="space-y-6">
+            <div class="bg-red-50/50 border border-red-200 rounded-lg p-3 text-xs text-red-800 flex items-center justify-between">
+              <span>⚠️ <strong>Problem:</strong> Three different actors (Accounting, HR, DBA) are tangled into one class <code class="font-mono bg-red-100 px-1 py-0.5 rounded">Employee</code>.</span>
+              <button onclick="triggerSRPBug()" class="ml-3 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700 transition">
+                Simulate: Accounting requests a formula change
+              </button>
+            </div>
+
+            <!-- Simulation Alert -->
+            <div id="srp-sim-alert" class="hidden p-3 bg-red-100 border border-red-300 text-red-900 text-xs rounded-lg animate-pulse">
+              💥 <strong>Catastrophe!</strong> Developer changed <code class="font-mono">totalHoursWorked</code> for Accounting. But the HR department's <code class="font-mono">reportHours()</code> also shares that same calculation logic! HR reports now display broken, incorrect hours to management without them knowing!
+            </div>
+
+            <!-- Visual Diagram Representation (Figure 1) -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center justify-center gap-8">
+              <!-- Actors -->
+              <div class="flex flex-col gap-4 w-full md:w-auto">
+                <div class="p-3 bg-white border border-slate-300 rounded-lg shadow-xs flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">Acc</div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-800">Accounting Personnel</div>
+                    <div class="text-[11px] text-slate-500">Calls <code class="text-blue-600">calculatePay()</code></div>
+                  </div>
+                </div>
+                <div class="p-3 bg-white border border-slate-300 rounded-lg shadow-xs flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">HR</div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-800">HR Personnel</div>
+                    <div class="text-[11px] text-slate-500">Calls <code class="text-emerald-600">reportHours()</code></div>
+                  </div>
+                </div>
+                <div class="p-3 bg-white border border-slate-300 rounded-lg shadow-xs flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">DBA</div>
+                  <div>
+                    <div class="text-xs font-bold text-slate-800">Database Administrator</div>
+                    <div class="text-[11px] text-slate-500">Calls <code class="text-purple-600">saveEmployee()</code></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dependency Arrow -->
+              <div class="text-slate-400 font-mono text-sm hidden md:block">
+                &dash;&dash;&dash; &laquo;use&raquo; &dash;&dash;&dash;&gt;
+              </div>
+
+              <!-- Bloated Class Box -->
+              <div class="w-full md:w-72 bg-white border-2 border-red-400 rounded-lg shadow-md overflow-hidden">
+                <div class="bg-red-500 text-white font-bold text-center py-1.5 text-sm">
+                  Employee (Violates SRP)
+                </div>
+                <div class="p-3 border-b border-slate-200 font-mono text-xs text-slate-700 bg-slate-50">
+                  - totalHoursWorked: int
+                </div>
+                <div class="p-3 font-mono text-xs space-y-1.5 text-slate-800">
+                  <div class="text-blue-700 font-semibold">+ calculatePay(): double</div>
+                  <div class="text-emerald-700 font-semibold">+ reportHours(): String</div>
+                  <div class="text-purple-700 font-semibold">+ saveEmployee(): void</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code representation -->
+            <div>
+              <div class="text-xs font-bold text-slate-500 uppercase mb-2">Code Example (Handout Violation):</div>
+              <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-red-400">// VIOLATION: One class serving 3 completely different actors</span>
+public class Employee {
+    private int totalHoursWorked;
+
+    <span class="text-blue-300">// Responsibility 1: Accounting (Salary computation)</span>
+    public double calculatePay() {
+        return totalHoursWorked * 25.0; <span class="text-slate-400">// What if accounting changes overtime logic?</span>
+    }
+
+    <span class="text-emerald-300">// Responsibility 2: HR (Hours reporting)</span>
+    public String reportHours() {
+        return "Total Hours: " + this.totalHoursWorked; <span class="text-slate-400">// Accidental collateral damage!</span>
+    }
+
+    <span class="text-purple-300">// Responsibility 3: Database Admin (Persistence)</span>
+    public void saveEmployee() {
+        System.out.println("Saving to MySQL database table...");
+    }
+}</code></pre>
+            </div>
+          </div>
+
+          <!-- GOOD VIEW -->
+          <div id="srp-view-good" class="hidden space-y-6">
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-center justify-between">
+              <span>✅ <strong>Solution:</strong> Separate the responsibilities into different classes for each actor. They share access to the clean data container <code class="font-mono bg-emerald-100 px-1 py-0.5 rounded">EmployeeData</code>.</span>
+            </div>
+
+            <!-- Visual Diagram Representation (Figure 2) -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              <!-- Column 1: Actors -->
+              <div class="flex flex-col gap-4">
+                <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 shadow-xs">
+                  👔 Accounting Personnel
+                </div>
+                <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 shadow-xs">
+                  👥 HR Personnel
+                </div>
+                <div class="p-2.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 shadow-xs">
+                  🗄️ Database Administrator
+                </div>
+              </div>
+
+              <!-- Column 2: Specific Classes -->
+              <div class="flex flex-col gap-3">
+                <div class="bg-white border-2 border-emerald-500 rounded-lg shadow-xs p-2 text-xs">
+                  <div class="font-bold text-emerald-800 border-b pb-1">Accounting</div>
+                  <div class="font-mono text-[11px] pt-1 text-slate-700">+ calculatePay(data): double</div>
+                </div>
+                <div class="bg-white border-2 border-emerald-500 rounded-lg shadow-xs p-2 text-xs">
+                  <div class="font-bold text-emerald-800 border-b pb-1">HumanResource</div>
+                  <div class="font-mono text-[11px] pt-1 text-slate-700">+ reportHours(data): String</div>
+                </div>
+                <div class="bg-white border-2 border-emerald-500 rounded-lg shadow-xs p-2 text-xs">
+                  <div class="font-bold text-emerald-800 border-b pb-1">DatabaseAdministrator</div>
+                  <div class="font-mono text-[11px] pt-1 text-slate-700">+ saveEmployee(data): void</div>
+                </div>
+              </div>
+
+              <!-- Column 3: Data Object -->
+              <div class="bg-white border-2 border-blue-500 rounded-lg shadow-xs p-3 text-xs">
+                <div class="font-bold text-blue-800 border-b pb-1">EmployeeData</div>
+                <div class="font-mono text-[11px] pt-1 text-slate-700">- totalHoursWorked: int</div>
+                <div class="font-mono text-[11px] text-slate-500 mt-2">// Pure data model, no tangled business logic</div>
+              </div>
+            </div>
+
+            <!-- Code representation -->
+            <div>
+              <div class="text-xs font-bold text-slate-500 uppercase mb-2">Code Example (Handout Refactored Solution):</div>
+              <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-emerald-400">// Clean SRP Solution: Each class has 1 reason to change</span>
+
+<span class="text-slate-400">// 1. The shared data container</span>
+public class EmployeeData {
+    public int totalHoursWorked;
+}
+
+<span class="text-slate-400">// 2. Single actor: Accounting</span>
+public class Accounting {
+    public double calculatePay(EmployeeData emp) {
+        return emp.totalHoursWorked * 25.0;
+    }
+}
+
+<span class="text-slate-400">// 3. Single actor: HR Personnel</span>
+public class HumanResource {
+    public String reportHours(EmployeeData emp) {
+        return "Report: " + emp.totalHoursWorked + " hours worked.";
+    }
+}
+
+<span class="text-slate-400">// 4. Single actor: DBA</span>
+public class DatabaseAdministrator {
+    public void saveEmployee(EmployeeData emp) {
+        System.out.println("Saving employee record to DB safely.");
+    }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-content-ocp" class="tab-pane hidden space-y-6">
+      <div class="border-l-4 border-emerald-600 bg-white rounded-r-xl p-6 border border-slate-200 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded">Letter O</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Open-Closed Principle (OCP)</h2>
+          </div>
+          <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            Rule: "Open for extension, closed for modification."
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 mt-3 leading-relaxed">
+          <strong>In simple words:</strong> When your app needs a new feature, you should be able to <strong>add new code</strong> (derive a new class) rather than hacking and editing existing tested code. If a class already works and passes tests, don't keep opening it up with more <code class="font-mono">if/else</code> statements!
+        </p>
+      </div>
+
+      <!-- Analogy -->
+      <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 flex gap-3 items-start">
+        <div class="text-2xl">🔌</div>
+        <div>
+          <h4 class="text-sm font-bold text-emerald-900">Real-World Analogy: Smartphone and App Store</h4>
+          <p class="text-xs text-emerald-800 mt-1">
+            Your smartphone has an operating system. When you want a new photo filter or game, you don't take a screwdriver, open the phone's circuit board, and solder new chips (modifying). Instead, you install a new app via the standard app interface (extending)!
+          </p>
+        </div>
+      </div>
+
+      <!-- Interactive Switcher -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase">Interactive Handout Scenario:</span>
+            <span class="text-sm font-semibold text-slate-800">BankAccount System</span>
+          </div>
+          <div class="inline-flex p-1 bg-slate-200 rounded-lg text-xs font-semibold">
+            <button onclick="toggleOCPView('bad')" id="ocp-btn-bad" class="px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition">
+              Violating OCP (Figure 3)
+            </button>
+            <button onclick="toggleOCPView('good')" id="ocp-btn-good" class="px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition">
+              Adhering to OCP (Figure 4)
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <!-- OCP VIOLATION VIEW -->
+          <div id="ocp-view-bad" class="space-y-6">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800 flex items-center justify-between">
+              <span>⚠️ <strong>Problem:</strong> Whenever the bank invents a new account type (e.g., Gold Savings, Investment), the core <code class="font-mono">BankAccount</code> class must be modified and re-tested.</span>
+              <button onclick="addBadAccountType()" class="ml-3 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700 transition">
+                + Add "StudentAccount"
+              </button>
+            </div>
+
+            <!-- Class Box with Dynamic Mutation -->
+            <div class="flex justify-center p-6 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="w-full max-w-sm bg-white border-2 border-red-400 rounded-lg shadow-md overflow-hidden">
+                <div class="bg-red-500 text-white font-bold text-center py-1.5 text-xs">
+                  BankAccount (Violates OCP)
+                </div>
+                <div class="p-3 border-b border-slate-200 font-mono text-xs text-slate-600 bg-slate-50 space-y-1">
+                  <div>- name: string</div>
+                  <div>- accountNumber: long</div>
+                  <div>- balance: double</div>
+                </div>
+                <div id="ocp-bad-methods" class="p-3 font-mono text-xs space-y-1 text-slate-800">
+                  <div class="text-blue-700">+ newSavingsAccount(): void</div>
+                  <div class="text-blue-700">+ newCheckingAccount(): void</div>
+                  <div>+ deposit(): void</div>
+                  <div>+ withdraw(): double</div>
+                  <div>+ getBalance(): double</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs text-amber-900">
+              <strong>Why this hurts:</strong> Every newly added method forces developers to re-run full unit regression tests. One tiny typo when editing can break existing, functional Savings accounts!
+            </div>
+          </div>
+
+          <!-- OCP SOLUTION VIEW -->
+          <div id="ocp-view-good" class="hidden space-y-6">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800 flex items-center justify-between">
+              <span>✅ <strong>Solution:</strong> Abstract <code class="font-mono">BankAccount</code>. New account types simply extend it without touching the base class.</span>
+              <button onclick="addGoodAccountType()" class="ml-3 px-3 py-1.5 bg-emerald-600 text-white rounded text-xs font-semibold hover:bg-emerald-700 transition">
+                + Extend "StudentAccount"
+              </button>
+            </div>
+
+            <!-- Inheritance Diagram (Figure 4) -->
+            <div class="p-6 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center">
+              <!-- Base Abstract Class -->
+              <div class="w-72 bg-white border-2 border-emerald-600 rounded-lg shadow-md overflow-hidden text-center mb-6">
+                <div class="bg-emerald-600 text-white font-bold py-1 text-xs">
+                  &laquo;abstract&raquo; BankAccount
+                </div>
+                <div class="p-2 border-b border-slate-200 font-mono text-[11px] text-left text-slate-600 bg-slate-50">
+                  - name: string<br>- accountNumber: long<br>- balance: double
+                </div>
+                <div class="p-2 font-mono text-[11px] text-left text-slate-800">
+                  + deposit(): void<br>+ withdraw(): double<br>+ getBalance(): double
+                </div>
+              </div>
+
+              <!-- Inheritance Arrow -->
+              <div class="text-slate-400 font-bold mb-4 text-xs flex flex-col items-center">
+                ▲
+                <span class="text-[10px] uppercase font-mono tracking-widest text-slate-500">inherits / extends</span>
+              </div>
+
+              <!-- Derived Classes Container -->
+              <div id="ocp-subclasses-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-2xl">
+                <!-- CheckingAccount -->
+                <div class="bg-white border border-emerald-400 rounded-lg p-3 shadow-xs text-xs">
+                  <div class="font-bold text-emerald-900 border-b pb-1">CheckingAccount</div>
+                  <div class="font-mono text-[11px] text-slate-600 py-1">- serviceCharge: double</div>
+                  <div class="font-mono text-[11px] text-slate-800 border-t pt-1">
+                    + applyServiceCharge(): void<br>+ withdraw(): double
+                  </div>
+                </div>
+
+                <!-- SavingsAccount -->
+                <div class="bg-white border border-emerald-400 rounded-lg p-3 shadow-xs text-xs">
+                  <div class="font-bold text-emerald-900 border-b pb-1">SavingsAccount</div>
+                  <div class="font-mono text-[11px] text-slate-600 py-1">- interestRate: double</div>
+                  <div class="font-mono text-[11px] text-slate-800 border-t pt-1">
+                    + computeInterest(): void<br>+ withdraw(): double
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code -->
+            <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-emerald-400">// Closed for modification, open for extension</span>
+public abstract class BankAccount {
+    protected String name;
+    protected double balance;
+
+    public void deposit(double amount) { this.balance += amount; }
+    public double getBalance() { return this.balance; }
+    public abstract double withdraw(double amount);
+}
+
+<span class="text-slate-400">// Adding new behaviors without touching BankAccount!</span>
+public class CheckingAccount extends BankAccount {
+    private double serviceCharge = 5.0;
+    public void applyServiceCharge() { balance -= serviceCharge; }
+    public double withdraw(double amount) { return balance -= (amount + serviceCharge); }
+}
+
+public class SavingsAccount extends BankAccount {
+    private double interestRate = 0.03;
+    public void computeInterest() { balance += (balance * interestRate); }
+    public double withdraw(double amount) { return balance -= amount; }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-content-lsp" class="tab-pane hidden space-y-6">
+      <div class="border-l-4 border-amber-600 bg-white rounded-r-xl p-6 border border-slate-200 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded">Letter L</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Liskov Substitution Principle (LSP)</h2>
+          </div>
+          <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            By Barbara Liskov (1987)
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 mt-3 leading-relaxed">
+          <strong>In simple words:</strong> If Class B is a subtype of Class A, then you should be able to pass an object of B anywhere A is expected, <strong>without breaking the application or getting unexpected surprises</strong>.
+        </p>
+      </div>
+
+      <!-- Analogy -->
+      <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
+        <div class="text-2xl">🔋</div>
+        <div>
+          <h4 class="text-sm font-bold text-amber-900">Real-World Analogy: AA Batteries & Flashlights</h4>
+          <p class="text-xs text-amber-800 mt-1">
+            If your flashlight requires standard 1.5V AA batteries, you can replace an alkaline battery with a rechargeable Duracell or Energizer battery. The flashlight doesn't care which brand it is—it turns on normally. If a battery brand suddenly exploded because it changed voltage, it would violate Liskov Substitution!
+          </p>
+        </div>
+      </div>
+
+      <!-- Handout Example: Billing and License -->
+      <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div>
+            <span class="text-xs font-bold text-slate-500 uppercase">Handout Architecture (Figure 5):</span>
+            <h3 class="text-base font-bold text-slate-900">Billing & License Substitution Model</h3>
+          </div>
+          <div class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1 rounded font-semibold border border-emerald-200">
+            Adheres to LSP
+          </div>
+        </div>
+
+        <!-- Interactive Playground -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+          <!-- Visual UML -->
+          <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 flex flex-col items-center">
+            <div class="w-56 bg-slate-800 text-white rounded-lg p-2.5 text-center text-xs font-bold shadow-xs mb-3">
+              Billing (Client Class)
+              <div class="text-[10px] text-slate-300 font-normal">Calls license.calculateFee()</div>
+            </div>
+
+            <div class="text-slate-400 font-mono text-xs my-1">↓ depends on abstraction</div>
+
+            <div class="w-56 bg-white border-2 border-amber-500 rounded-lg p-2.5 text-center text-xs shadow-xs mb-4">
+              <div class="font-bold text-amber-900">License (Base)</div>
+              <div class="font-mono text-[11px] text-slate-600 mt-1">+ calculateFee(): void</div>
+            </div>
+
+            <div class="w-full flex justify-center items-center gap-4">
+              <div class="w-40 bg-white border border-slate-300 rounded p-2 text-center text-xs shadow-2xs">
+                <div class="font-semibold text-slate-800">PersonalLicense</div>
+                <div class="text-[10px] text-slate-500">Fixed rate calculation</div>
+              </div>
+              <div class="w-40 bg-white border border-slate-300 rounded p-2 text-center text-xs shadow-2xs">
+                <div class="font-semibold text-slate-800">BusinessLicense</div>
+                <div class="text-[10px] text-slate-500">Per-user count calculation</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Execution Sandbox -->
+          <div class="bg-slate-900 text-slate-100 p-5 rounded-xl text-xs space-y-4 font-mono">
+            <div class="text-slate-400 font-bold border-b border-slate-800 pb-2 flex justify-between items-center">
+              <span>Interactive LSP Runner:</span>
+              <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-emerald-400">Substitutable in Billing</span>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-slate-300 text-[11px]">Select which License type to pass to Billing:</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="runLSPTest('personal')" id="lsp-btn-personal" class="py-2 px-3 rounded bg-amber-600 text-white font-semibold text-center hover:bg-amber-700 transition">
+                  PersonalLicense
+                </button>
+                <button onclick="runLSPTest('business')" id="lsp-btn-business" class="py-2 px-3 rounded bg-slate-800 text-slate-300 font-semibold text-center hover:bg-slate-700 transition">
+                  BusinessLicense (50 users)
+                </button>
+              </div>
+            </div>
+
+            <!-- Output console -->
+            <div class="bg-black/50 p-3 rounded-lg border border-slate-800 text-xs">
+              <div class="text-slate-400 text-[10px] mb-1">// Terminal Output:</div>
+              <div id="lsp-terminal-output" class="text-emerald-400">
+                Billing initialized with PersonalLicense. Fee calculated: $49.00 flat rate. Works seamlessly!
+              </div>
+            </div>
+
+            <p class="text-slate-400 text-[11px] leading-relaxed">
+              <strong>Key takeaway:</strong> The <code class="text-amber-300">Billing</code> class does not care which license it received. Neither subclass throws an unexpected exception or alters the contract. That is LSP.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-content-isp" class="tab-pane hidden space-y-6">
+      <div class="border-l-4 border-purple-600 bg-white rounded-r-xl p-6 border border-slate-200 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2.5 py-1 rounded">Letter I</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Interface Segregation Principle (ISP)</h2>
+          </div>
+          <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            Rule: "Clients should not be forced to depend on methods they do not use."
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 mt-3 leading-relaxed">
+          <strong>In simple words:</strong> Better to have several tiny, focused interfaces than one giant bloated "fat" interface. When you force a class to implement an interface method it doesn't need, developers are forced to write dummy code or throw ugly runtime exceptions!
+        </p>
+      </div>
+
+      <!-- Analogy -->
+      <div class="bg-purple-50/70 border border-purple-200 rounded-xl p-4 flex gap-3 items-start">
+        <div class="text-2xl">🍽️</div>
+        <div>
+          <h4 class="text-sm font-bold text-purple-900">Real-World Analogy: Fixed Buffet vs. À La Carte Menu</h4>
+          <p class="text-xs text-purple-800 mt-1">
+            If a restaurant forces every customer to pay for and accept an all-inclusive ticket with seafood, beef, and dairy (fat interface), a vegetarian or lactose-intolerant person is forced to pay for and discard food they can't eat. Instead, provide separate targeted menu options!
+          </p>
+        </div>
+      </div>
+
+      <!-- Switcher for Figure 6 vs Figure 7 -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase">Interactive Handout Scenario:</span>
+            <span class="text-sm font-semibold text-slate-800">E-Commerce Order Processing</span>
+          </div>
+          <div class="inline-flex p-1 bg-slate-200 rounded-lg text-xs font-semibold">
+            <button onclick="toggleISPView('bad')" id="isp-btn-bad" class="px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition">
+              Fat Interface (Figure 6 - Violates ISP)
+            </button>
+            <button onclick="toggleISPView('good')" id="isp-btn-good" class="px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition">
+              Segregated Interfaces (Figure 7 - Adheres to ISP)
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <!-- ISP BAD VIEW -->
+          <div id="isp-view-bad" class="space-y-6">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800 flex items-center justify-between">
+              <span>⚠️ <strong>Problem:</strong> <code class="font-mono">CashOnDeliveryOrderProcessor</code> has no credit card, but is forced to implement <code class="font-mono">validateCardInfo()</code>.</span>
+              <button onclick="testISPBug()" class="ml-3 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700 transition">
+                Execute Cash-On-Delivery Order
+              </button>
+            </div>
+
+            <div id="isp-crash-banner" class="hidden p-3 bg-red-100 border border-red-300 rounded text-red-900 text-xs">
+              🚨 <strong>Crash!</strong> <code class="font-mono font-bold">NotSupportedException: Cash-on-delivery does not support credit cards!</code> The system forced an unused method onto a class that cannot fulfill it.
+            </div>
+
+            <!-- Diagram -->
+            <div class="p-6 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center">
+              <div class="w-80 bg-white border-2 border-red-400 rounded-lg shadow-xs overflow-hidden mb-4">
+                <div class="bg-red-500 text-white text-xs font-bold text-center py-1">
+                  &laquo;interface&raquo; IOrderProcessor (Fat Interface)
+                </div>
+                <div class="p-3 font-mono text-xs space-y-1 text-slate-800">
+                  <div class="text-purple-700">+ validateCardInfo(): void</div>
+                  <div>+ validateShippingAddress(): void</div>
+                  <div>+ processOrder(): void</div>
+                </div>
+              </div>
+
+              <div class="text-slate-400 font-mono text-xs mb-3">▲ implemented by both</div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
+                <div class="bg-white border border-slate-300 rounded-lg p-3 text-xs shadow-2xs">
+                  <div class="font-bold text-slate-800">OnlineOrderProcessor</div>
+                  <div class="text-[11px] text-emerald-600 mt-1">✓ Uses credit cards</div>
+                </div>
+                <div class="bg-white border-2 border-red-300 rounded-lg p-3 text-xs shadow-2xs">
+                  <div class="font-bold text-red-900">CashOnDeliveryOrderProcessor</div>
+                  <div class="text-[11px] text-red-600 mt-1">✗ Has NO credit cards! Forced to throw error.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code -->
+            <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-red-400">// VIOLATION: Fat interface forces unnecessary baggage</span>
+public interface IOrderProcessor {
+    void validateCardInfo();
+    void validateShippingAddress();
+    void processOrder();
+}
+
+public class CashOnDeliveryOrderProcessor implements IOrderProcessor {
+    public void validateShippingAddress() { /* Validates address */ }
+    public void processOrder() { /* Prepares cash collection */ }
+
+    <span class="text-red-300">// FORCED DUMMY METHOD: Violates ISP!</span>
+    public void validateCardInfo() {
+        throw new UnsupportedOperationException("No cards in COD!");
+    }
+}</code></pre>
+          </div>
+
+          <!-- ISP GOOD VIEW -->
+          <div id="isp-view-good" class="hidden space-y-6">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800">
+              ✅ <strong>Solution:</strong> Segregate into two interfaces: general order processing (<code class="font-mono">IOrderProcessor</code>) and online payment processing (<code class="font-mono">IOnlineOrderProcessor</code>).
+            </div>
+
+            <!-- Diagram (Figure 7) -->
+            <div class="p-6 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-xl mb-6">
+                <!-- Interface 1 -->
+                <div class="bg-white border-2 border-purple-500 rounded-lg p-3 shadow-xs">
+                  <div class="font-bold text-xs text-purple-900 text-center border-b pb-1">
+                    &laquo;interface&raquo; IOrderProcessor
+                  </div>
+                  <div class="font-mono text-[11px] text-slate-700 pt-2 space-y-1">
+                    <div>+ validateShippingAddress(): void</div>
+                    <div>+ processOrder(): void</div>
+                  </div>
+                </div>
+
+                <!-- Interface 2 -->
+                <div class="bg-white border-2 border-blue-500 rounded-lg p-3 shadow-xs">
+                  <div class="font-bold text-xs text-blue-900 text-center border-b pb-1">
+                    &laquo;interface&raquo; IOnlineOrderProcessor
+                  </div>
+                  <div class="font-mono text-[11px] text-slate-700 pt-2">
+                    <div>+ validateCardInfo(): void</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Implementing Classes -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-xl">
+                <div class="bg-white border border-emerald-500 rounded-lg p-3 shadow-xs">
+                  <div class="font-bold text-xs text-slate-900">CashOnDeliveryOrderProcessor</div>
+                  <div class="text-[11px] text-slate-500 mt-1">Implements only <code class="text-purple-700">IOrderProcessor</code>. Zero junk methods!</div>
+                </div>
+
+                <div class="bg-white border border-emerald-500 rounded-lg p-3 shadow-xs">
+                  <div class="font-bold text-xs text-slate-900">OnlineOrderProcessor</div>
+                  <div class="text-[11px] text-slate-500 mt-1">Implements both <code class="text-purple-700">IOrderProcessor</code> AND <code class="text-blue-700">IOnlineOrderProcessor</code>.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code -->
+            <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-emerald-400">// Clean ISP Solution: Specific interfaces</span>
+public interface IOrderProcessor {
+    void validateShippingAddress();
+    void processOrder();
+}
+
+public interface IOnlineOrderProcessor {
+    void validateCardInfo();
+}
+
+<span class="text-slate-400">// Cash on delivery only cares about general order methods</span>
+public class CashOnDeliveryOrderProcessor implements IOrderProcessor {
+    public void validateShippingAddress() { /* Check delivery street */ }
+    public void processOrder() { /* Dispatch rider */ }
+}
+
+<span class="text-slate-400">// Online orders implement both interfaces</span>
+public class OnlineOrderProcessor implements IOrderProcessor, IOnlineOrderProcessor {
+    public void validateShippingAddress() { /* Check delivery street */ }
+    public void validateCardInfo() { /* Charge Stripe/PayPal */ }
+    public void processOrder() { /* Send confirmation email */ }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-content-dip" class="tab-pane hidden space-y-6">
+      <div class="border-l-4 border-rose-600 bg-white rounded-r-xl p-6 border border-slate-200 shadow-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2.5 py-1 rounded">Letter D</span>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Dependency Inversion Principle (DIP)</h2>
+          </div>
+          <div class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            Rule: "Depend on abstractions, not on concretions."
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 mt-3 leading-relaxed">
+          <strong>In simple words:</strong> High-level business logic (e.g., <code class="font-mono">UserManager</code>) should not directly instantiate and depend on low-level plumbing details (e.g., <code class="font-mono">EmailNotifier</code>). Both should shake hands through an abstract interface (<code class="font-mono">INotifier</code>).
+        </p>
+      </div>
+
+      <!-- Analogy -->
+      <div class="bg-rose-50/70 border border-rose-200 rounded-xl p-4 flex gap-3 items-start">
+        <div class="text-2xl">💡</div>
+        <div>
+          <h4 class="text-sm font-bold text-rose-900">Real-World Analogy: Wall Electrical Socket</h4>
+          <p class="text-xs text-rose-800 mt-1">
+            Your home wall socket is an <em>abstraction</em> (a standard 220V/110V plug interface). You can plug in a lamp, a blender, a phone charger, or a TV. The power plant does not hardwire directly into your lamp. If the lamp breaks, you don't call the power plant to rewire the city!
+          </p>
+        </div>
+      </div>
+
+      <!-- Switcher for Figure 8 vs Figure 9 -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase">Interactive Handout Scenario:</span>
+            <span class="text-sm font-semibold text-slate-800">UserManager & Notification Services</span>
+          </div>
+          <div class="inline-flex p-1 bg-slate-200 rounded-lg text-xs font-semibold">
+            <button onclick="toggleDIPView('bad')" id="dip-btn-bad" class="px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition">
+              Violating DIP (Figure 8)
+            </button>
+            <button onclick="toggleDIPView('good')" id="dip-btn-good" class="px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition">
+              Adhering to DIP (Figure 9)
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <!-- DIP BAD VIEW -->
+          <div id="dip-view-bad" class="space-y-6">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800">
+              ⚠️ <strong>Problem:</strong> <code class="font-mono font-bold">UserManager</code> is hardcoded to use <code class="font-mono font-bold">EmailNotifier</code>. If management asks to send SMS notifications or in-app popups instead, <code class="font-mono">UserManager</code> must be rewritten!
+            </div>
+
+            <!-- Diagram (Figure 8) -->
+            <div class="p-6 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-center gap-6">
+              <!-- High Level Class -->
+              <div class="w-64 bg-white border-2 border-red-500 rounded-lg shadow-sm overflow-hidden">
+                <div class="bg-red-500 text-white font-bold text-xs p-2 text-center">
+                  UserManager (High-Level)
+                </div>
+                <div class="p-3 font-mono text-xs space-y-1">
+                  <div>+ changePassword(): void</div>
+                  <div class="text-[10px] text-red-600 mt-2 font-sans font-semibold">❌ Hardcodes: <br><code class="font-mono">new EmailNotifier()</code></div>
+                </div>
+              </div>
+
+              <div class="text-slate-400 font-mono text-xs">── &laquo;tightly coupled&raquo; ──▶</div>
+
+              <!-- Low Level Class -->
+              <div class="w-64 bg-white border border-slate-300 rounded-lg shadow-sm overflow-hidden">
+                <div class="bg-slate-700 text-white font-bold text-xs p-2 text-center">
+                  EmailNotifier (Low-Level)
+                </div>
+                <div class="p-3 font-mono text-xs">
+                  <div>+ notifyClient(): void</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bad code -->
+            <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-red-400">// VIOLATION: High-level directly instantiates low-level concretion</span>
+public class UserManager {
+    <span class="text-red-300">private EmailNotifier notifier = new EmailNotifier(); // Tightly coupled!</span>
+
+    public void changePassword(String newPassword) {
+        // Business logic...
+        notifier.notifyClient(); <span class="text-slate-400">// Cannot easily swap with SMS or PopupNotifier!</span>
+    }
+}</code></pre>
+          </div>
+
+          <!-- DIP GOOD VIEW -->
+          <div id="dip-view-good" class="hidden space-y-6">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800">
+              ✅ <strong>Solution:</strong> Introduce the <code class="font-mono">INotifier</code> interface. <code class="font-mono">UserManager</code> receives any notifier via its constructor (Dependency Injection).
+            </div>
+
+            <!-- Interactive Notification Switcher -->
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-6">
+              <!-- Figure 9 Diagram -->
+              <div class="flex flex-col items-center">
+                <!-- Row with Interface and UserManager -->
+                <div class="flex flex-col sm:flex-row items-center gap-8 mb-6">
+                  <div class="w-60 bg-white border-2 border-rose-500 rounded-lg shadow-xs overflow-hidden">
+                    <div class="bg-rose-500 text-white font-bold text-xs p-1.5 text-center">
+                      &laquo;interface&raquo; INotifier
+                    </div>
+                    <div class="p-2.5 font-mono text-[11px] text-slate-700 text-center">
+                      + notifyClient(): void
+                    </div>
+                  </div>
+
+                  <div class="text-slate-400 font-mono text-xs hidden sm:block">◀── &laquo;use&raquo; ──</div>
+
+                  <div class="w-60 bg-white border-2 border-emerald-600 rounded-lg shadow-xs overflow-hidden">
+                    <div class="bg-emerald-600 text-white font-bold text-xs p-1.5 text-center">
+                      UserManager
+                    </div>
+                    <div class="p-2.5 font-mono text-[11px] text-slate-700">
+                      <div>+ UserManager(INotifier n)</div>
+                      <div>+ changePassword(): void</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-slate-400 font-mono text-xs mb-3">▲ implements &laquo;INotifier&raquo;</div>
+
+                <!-- 3 Low Level Classes (Email, SMS, Popup) -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
+                  <button onclick="simulateDIP('email')" class="p-2.5 bg-white border border-slate-300 rounded text-xs font-semibold hover:border-blue-500 hover:bg-blue-50 transition text-center shadow-2xs">
+                    📧 EmailNotifier
+                  </button>
+                  <button onclick="simulateDIP('sms')" class="p-2.5 bg-white border border-slate-300 rounded text-xs font-semibold hover:border-emerald-500 hover:bg-emerald-50 transition text-center shadow-2xs">
+                    📱 SMSNotifier
+                  </button>
+                  <button onclick="simulateDIP('popup')" class="p-2.5 bg-white border border-slate-300 rounded text-xs font-semibold hover:border-purple-500 hover:bg-purple-50 transition text-center shadow-2xs">
+                    🔔 PopupNotifier
+                  </button>
+                </div>
+              </div>
+
+              <!-- Live Simulator Log -->
+              <div class="bg-slate-900 text-slate-100 p-4 rounded-lg font-mono text-xs">
+                <span class="text-slate-400">// Password Change Event Simulator:</span>
+                <div id="dip-terminal-log" class="text-emerald-400 mt-1">
+                  Click one of the notifiers above to inject it into UserManager without changing a single line of UserManager's code!
+                </div>
+              </div>
+            </div>
+
+            <!-- Code -->
+            <pre class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg font-mono overflow-x-auto leading-relaxed"><code><span class="text-emerald-400">// 1. The abstraction (shake-hands interface)</span>
+public interface INotifier {
+    void notifyClient(String message);
+}
+
+<span class="text-slate-400">// 2. High-level class depends on INotifier abstraction</span>
+public class UserManager {
+    private INotifier notifier;
+
+    <span class="text-emerald-300">// Dependency is INJECTED from the outside!</span>
+    public UserManager(INotifier notifier) {
+        this.notifier = notifier;
+    }
+
+    public void changePassword(String newPassword) {
+        // change logic...
+        this.notifier.notifyClient("Your password has been successfully updated!");
+    }
+}
+
+<span class="text-slate-400">// 3. Low-level interchangeable concretions</span>
+public class EmailNotifier implements INotifier {
+    public void notifyClient(String msg) { System.out.println("Emailing: " + msg); }
+}
+public class SMSNotifier implements INotifier {
+    public void notifyClient(String msg) { System.out.println("SMS sending: " + msg); }
+}
+public class PopupNotifier implements INotifier {
+    public void notifyClient(String msg) { System.out.println("Modal Popup: " + msg); }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-content-quiz" class="tab-pane hidden space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+        <div class="max-w-2xl">
+          <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded">Knowledge Check</span>
+          <h2 class="text-2xl font-bold text-slate-900 mt-2">Test Your SOLID Understanding</h2>
+          <p class="text-sm text-slate-600 mt-1">
+            Answer these 5 scenario questions to see how well you can identify and solve architectural issues.
+          </p>
+        </div>
+
+        <div id="quiz-container" class="mt-6 space-y-6">
+          <!-- Question 1 -->
+          <div class="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div class="text-xs font-bold text-blue-600">Question 1 of 5</div>
+            <p class="text-sm font-semibold text-slate-800">
+              A developer places <code class="font-mono text-xs bg-slate-200 px-1 py-0.5 rounded">calculatePay()</code>, <code class="font-mono text-xs bg-slate-200 px-1 py-0.5 rounded">reportHours()</code>, and <code class="font-mono text-xs bg-slate-200 px-1 py-0.5 rounded">saveEmployee()</code> all into one <code class="font-mono text-xs bg-slate-200 px-1 py-0.5 rounded">Employee</code> class. Which principle is being violated?
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <button onclick="answerQuiz(1, 'A', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">A) Single Responsibility Principle</button>
+              <button onclick="answerQuiz(1, 'B', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">B) Open-Closed Principle</button>
+              <button onclick="answerQuiz(1, 'C', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">C) Liskov Substitution Principle</button>
+              <button onclick="answerQuiz(1, 'D', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">D) Dependency Inversion Principle</button>
+            </div>
+            <div id="quiz-feedback-1" class="hidden text-xs p-2.5 rounded-lg"></div>
+          </div>
+
+          <!-- Question 2 -->
+          <div class="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div class="text-xs font-bold text-blue-600">Question 2 of 5</div>
+            <p class="text-sm font-semibold text-slate-800">
+              When software is described as "Rigid" (Rigidity), what does that mean?
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <button onclick="answerQuiz(2, 'A', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">A) It breaks in completely unexpected places when touched.</button>
+              <button onclick="answerQuiz(2, 'B', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">B) It is hard to change because every change cascades across many files.</button>
+              <button onclick="answerQuiz(2, 'C', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">C) It cannot be reused in another application.</button>
+              <button onclick="answerQuiz(2, 'D', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">D) It runs too slowly on older computers.</button>
+            </div>
+            <div id="quiz-feedback-2" class="hidden text-xs p-2.5 rounded-lg"></div>
+          </div>
+
+          <!-- Question 3 -->
+          <div class="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div class="text-xs font-bold text-blue-600">Question 3 of 5</div>
+            <p class="text-sm font-semibold text-slate-800">
+              You create an interface <code class="font-mono text-xs bg-slate-200 px-1 py-0.5 rounded">IOrderProcessor</code> with credit card verification. However, your Cash-On-Delivery class doesn't use credit cards and is forced to throw an exception. What principle solves this?
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <button onclick="answerQuiz(3, 'A', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">A) Interface Segregation Principle</button>
+              <button onclick="answerQuiz(3, 'B', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">B) Single Responsibility Principle</button>
+              <button onclick="answerQuiz(3, 'C', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">C) Liskov Substitution Principle</button>
+              <button onclick="answerQuiz(3, 'D', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">D) Open-Closed Principle</button>
+            </div>
+            <div id="quiz-feedback-3" class="hidden text-xs p-2.5 rounded-lg"></div>
+          </div>
+
+          <!-- Question 4 -->
+          <div class="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div class="text-xs font-bold text-blue-600">Question 4 of 5</div>
+            <p class="text-sm font-semibold text-slate-800">
+              The "Open-Closed Principle" specifically dictates that a class should be:
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <button onclick="answerQuiz(4, 'A', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">A) Open for modification, closed for inheritance.</button>
+              <button onclick="answerQuiz(4, 'B', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">B) Open for public access, closed for private access.</button>
+              <button onclick="answerQuiz(4, 'C', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">C) Open for extension, closed for modification.</button>
+              <button onclick="answerQuiz(4, 'D', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">D) Open to all actors, closed to database changes.</button>
+            </div>
+            <div id="quiz-feedback-4" class="hidden text-xs p-2.5 rounded-lg"></div>
+          </div>
+
+          <!-- Question 5 -->
+          <div class="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <div class="text-xs font-bold text-blue-600">Question 5 of 5</div>
+            <p class="text-sm font-semibold text-slate-800">
+              In the Dependency Inversion Principle, what should high-level business classes depend on?
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <button onclick="answerQuiz(5, 'A', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">A) Directly on low-level database concretions</button>
+              <button onclick="answerQuiz(5, 'B', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">B) On abstractions (e.g., interfaces or abstract classes)</button>
+              <button onclick="answerQuiz(5, 'C', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">C) On static helper files</button>
+              <button onclick="answerQuiz(5, 'D', this)" class="p-3 text-left bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition">D) On third-party libraries only</button>
+            </div>
+            <div id="quiz-feedback-5" class="hidden text-xs p-2.5 rounded-lg"></div>
+          </div>
+        </div>
+
+        <div id="quiz-score-summary" class="hidden mt-6 p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
+          <div class="text-lg font-bold text-blue-900" id="quiz-score-text"></div>
+          <p class="text-xs text-blue-700 mt-1">Review any principle tab above to reinforce concepts!</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-12 bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-xl">📖</span>
+        <h3 class="text-base font-bold text-slate-900">Student Jargon Buster (Technical Terms in Plain English)</h3>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <span class="font-bold text-slate-800">Abstraction:</span>
+          <p class="text-slate-600 mt-1">A contract or blueprint (like an Interface) that says <em>what</em> needs to be done, without caring <em>how</em> it's done.</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <span class="font-bold text-slate-800">Concretion:</span>
+          <p class="text-slate-600 mt-1">The actual real class with working code inside (e.g., <code class="font-mono">EmailNotifier</code> vs abstract <code class="font-mono">INotifier</code>).</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <span class="font-bold text-slate-800">Actor / Stakeholder:</span>
+          <p class="text-slate-600 mt-1">The specific group or person who asks for software changes (e.g., Accounting team, Human Resources, or DBAs).</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <span class="font-bold text-slate-800">Tight Coupling:</span>
+          <p class="text-slate-600 mt-1">When Class A directly relies on Class B. If B changes, A instantly breaks like glued cardboard.</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <span class="font-bold text-slate-800">Derived / Subclass:</span>
+          <p class="text-slate-600 mt-1">A child class that extends or inherits from a base parent class.</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <span class="font-bold text-slate-800">Dependency Injection:</span>
+          <p class="text-slate-600 mt-1">Instead of creating an object inside your class with <code class="font-mono">new</code>, someone hands it to you through the constructor.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4">
+      <p>SOLID Software Architecture Visualizer &bull; Designed for interactive student learning</p>
+    </div>
+  </footer>
+
+  <script>
+    // State management for current active tab
+    function switchTab(tabId) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-pane').forEach(el => {
+        el.classList.add('hidden');
+      });
+
+      // Show selected tab
+      const target = document.getElementById('tab-content-' + tabId);
+      if (target) {
+        target.classList.remove('hidden');
+      }
+
+      // Update desktop nav styling
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.remove('tab-active');
+      });
+      const activeNavBtn = document.getElementById('nav-btn-' + tabId);
+      if (activeNavBtn) {
+        activeNavBtn.classList.add('tab-active');
+      }
+
+      // Sync mobile select
+      const mobileSelect = document.getElementById('mobile-nav-select');
+      if (mobileSelect) {
+        mobileSelect.value = tabId;
+      }
+
+      // Scroll smoothly to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // SRP View Toggle
+    function toggleSRPView(type) {
+      const badView = document.getElementById('srp-view-bad');
+      const goodView = document.getElementById('srp-view-good');
+      const badBtn = document.getElementById('srp-btn-bad');
+      const goodBtn = document.getElementById('srp-btn-good');
+
+      if (type === 'bad') {
+        badView.classList.remove('hidden');
+        goodView.classList.add('hidden');
+        badBtn.className = 'px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition';
+        goodBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      } else {
+        badView.classList.add('hidden');
+        goodView.classList.remove('hidden');
+        goodBtn.className = 'px-3 py-1 rounded-md bg-emerald-600 text-white shadow-xs transition';
+        badBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      }
+    }
+
+    function triggerSRPBug() {
+      const alertBox = document.getElementById('srp-sim-alert');
+      alertBox.classList.remove('hidden');
+    }
+
+    // OCP View Toggle
+    function toggleOCPView(type) {
+      const badView = document.getElementById('ocp-view-bad');
+      const goodView = document.getElementById('ocp-view-good');
+      const badBtn = document.getElementById('ocp-btn-bad');
+      const goodBtn = document.getElementById('ocp-btn-good');
+
+      if (type === 'bad') {
+        badView.classList.remove('hidden');
+        goodView.classList.add('hidden');
+        badBtn.className = 'px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition';
+        goodBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      } else {
+        badView.classList.add('hidden');
+        goodView.classList.remove('hidden');
+        goodBtn.className = 'px-3 py-1 rounded-md bg-emerald-600 text-white shadow-xs transition';
+        badBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      }
+    }
+
+    let badAccountCount = 0;
+    function addBadAccountType() {
+      badAccountCount++;
+      const container = document.getElementById('ocp-bad-methods');
+      const newElem = document.createElement('div');
+      newElem.className = 'text-red-600 font-semibold animate-pulse';
+      newElem.textContent = `+ newStudentAccount${badAccountCount}(): void (MODIFIED CORE CLASS!)`;
+      container.appendChild(newElem);
+    }
+
+    let goodAccountCount = 0;
+    function addGoodAccountType() {
+      goodAccountCount++;
+      const container = document.getElementById('ocp-subclasses-container');
+      const newCard = document.createElement('div');
+      newCard.className = 'bg-white border-2 border-dashed border-emerald-500 rounded-lg p-3 shadow-xs text-xs';
+      newCard.innerHTML = `
+        <div class="font-bold text-emerald-900 border-b pb-1">StudentAccount${goodAccountCount}</div>
+        <div class="font-mono text-[11px] text-slate-600 py-1">- discountRate: double</div>
+        <div class="font-mono text-[11px] text-slate-800 border-t pt-1">
+          + withdraw(): double
+        </div>
+      `;
+      container.appendChild(newCard);
+    }
+
+    // LSP Test runner
+    function runLSPTest(type) {
+      const output = document.getElementById('lsp-terminal-output');
+      const personalBtn = document.getElementById('lsp-btn-personal');
+      const businessBtn = document.getElementById('lsp-btn-business');
+
+      if (type === 'personal') {
+        personalBtn.className = 'py-2 px-3 rounded bg-amber-600 text-white font-semibold text-center transition';
+        businessBtn.className = 'py-2 px-3 rounded bg-slate-800 text-slate-300 font-semibold text-center transition';
+        output.textContent = 'Billing.processLicense(new PersonalLicense()): Fee evaluated = $49.00 flat rate. Base contract respected!';
+      } else {
+        businessBtn.className = 'py-2 px-3 rounded bg-amber-600 text-white font-semibold text-center transition';
+        personalBtn.className = 'py-2 px-3 rounded bg-slate-800 text-slate-300 font-semibold text-center transition';
+        output.textContent = 'Billing.processLicense(new BusinessLicense(50)): Fee evaluated = 50 users * $15 = $750.00. Base contract respected without side effects!';
+      }
+    }
+
+    // ISP View Toggle
+    function toggleISPView(type) {
+      const badView = document.getElementById('isp-view-bad');
+      const goodView = document.getElementById('isp-view-good');
+      const badBtn = document.getElementById('isp-btn-bad');
+      const goodBtn = document.getElementById('isp-btn-good');
+
+      if (type === 'bad') {
+        badView.classList.remove('hidden');
+        goodView.classList.add('hidden');
+        badBtn.className = 'px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition';
+        goodBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      } else {
+        badView.classList.add('hidden');
+        goodView.classList.remove('hidden');
+        goodBtn.className = 'px-3 py-1 rounded-md bg-emerald-600 text-white shadow-xs transition';
+        badBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      }
+    }
+
+    function testISPBug() {
+      const crash = document.getElementById('isp-crash-banner');
+      crash.classList.remove('hidden');
+    }
+
+    // DIP View Toggle
+    function toggleDIPView(type) {
+      const badView = document.getElementById('dip-view-bad');
+      const goodView = document.getElementById('dip-view-good');
+      const badBtn = document.getElementById('dip-btn-bad');
+      const goodBtn = document.getElementById('dip-btn-good');
+
+      if (type === 'bad') {
+        badView.classList.remove('hidden');
+        goodView.classList.add('hidden');
+        badBtn.className = 'px-3 py-1 rounded-md bg-red-600 text-white shadow-xs transition';
+        goodBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      } else {
+        badView.classList.add('hidden');
+        goodView.classList.remove('hidden');
+        goodBtn.className = 'px-3 py-1 rounded-md bg-emerald-600 text-white shadow-xs transition';
+        badBtn.className = 'px-3 py-1 rounded-md text-slate-700 hover:text-slate-900 transition';
+      }
+    }
+
+    function simulateDIP(channel) {
+      const log = document.getElementById('dip-terminal-log');
+      if (channel === 'email') {
+        log.innerHTML = `<span class="text-blue-400">UserManager injected with EmailNotifier:</span><br>&gt; "Sending email alert: Your password has been updated to user@domain.com."`;
+      } else if (channel === 'sms') {
+        log.innerHTML = `<span class="text-emerald-400">UserManager injected with SMSNotifier:</span><br>&gt; "Sending SMS alert: OTP Verification & Password Changed to +1-555-0199."`;
+      } else if (channel === 'popup') {
+        log.innerHTML = `<span class="text-purple-400">UserManager injected with PopupNotifier:</span><br>&gt; "Displaying in-app modal dialogue: 'Security Warning: Password modified!'"`;
+      }
+    }
+
+    const quizAnswers = {
+      1: { correct: 'A', explain: 'Correct! The Employee class violated SRP by grouping three actors (Accounting, HR, DBA) into one class.' },
+      2: { correct: 'B', explain: 'Correct! Rigidity means applying a change is hard because every change cascades across multiple parts of the software.' },
+      3: { correct: 'A', explain: 'Correct! The Interface Segregation Principle tells us to break fat interfaces into smaller ones so classes aren\'t forced to implement unused methods.' },
+      4: { correct: 'C', explain: 'Correct! OCP states that classes should be open for extension (adding new classes), but closed for modification.' },
+      5: { correct: 'B', explain: 'Correct! High-level classes and low-level classes should both depend on abstractions (interfaces).' }
+    };
+
+    let userScore = 0;
+    const answered = new Set();
+
+    function answerQuiz(qNum, chosen, btnElement) {
+      if (answered.has(qNum)) return;
+      answered.add(qNum);
+
+      const feedback = document.getElementById('quiz-feedback-' + qNum);
+      feedback.classList.remove('hidden');
+
+      const isCorrect = chosen === quizAnswers[qNum].correct;
+      if (isCorrect) {
+        userScore++;
+        btnElement.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900', 'font-bold');
+        feedback.className = 'text-xs p-2.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300';
+        feedback.textContent = '🎉 ' + quizAnswers[qNum].explain;
+      } else {
+        btnElement.classList.add('bg-red-100', 'border-red-500', 'text-red-900', 'font-bold');
+        feedback.className = 'text-xs p-2.5 rounded-lg bg-red-100 text-red-900 border border-red-300';
+        feedback.textContent = '❌ Incorrect. ' + quizAnswers[qNum].explain;
+      }
+
+      if (answered.size === 5) {
+        const summary = document.getElementById('quiz-score-summary');
+        const scoreText = document.getElementById('quiz-score-text');
+        summary.classList.remove('hidden');
+        scoreText.textContent = `You scored ${userScore} / 5!`;
+      }
+    }
+
+    // Set initial default tab on load
+    window.addEventListener('DOMContentLoaded', () => {
+      switchTab('overview');
+    });
+  </script>
+</body>
+</html>
