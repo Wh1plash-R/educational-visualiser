@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C# Thread Lifecycle & Multithreading Interactive Visualizer</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"Fira Code"', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              900: '#0c4a6e',
+              950: '#082f49'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Glow transitions for nodes */
+    .state-node {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .node-unstarted.active {
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.45);
+      border-color: #38bdf8 !important;
+      background: rgba(14, 165, 233, 0.15) !important;
+    }
+    .node-running.active {
+      box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+      border-color: #22c55e !important;
+      background: rgba(34, 197, 94, 0.15) !important;
+    }
+    .node-waitsleepjoin.active {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+      border-color: #f59e0b !important;
+      background: rgba(245, 158, 11, 0.15) !important;
+    }
+    .node-blocked.active {
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.45);
+      border-color: #a855f7 !important;
+      background: rgba(168, 85, 247, 0.15) !important;
+    }
+    .node-abortrequested.active {
+      box-shadow: 0 0 25px rgba(249, 115, 22, 0.5);
+      border-color: #f97316 !important;
+      background: rgba(249, 115, 22, 0.15) !important;
+    }
+    .node-stopped.active {
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.45);
+      border-color: #ef4444 !important;
+      background: rgba(239, 68, 68, 0.15) !important;
+    }
+
+    /* Animated dashed connection SVG lines */
+    .flow-dash {
+      stroke-dasharray: 6 6;
+      animation: dashFlow 1.2s linear infinite;
+    }
+    @keyframes dashFlow {
+      from { stroke-dashoffset: 24; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* Syntax highlight colors */
+    .kw { color: #38bdf8; font-weight: 600; }     /* keyword: new, void, int */
+    .cls { color: #f43f5e; font-weight: 600; }    /* class/type: Thread, Console */
+    .str { color: #facc15; }                      /* string: "hello" */
+    .num { color: #a78bfa; }                      /* number: 2000 */
+    .com { color: #64748b; font-style: italic; }  /* comment */
+    .fn { color: #34d399; }                       /* method: Start, Sleep */
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            C# Thread Explorer
+            <span class="text-[11px] font-normal px-2 py-0.5 rounded-full bg-sky-950 text-sky-400 border border-sky-800/70 font-mono">System.Threading</span>
+          </h1>
+          <p class="text-xs text-slate-400">Interactive Visual Guide for Beginners</p>
+        </div>
+      </div>
+
+      <!-- Desktop Nav Tabs -->
+      <nav class="hidden md:flex space-x-1.5 p-1 bg-slate-800/80 rounded-xl border border-slate-700/60 text-xs font-semibold">
+        <button onclick="switchTab('visualizer')" id="nav-visualizer" class="px-3.5 py-1.5 rounded-lg bg-sky-600 text-white shadow transition-all">
+          1. State Machine
+        </button>
+        <button onclick="switchTab('code-lab')" id="nav-code-lab" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">
+          2. Handout Code Lab
+        </button>
+        <button onclick="switchTab('race-condition')" id="nav-race-condition" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">
+          3. Multithreading & Join()
+        </button>
+        <button onclick="switchTab('api-cheatsheet')" id="nav-api-cheatsheet" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all">
+          4. Properties & Methods
+        </button>
+      </nav>
+
+      <!-- Analogy Mode Toggle -->
+      <div class="flex items-center space-x-2">
+        <button id="toggle-analogy-btn" onclick="toggleKitchenAnalogy()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1.5 transition">
+          <span id="analogy-icon">🍳</span>
+          <span id="analogy-label">Hide Kitchen Analogy</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Tab Navigation -->
+  <div class="md:hidden flex overflow-x-auto p-2 bg-slate-900 border-b border-slate-800 text-xs gap-2">
+    <button onclick="switchTab('visualizer')" id="mob-nav-visualizer" class="px-3 py-1.5 whitespace-nowrap rounded-lg bg-sky-600 text-white font-semibold">1. State Machine</button>
+    <button onclick="switchTab('code-lab')" id="mob-nav-code-lab" class="px-3 py-1.5 whitespace-nowrap rounded-lg bg-slate-800 text-slate-300">2. Code Lab</button>
+    <button onclick="switchTab('race-condition')" id="mob-nav-race-condition" class="px-3 py-1.5 whitespace-nowrap rounded-lg bg-slate-800 text-slate-300">3. Multithreading & Join()</button>
+    <button onclick="switchTab('api-cheatsheet')" id="mob-nav-api-cheatsheet" class="px-3 py-1.5 whitespace-nowrap rounded-lg bg-slate-800 text-slate-300">4. Properties & Methods</button>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Kitchen Analogy Overview Banner -->
+    <div id="analogy-banner" class="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-slate-900 p-4 sm:p-5 flex items-start gap-4 transition-all">
+      <div class="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-xl shrink-0 border border-amber-500/30">
+        🍳
+      </div>
+      <div class="flex-1 text-xs">
+        <h3 class="text-sm font-bold text-amber-200">The Kitchen Analogy for Beginners</h3>
+        <p class="text-amber-200/80 mt-1 leading-relaxed">
+          Think of a <strong>Process</strong> as the whole Restaurant, and the <strong>Main Thread</strong> as the Head Chef who opens the doors.
+          When the Head Chef needs help, they hire an apprentice cook (<strong>Child Thread</strong>) and hand them a printed recipe (<code class="bg-amber-900/60 px-1 py-0.5 rounded text-amber-300 font-mono">ThreadStart</code> delegate).
+          The CPU core is the single hot stove. If an apprentice needs to wait for bread to bake (<code class="bg-amber-900/60 px-1 py-0.5 rounded text-amber-300 font-mono">Sleep</code>), they step aside so another cook can use the stove!
+        </p>
+      </div>
+      <button onclick="dismissBanner()" class="text-slate-400 hover:text-white text-sm p-1" title="Dismiss banner">✕</button>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 1: INTERACTIVE THREAD LIFECYCLE STATE MACHINE                     -->
+    <!-- ========================================================================= -->
+    <section id="section-visualizer" class="space-y-6">
+      
+      <!-- Top Row: Interactive Diagram + Status Inspector -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Interactive State Machine Diagram (8 Cols) -->
+        <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800">
+              <div>
+                <span class="text-[11px] uppercase tracking-wider font-bold text-sky-400">Harwani (2015) Lifecycle Model</span>
+                <h2 class="text-lg font-bold text-white">Block Diagram of Thread's Life Cycle</h2>
+                <p class="text-xs text-slate-400">Click state nodes or action buttons to see transitions and thread behaviors.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-950 border border-slate-800 text-slate-300">
+                  State: <strong id="badge-current-state" class="ml-1.5 text-sky-400 font-mono">Unstarted</strong>
+                </span>
+                <button onclick="resetSimulation()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1 transition" title="Reset State Machine">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Visual State Grid with Flow Indicators -->
+            <div class="py-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              
+              <!-- 1. Node: Unstarted -->
+              <div id="node-unstarted" onclick="simulateStateClick('Unstarted')" class="state-node node-unstarted active p-4 rounded-xl border-2 border-slate-700 bg-slate-800/80 cursor-pointer hover:border-sky-500 relative transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-sky-300 font-mono">1. Unstarted</span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+                </div>
+                <p class="text-xs text-slate-300 leading-snug">Created via <code class="text-sky-300 font-mono text-[11px]">new Thread()</code>. No CPU allocated yet.</p>
+                <div class="mt-2 text-[11px] text-amber-300 font-medium analogy-note">🍳 Cook hired with recipe card, waiting at door</div>
+              </div>
+
+              <!-- 2 & 3. Node: Running / Ready -->
+              <div id="node-running" onclick="simulateStateClick('Running')" class="state-node node-running p-4 rounded-xl border-2 border-slate-700 bg-slate-800/80 cursor-pointer hover:border-emerald-500 relative transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-emerald-300 font-mono">2 & 3. Running / Ready</span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                </div>
+                <p class="text-xs text-slate-300 leading-snug">Actively executing delegate code or waiting in ready queue for CPU time.</p>
+                <div class="mt-2 text-[11px] text-amber-300 font-medium analogy-note">🍳 Cook actively standing at the hot stove sautéing</div>
+              </div>
+
+              <!-- 4. Node: Stopped -->
+              <div id="node-stopped" onclick="simulateStateClick('Stopped')" class="state-node node-stopped p-4 rounded-xl border-2 border-slate-700 bg-slate-800/80 cursor-pointer hover:border-rose-500 relative transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-rose-400 font-mono">4. Stopped (Dead)</span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                </div>
+                <p class="text-xs text-slate-300 leading-snug">Method finished or Aborted. Cannot restart a stopped thread!</p>
+                <div class="mt-2 text-[11px] text-amber-300 font-medium analogy-note">🍳 Meal completed or cancelled; cook clocked out</div>
+              </div>
+
+              <!-- 7-10. Node: WaitSleepJoin -->
+              <div id="node-waitsleepjoin" onclick="simulateStateClick('WaitSleepJoin')" class="state-node node-waitsleepjoin p-4 rounded-xl border-2 border-slate-700 bg-slate-800/80 cursor-pointer hover:border-amber-500 relative transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-amber-300 font-mono">7-10. WaitSleepJoin</span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                </div>
+                <p class="text-xs text-slate-300 leading-snug">Paused via <code class="text-amber-300 font-mono text-[11px]">Sleep()</code>, <code class="text-amber-300 font-mono text-[11px]">Wait()</code>, or <code class="text-amber-300 font-mono text-[11px]">Join()</code>.</p>
+                <div class="mt-2 text-[11px] text-amber-300 font-medium analogy-note">🍳 Waiting for oven timer or partner's sauce</div>
+              </div>
+
+              <!-- 5-6. Node: Blocked (I/O) -->
+              <div id="node-blocked" onclick="simulateStateClick('Blocked')" class="state-node node-blocked p-4 rounded-xl border-2 border-slate-700 bg-slate-800/80 cursor-pointer hover:border-purple-500 relative transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-purple-300 font-mono">5-6. Blocked (I/O)</span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
+                </div>
+                <p class="text-xs text-slate-300 leading-snug">Waiting for file/network/keyboard. OS removes it from CPU scheduling.</p>
+                <div class="mt-2 text-[11px] text-amber-300 font-medium analogy-note">🍳 Waiting for grocery truck delivery to arrive</div>
+              </div>
+
+              <!-- Abort Requested -->
+              <div id="node-abortrequested" onclick="simulateStateClick('AbortRequested')" class="state-node node-abortrequested p-4 rounded-xl border-2 border-slate-700 bg-slate-800/80 cursor-pointer hover:border-orange-500 relative transition-all">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-orange-400 font-mono">Abort Requested</span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                </div>
+                <p class="text-xs text-slate-300 leading-snug">Raises <code class="text-rose-300 font-mono text-[11px]">ThreadAbortException</code>; executes finally blocks.</p>
+                <div class="mt-2 text-[11px] text-amber-300 font-medium analogy-note">🍳 Kitchen fire alarm! Turn off stoves & exit safely</div>
+              </div>
+
+            </div>
+
+            <!-- Transition Trigger Buttons -->
+            <div class="pt-4 border-t border-slate-800 space-y-2">
+              <span class="text-xs font-semibold text-slate-400 block">Invoke C# Methods / OS Events to Transition:</span>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="triggerSimAction('start')" id="btn-act-start" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>▶</span> child.Start()
+                </button>
+                <button onclick="triggerSimAction('sleep')" id="btn-act-sleep" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>⏳</span> Thread.Sleep(2000)
+                </button>
+                <button onclick="triggerSimAction('join')" id="btn-act-join" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>🔗</span> otherThread.Join()
+                </button>
+                <button onclick="triggerSimAction('io_request')" id="btn-act-io" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>💾</span> I/O Request
+                </button>
+                <button onclick="triggerSimAction('pulse')" id="btn-act-pulse" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>⚡</span> Pulse() / Timer Expire
+                </button>
+                <button onclick="triggerSimAction('interrupt')" id="btn-act-interrupt" class="px-3 py-1.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>🚨</span> Interrupt()
+                </button>
+                <button onclick="triggerSimAction('abort')" id="btn-act-abort" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>🛑</span> child.Abort()
+                </button>
+                <button onclick="triggerSimAction('finish')" id="btn-act-finish" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                  <span>🏁</span> Task Complete
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Right Column: Live Thread Telemetry & Educational Insight (4 Cols) -->
+        <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+                Thread Inspector
+              </h3>
+              <span class="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">_childThread</span>
+            </div>
+
+            <!-- C# Property Values Table -->
+            <div class="mt-4 space-y-2 text-xs font-mono">
+              <div class="flex justify-between py-1 px-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-slate-400">Thread.Name:</span>
+                <span id="tel-name" class="text-sky-300 font-semibold">"Child Thread"</span>
+              </div>
+              <div class="flex justify-between py-1 px-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-slate-400">ThreadState:</span>
+                <span id="tel-state" class="text-emerald-400 font-semibold">Unstarted</span>
+              </div>
+              <div class="flex justify-between py-1 px-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-slate-400">IsAlive:</span>
+                <span id="tel-isalive" class="text-rose-400 font-semibold">false</span>
+              </div>
+              <div class="flex justify-between py-1 px-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-slate-400">IsBackground:</span>
+                <span id="tel-isbg" class="text-slate-300">false</span>
+              </div>
+              <div class="flex justify-between py-1 px-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span class="text-slate-400">Priority:</span>
+                <span id="tel-priority" class="text-amber-400">Normal</span>
+              </div>
+            </div>
+
+            <!-- Deep Dive Card -->
+            <div class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Detailed Explanation
+              </span>
+              <p id="tel-desc" class="text-xs text-slate-300 leading-relaxed">
+                The thread has been instantiated using <code class="text-sky-300 font-mono">new Thread(delThread)</code>. The CLR has prepared its control structures, but no OS thread or CPU core has been assigned yet.
+              </p>
+              <div class="pt-2 border-t border-slate-800 text-[11px] text-amber-300" id="tel-analogy">
+                🍳 <strong>Chef Analogy:</strong> The Head Chef printed the recipe and hired an apprentice. The apprentice is ready at the kitchen door waiting for the "Go!" signal.
+              </div>
+            </div>
+          </div>
+
+          <!-- Console Event Log for visualizer -->
+          <div>
+            <div class="flex justify-between items-center mb-1 text-[11px] text-slate-400">
+              <span class="font-mono">Transition History</span>
+              <button onclick="clearSimHistory()" class="hover:text-white">Clear</button>
+            </div>
+            <div id="sim-history-log" class="h-24 overflow-y-auto bg-black/70 rounded-lg p-2.5 font-mono text-[11px] text-emerald-400 border border-slate-800 space-y-1">
+              <div class="text-slate-500">[0.0s] System loaded. Initialized in Unstarted state.</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 10 Step Detailed Explanations (Harwani 2015 Handout Breakdown) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2">
+          <span>📖</span>
+          10 Lifecycle Rules from Handout (Harwani, 2015)
+        </h3>
+        <p class="text-xs text-slate-400 mb-5">Click any rule to trigger that state transition on the diagram above.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          
+          <div onclick="simulateStateClick('Unstarted')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-sky-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-sky-400 font-mono">Rule 1 &bull; Unstarted</span>
+            <p class="text-slate-300">A new thread begins in Unstarted until <code class="text-sky-300 font-mono">Start()</code> is called.</p>
+          </div>
+
+          <div onclick="triggerSimAction('start')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-emerald-400 font-mono">Rule 2 &bull; Start() to Started</span>
+            <p class="text-slate-300"><code class="text-emerald-300 font-mono">Start()</code> moves thread to Started (Ready/Runnable) to await CPU time.</p>
+          </div>
+
+          <div onclick="simulateStateClick('Running')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-emerald-400 font-mono">Rule 3 &bull; Running State</span>
+            <p class="text-slate-300">Highest priority Started thread enters Running and executes instructions.</p>
+          </div>
+
+          <div onclick="triggerSimAction('finish')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-rose-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-rose-400 font-mono">Rule 4 &bull; Stopped & Abort</span>
+            <p class="text-slate-300">Task completion moves it to Stopped. Calling <code class="text-rose-300 font-mono">Abort()</code> throws <code class="text-rose-300 font-mono">ThreadAbortException</code>.</p>
+          </div>
+
+          <div onclick="triggerSimAction('io_request')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-purple-400 font-mono">Rule 5 &bull; Blocked (I/O)</span>
+            <p class="text-slate-300">Enters Blocked during I/O operations. Zero CPU time is wasted while waiting.</p>
+          </div>
+
+          <div onclick="triggerSimAction('pulse')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-purple-400 font-mono">Rule 6 &bull; I/O Resumption</span>
+            <p class="text-slate-300">When I/O completes, the thread returns to Started to resume CPU scheduling.</p>
+          </div>
+
+          <div onclick="triggerSimAction('sleep')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-amber-400 font-mono">Rule 7 &bull; WaitSleepJoin & Pulse</span>
+            <p class="text-slate-300">Enters sleep via <code class="text-amber-300 font-mono">Sleep(ms)</code> or <code class="text-amber-300 font-mono">Wait()</code>; another thread wakes it via <code class="text-amber-300 font-mono">Pulse()</code>.</p>
+          </div>
+
+          <div onclick="triggerSimAction('pulse')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-amber-400 font-mono">Rule 8 &bull; Sleep Expiration</span>
+            <p class="text-slate-300">When the millisecond timer expires, it returns automatically to the Started queue.</p>
+          </div>
+
+          <div onclick="triggerSimAction('interrupt')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-yellow-500/50 cursor-pointer transition space-y-1">
+            <span class="font-bold text-yellow-400 font-mono">Rule 9 &bull; Interrupt()</span>
+            <p class="text-slate-300">Can be abruptly awakened from WaitSleepJoin if another thread calls <code class="text-yellow-300 font-mono">Interrupt()</code>.</p>
+          </div>
+
+          <div onclick="triggerSimAction('join')" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-sky-500/50 cursor-pointer transition space-y-1 md:col-span-2 lg:col-span-3">
+            <span class="font-bold text-sky-400 font-mono">Rule 10 &bull; Join() Synchronization</span>
+            <p class="text-slate-300">If Thread A cannot proceed until Thread B completes, Thread A calls <code class="text-sky-300 font-mono">threadB.Join()</code> and sleeps until Thread B terminates.</p>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 2: CLEAN HANDOUT CODE LAB (CSS/HTML BUG FIXED)                    -->
+    <!-- ========================================================================= -->
+    <section id="section-code-lab" class="hidden space-y-6">
+      
+      <!-- Sub Tabs for 3 Handout Examples -->
+      <div class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+        <div>
+          <h2 class="text-base font-bold text-white">Handout Code Interactive Simulator</h2>
+          <p class="text-xs text-slate-400">Step line-by-line through the exact C# code samples from the handout.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="selectCodeExample(1)" id="btn-sample-1" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white shadow">
+            Page 1: Basic Child Thread
+          </button>
+          <button onclick="selectCodeExample(2)" id="btn-sample-2" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white">
+            Page 2-3: Sleep, Countdown & Abort
+          </button>
+          <button onclick="selectCodeExample(3)" id="btn-sample-3" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white">
+            Page 3-4: 3 Threads & Join()
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Code Lab Area -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Code Editor & Execution Steps (7 cols) -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+          
+          <!-- Code Title Bar -->
+          <div class="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <span id="lab-file-title" class="ml-2 font-mono text-xs text-slate-300 font-semibold">ChildThreadDemo.cs</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="copyCurrentCode()" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800 border border-slate-700 font-mono transition">
+                📋 Copy C# Code
+              </button>
+            </div>
+          </div>
+
+          <!-- Code Display Container with Clean Line Highlights -->
+          <div class="p-4 bg-slate-950/90 font-mono text-xs overflow-x-auto flex-1 min-h-[380px] max-h-[460px]" id="code-lines-display">
+            <!-- Populated securely via JavaScript innerText/textContent without raw CSS leaking -->
+          </div>
+
+          <!-- Execution Controls -->
+          <div class="p-4 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+              <button onclick="runCodeAuto()" id="btn-lab-run" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow flex items-center gap-1.5 transition">
+                <span>▶</span> Auto Run
+              </button>
+              <button onclick="stepCodeManual()" id="btn-lab-step" class="px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow flex items-center gap-1.5 transition">
+                <span>⏭</span> Step Next Line
+              </button>
+              <button onclick="resetCodeLabState()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+                Reset
+              </button>
+            </div>
+            <div class="text-xs text-slate-400 font-mono" id="lab-step-count">
+              Step: 0 / 0
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Terminal Output & Educational Explanation (5 cols) -->
+        <div class="lg:col-span-5 space-y-5">
+          
+          <!-- Virtual Console (stdout) -->
+          <div class="bg-black border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+            <div class="flex items-center justify-between pb-2.5 border-b border-slate-800/80 mb-3">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span class="text-xs font-bold text-slate-200 font-mono">Console Output (stdout)</span>
+              </div>
+              <button onclick="clearVirtualTerminal()" class="text-[10px] text-slate-400 hover:text-white font-mono">Clear</button>
+            </div>
+
+            <div id="lab-terminal-output" class="bg-slate-950 p-3 rounded-lg font-mono text-xs text-emerald-400 min-h-[170px] max-h-[200px] overflow-y-auto space-y-1 border border-slate-900">
+              <div class="text-slate-600">// Press 'Auto Run' or 'Step Next Line' to start...</div>
+            </div>
+          </div>
+
+          <!-- Step Details Card -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs uppercase font-bold text-sky-400">Current Step Analysis</span>
+              <span id="lab-current-line-no" class="text-xs font-mono text-slate-400">Line: --</span>
+            </div>
+
+            <h4 id="lab-step-heading" class="text-sm font-bold text-white">Ready to Execute</h4>
+            <p id="lab-step-description" class="text-xs text-slate-300 leading-relaxed">
+              Step through to examine delegates, memory creation, thread synchronization, and exception handling.
+            </p>
+
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1 text-xs">
+              <span class="text-amber-400 font-semibold flex items-center gap-1.5">
+                <span>💡</span> What is the CLR / OS doing?
+              </span>
+              <p id="lab-step-internals" class="text-slate-400 text-[11px] leading-relaxed">
+                Awaiting execution command from user.
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 3: MULTITHREADING, ROUND-ROBIN & INTUITIVE JOIN()                 -->
+    <!-- ========================================================================= -->
+    <section id="section-race-condition" class="hidden space-y-6">
+      
+      <!-- Conceptual Header -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div class="max-w-3xl">
+          <span class="text-xs font-bold text-sky-400 uppercase tracking-wider font-mono">Handout Page 3 & 4 Concept</span>
+          <h2 class="text-xl font-bold text-white mt-1">Multithreading, Race Conditions & Join()</h2>
+          <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+            In operating systems, <strong>multithreading</strong> allows multiple threads to run concurrently in a round-robin time-sliced fashion.
+            When two child threads modify the <em>same variable</em> (<code class="text-amber-300 font-mono">x</code>) at the same time, they compete in a <strong>Race Condition</strong>.
+          </p>
+        </div>
+
+        <!-- The Intuitive Join() Visual Concept Box -->
+        <div class="mt-6 p-4 rounded-xl bg-gradient-to-r from-sky-950/60 to-slate-950 border border-sky-800/60 flex flex-col md:flex-row items-center gap-4">
+          <div class="h-12 w-12 rounded-xl bg-sky-500/20 text-sky-300 flex items-center justify-center text-2xl shrink-0 border border-sky-500/30">
+            🔗
+          </div>
+          <div class="flex-1 text-xs space-y-1">
+            <h3 class="text-sm font-bold text-sky-200">What does <code class="font-mono text-sky-300">Join()</code> actually do? (The Group Project Analogy)</h3>
+            <p class="text-slate-300 leading-relaxed">
+              Imagine you and two classmates are preparing a presentation. If you print the final slides before they finish writing their sections, the project will be incomplete!
+              <code class="text-sky-300 font-mono">childThread.Join()</code> means: <em>"Hey, Main Thread! Do NOT print or continue yet. Freeze and wait right here until this child thread completely finishes!"</em>
+            </p>
+          </div>
+        </div>
+
+        <!-- Interactive Join Comparison Switcher -->
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-300">Simulation Mode:</span>
+            <div class="inline-flex p-1 rounded-xl bg-slate-950 border border-slate-800">
+              <button onclick="setJoinMode(true)" id="mode-join-with" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition">
+                ✅ WITH Join() (Proper)
+              </button>
+              <button onclick="setJoinMode(false)" id="mode-join-without" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">
+                ❌ WITHOUT Join() (Buggy!)
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="startMultithreadSim()" id="btn-start-race" class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-lg shadow-sky-600/30 transition flex items-center gap-2">
+              <span>🚀</span> Run Simulation
+            </button>
+            <button onclick="resetMultithreadSim()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Shared Memory & Thread Worker Lanes -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Shared Variables Memory (4 Cols) -->
+        <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                Shared Process Memory (Heap)
+              </h3>
+              <span class="text-[10px] font-mono text-slate-400">Process Space</span>
+            </div>
+
+            <!-- Memory Variable X -->
+            <div class="mt-4 p-4 rounded-xl bg-slate-950 border-2 border-amber-500/40 relative">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-mono text-amber-300 font-bold text-sm">int x</span>
+                <span class="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">Contested (T1 & T2 Race!)</span>
+              </div>
+              <div class="text-4xl font-mono font-extrabold text-white mt-1 transition-all" id="race-val-x">2</div>
+              <p class="text-[11px] text-slate-400 mt-2">Shared by: <code class="text-sky-300">Child Thread 1</code> and <code class="text-indigo-300">Child Thread 2</code></p>
+            </div>
+
+            <!-- Memory Variable Y -->
+            <div class="mt-4 p-4 rounded-xl bg-slate-950 border border-slate-800 relative">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-mono text-purple-300 font-bold text-sm">int y</span>
+                <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Safe (T3 Only)</span>
+              </div>
+              <div class="text-4xl font-mono font-extrabold text-white mt-1 transition-all" id="race-val-y">2</div>
+              <p class="text-[11px] text-slate-400 mt-2">Isolated to: <code class="text-purple-300">Child Thread 3</code></p>
+            </div>
+          </div>
+
+          <!-- Main Thread Output Status Card -->
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1.5">
+            <span class="font-bold text-slate-300 block">Main Thread Console Printout:</span>
+            <div id="race-console-result" class="font-mono text-[11px] text-amber-300 bg-black/60 p-2.5 rounded-lg border border-slate-800/80">
+              Waiting to run simulation...
+            </div>
+          </div>
+        </div>
+
+        <!-- Thread Worker Lanes & Scheduler (8 Cols) -->
+        <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+            <div>
+              <h3 class="text-sm font-bold text-white">CPU Round-Robin Time Slices</h3>
+              <p class="text-xs text-slate-400">Notice how each thread receives turns on the CPU.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">Active Core:</span>
+              <span id="active-core-indicator" class="px-2.5 py-0.5 rounded-full text-xs font-mono bg-slate-800 text-sky-400 font-bold">Idle</span>
+            </div>
+          </div>
+
+          <!-- Worker 1 -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-sky-300 flex items-center gap-2">
+                <span id="race-dot-1" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                Child Thread 1 &mdash; Method1() [x++]
+              </span>
+              <span id="race-status-1" class="font-mono text-slate-400 text-[11px]">Unstarted</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+              <div id="race-bar-1" class="bg-sky-500 h-3 rounded-full transition-all duration-200" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Worker 2 -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-indigo-300 flex items-center gap-2">
+                <span id="race-dot-2" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                Child Thread 2 &mdash; Method1() [x++]
+              </span>
+              <span id="race-status-2" class="font-mono text-slate-400 text-[11px]">Unstarted</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+              <div id="race-bar-2" class="bg-indigo-500 h-3 rounded-full transition-all duration-200" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Worker 3 -->
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-purple-300 flex items-center gap-2">
+                <span id="race-dot-3" class="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+                Child Thread 3 &mdash; Method2() [y++]
+              </span>
+              <span id="race-status-3" class="font-mono text-slate-400 text-[11px]">Unstarted</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+              <div id="race-bar-3" class="bg-purple-500 h-3 rounded-full transition-all duration-200" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Educational Takeaway Footer -->
+          <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1">
+            <span class="text-amber-300 font-semibold flex items-center gap-1.5">
+              <span>🎯</span> Key Novice Takeaway:
+            </span>
+            <p id="race-takeaway-text" class="text-slate-300 leading-relaxed">
+              When <strong>WITH Join()</strong> is enabled, the Main Thread waits for all 3 child threads to finish incrementing. The final printout will reliably show <code class="text-white font-mono">x: 4</code> and <code class="text-white font-mono">y: 3</code>!
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 4: THREAD CLASS PROPERTIES & METHODS REFERENCE                    -->
+    <!-- ========================================================================= -->
+    <section id="section-api-cheatsheet" class="hidden space-y-6">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-white mb-1">C# Thread Class Reference (Handout Page 3)</h2>
+        <p class="text-xs text-slate-400 mb-6">Complete reference for all properties and methods covered in the IT1811 handout.</p>
+
+        <!-- Properties Grid -->
+        <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 mb-3 flex items-center gap-1.5">
+          <span>⚙️</span> Thread Properties
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-sky-300">CurrentThread</span>
+              <span class="text-[10px] text-slate-500 font-mono">static Thread</span>
+            </div>
+            <p class="text-xs text-slate-300">Returns the specific thread instance that is currently executing this piece of code.</p>
+            <div class="text-[11px] text-amber-300 font-medium">🍳 "Which chef is currently holding this spatula right now?"</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-emerald-300">IsAlive</span>
+              <span class="text-[10px] text-slate-500 font-mono">bool</span>
+            </div>
+            <p class="text-xs text-slate-300">Returns <code class="text-emerald-400 font-mono">true</code> if thread has started and not yet terminated or aborted.</p>
+            <div class="text-[11px] text-amber-300 font-medium">🍳 "Is this cook still on duty in the restaurant?"</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-purple-300">IsBackground</span>
+              <span class="text-[10px] text-slate-500 font-mono">bool</span>
+            </div>
+            <p class="text-xs text-slate-300">When true, the CLR will forcibly terminate this thread when all foreground threads finish.</p>
+            <div class="text-[11px] text-amber-300 font-medium">🍳 Dishwashers who get sent home the moment the dining room closes.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-sky-300">Name</span>
+              <span class="text-[10px] text-slate-500 font-mono">string</span>
+            </div>
+            <p class="text-xs text-slate-300">Gets or sets the human-readable identifier for easy tracking and debugging.</p>
+            <div class="text-[11px] text-amber-300 font-medium">🍳 The nametag worn on the chef's uniform.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-amber-300">Priority</span>
+              <span class="text-[10px] text-slate-500 font-mono">ThreadPriority</span>
+            </div>
+            <p class="text-xs text-slate-300">Hints to the OS scheduler which threads should receive more frequent CPU time slices.</p>
+            <div class="text-[11px] text-amber-300 font-medium">🍳 VIP orders cooked first on the fastest burner.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-rose-300">ThreadState</span>
+              <span class="text-[10px] text-slate-500 font-mono">ThreadState</span>
+            </div>
+            <p class="text-xs text-slate-300">Bitwise flags indicating the exact stage (Unstarted, Running, WaitSleepJoin, Stopped, etc.).</p>
+            <div class="text-[11px] text-amber-300 font-medium">🍳 The order status ticket (Prepping, Cooking, Resting, Served).</div>
+          </div>
+
+        </div>
+
+        <!-- Methods Grid -->
+        <h3 class="text-xs font-bold uppercase tracking-wider text-sky-400 mb-3 flex items-center gap-1.5">
+          <span>🛠️</span> Thread Methods
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-mono text-xs font-bold text-emerald-300 block">public void Start()</span>
+            <p class="text-xs text-slate-300">Transitions thread from Unstarted to Started, invoking the delegate callback method.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-mono text-xs font-bold text-amber-300 block">public static void Sleep(int ms)</span>
+            <p class="text-xs text-slate-300">Pauses the executing thread for the stated milliseconds, relinquishing CPU time to other threads.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-mono text-xs font-bold text-rose-300 block">public void Abort()</span>
+            <p class="text-xs text-slate-300">Terminates the thread by throwing a <code class="text-rose-300 font-mono">ThreadAbortException</code> in its execution context.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-mono text-xs font-bold text-sky-300 block">public void Join()</span>
+            <p class="text-xs text-slate-300">Blocks the calling thread until this target thread finishes its complete execution.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-mono text-xs font-bold text-yellow-300 block">public void Interrupt()</span>
+            <p class="text-xs text-slate-300">Interrupts a thread that is in WaitSleepJoin state, breaking its sleep immediately.</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <span class="font-mono text-xs font-bold text-indigo-300 block">public static void ResetAbort()</span>
+            <p class="text-xs text-slate-300">Cancels an ongoing abort request inside the <code class="text-indigo-300 font-mono">catch (ThreadAbortException)</code> block.</p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // Tab Switching Logic
+    function switchTab(tabId) {
+      const sections = ['visualizer', 'code-lab', 'race-condition', 'api-cheatsheet'];
+      sections.forEach(s => {
+        const secEl = document.getElementById('section-' + s);
+        const navEl = document.getElementById('nav-' + s);
+        const mobEl = document.getElementById('mob-nav-' + s);
+
+        if (s === tabId) {
+          secEl.classList.remove('hidden');
+          if (navEl) {
+            navEl.classList.remove('text-slate-400');
+            navEl.classList.add('bg-sky-600', 'text-white');
+          }
+          if (mobEl) {
+            mobEl.classList.remove('bg-slate-800', 'text-slate-300');
+            mobEl.classList.add('bg-sky-600', 'text-white');
+          }
+        } else {
+          secEl.classList.add('hidden');
+          if (navEl) {
+            navEl.classList.remove('bg-sky-600', 'text-white');
+            navEl.classList.add('text-slate-400');
+          }
+          if (mobEl) {
+            mobEl.classList.remove('bg-sky-600', 'text-white');
+            mobEl.classList.add('bg-slate-800', 'text-slate-300');
+          }
+        }
+      });
+
+      if (tabId === 'code-lab' && !labInitialized) {
+        initCodeLab();
+      }
+    }
+
+    // Kitchen Analogy Visibility Toggle
+    let kitchenAnalogyVisible = true;
+    function toggleKitchenAnalogy() {
+      kitchenAnalogyVisible = !kitchenAnalogyVisible;
+      const notes = document.querySelectorAll('.analogy-note');
+      const banner = document.getElementById('analogy-banner');
+      const label = document.getElementById('analogy-label');
+
+      notes.forEach(n => {
+        n.style.display = kitchenAnalogyVisible ? 'block' : 'none';
+      });
+      if (banner) {
+        banner.style.display = kitchenAnalogyVisible ? 'flex' : 'none';
+      }
+      label.innerText = kitchenAnalogyVisible ? 'Hide Kitchen Analogy' : 'Show Kitchen Analogy';
+    }
+
+    function dismissBanner() {
+      document.getElementById('analogy-banner').style.display = 'none';
+    }
+
+    /* ------------------------------------------------------------- */
+    /* 1. STATE MACHINE SIMULATOR LOGIC                              */
+    /* ------------------------------------------------------------- */
+    const stateMetadata = {
+      Unstarted: {
+        nodeId: 'node-unstarted',
+        isAlive: false,
+        name: 'Unstarted',
+        desc: 'Thread is created within the CLR via new Thread(delegate), but Start() has not been called. No OS thread or CPU time is scheduled.',
+        analogy: '🍳 Chef Analogy: Apprentice cook is hired and handed the recipe card, waiting at the kitchen door for instructions.'
+      },
+      Running: {
+        nodeId: 'node-running',
+        isAlive: true,
+        name: 'Running',
+        desc: 'Thread has started! Its delegate method is executing instructions on an active CPU core or ready for its round-robin time slice.',
+        analogy: '🍳 Chef Analogy: Cook is actively standing at the hot stove sautéing and chopping ingredients!'
+      },
+      WaitSleepJoin: {
+        nodeId: 'node-waitsleepjoin',
+        isAlive: true,
+        name: 'WaitSleepJoin',
+        desc: 'Thread is temporarily suspended by calling Thread.Sleep(ms), Monitor.Wait(), or child.Join(). It releases CPU time so other threads can work.',
+        analogy: '🍳 Chef Analogy: Cook set the baking timer for 2 minutes and stepped aside so another cook can use the counter.'
+      },
+      Blocked: {
+        nodeId: 'node-blocked',
+        isAlive: true,
+        name: 'Blocked (I/O)',
+        desc: 'Thread is waiting on an Input/Output (I/O) operation (file reading, network socket, user keyboard). Zero CPU time is assigned while blocked.',
+        analogy: '🍳 Chef Analogy: Cook is waiting for the ingredient delivery truck before continuing the recipe.'
+      },
+      AbortRequested: {
+        nodeId: 'node-abortrequested',
+        isAlive: true,
+        name: 'AbortRequested',
+        desc: 'childThread.Abort() was invoked! The CLR raises a ThreadAbortException in the thread to begin termination and invoke finally blocks.',
+        analogy: '🍳 Chef Analogy: Kitchen fire alarm sounded! The cook turns off burners and prepares to exit safely.'
+      },
+      Stopped: {
+        nodeId: 'node-stopped',
+        isAlive: false,
+        name: 'Stopped',
+        desc: 'Thread finished its delegate task or was terminated via Abort(). Its memory is reclaimed. A stopped thread can NEVER be restarted!',
+        analogy: '🍳 Chef Analogy: Dish is served! The cook clocked out and went home for the day.'
+      }
+    };
+
+    let simCurrentState = 'Unstarted';
+    let simTimer = null;
+
+    function setSimulatorState(newState, reason) {
+      simCurrentState = newState;
+      const meta = stateMetadata[newState];
+
+      // Update node visual active states
+      Object.keys(stateMetadata).forEach(stKey => {
+        const el = document.getElementById(stateMetadata[stKey].nodeId);
+        if (el) {
+          el.classList.remove('active');
+        }
+      });
+
+      const currentEl = document.getElementById(meta.nodeId);
+      if (currentEl) {
+        currentEl.classList.add('active');
+      }
+
+      // Update Inspector Telemetry
+      document.getElementById('badge-current-state').innerText = meta.name;
+      document.getElementById('tel-state').innerText = meta.name;
+      document.getElementById('tel-isalive').innerText = meta.isAlive ? 'true' : 'false';
+      document.getElementById('tel-isalive').className = meta.isAlive ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
+      document.getElementById('tel-desc').innerText = meta.desc;
+      document.getElementById('tel-analogy').innerHTML = meta.analogy;
+
+      // Update action button availability
+      updateSimButtonStates();
+
+      // Log transition
+      logSimHistory(`[${meta.name}] ${reason}`);
+    }
+
+    function updateSimButtonStates() {
+      const s = simCurrentState;
+      const bStart = document.getElementById('btn-act-start');
+      const bSleep = document.getElementById('btn-act-sleep');
+      const bJoin = document.getElementById('btn-act-join');
+      const bIo = document.getElementById('btn-act-io');
+      const bPulse = document.getElementById('btn-act-pulse');
+      const bInterrupt = document.getElementById('btn-act-interrupt');
+      const bAbort = document.getElementById('btn-act-abort');
+      const bFinish = document.getElementById('btn-act-finish');
+
+      bStart.disabled = (s !== 'Unstarted');
+      bSleep.disabled = (s !== 'Running');
+      bJoin.disabled = (s !== 'Running');
+      bIo.disabled = (s !== 'Running');
+      bFinish.disabled = (s !== 'Running');
+      bPulse.disabled = (s !== 'WaitSleepJoin' && s !== 'Blocked');
+      bInterrupt.disabled = (s !== 'WaitSleepJoin');
+      bAbort.disabled = (s === 'Stopped' || s === 'AbortRequested');
+
+      [bStart, bSleep, bJoin, bIo, bPulse, bInterrupt, bAbort, bFinish].forEach(b => {
+        if (b.disabled) {
+          b.classList.add('opacity-30', 'cursor-not-allowed');
+        } else {
+          b.classList.remove('opacity-30', 'cursor-not-allowed');
+        }
+      });
+    }
+
+    function simulateStateClick(stateKey) {
+      if (stateMetadata[stateKey]) {
+        setSimulatorState(stateKey, `Directly selected ${stateKey} for inspection.`);
+      }
+    }
+
+    function triggerSimAction(act) {
+      if (simTimer) {
+        clearTimeout(simTimer);
+        simTimer = null;
+      }
+
+      switch (act) {
+        case 'start':
+          if (simCurrentState === 'Unstarted') {
+            setSimulatorState('Running', 'child.Start() called. Delegate execution begins on CPU.');
+          }
+          break;
+        case 'sleep':
+          if (simCurrentState === 'Running') {
+            setSimulatorState('WaitSleepJoin', 'Thread.Sleep(2000) called. Thread descheduled.');
+            // Auto wake up after 2.5 seconds
+            simTimer = setTimeout(() => {
+              if (simCurrentState === 'WaitSleepJoin') {
+                setSimulatorState('Running', 'Sleep timer expired (Rule #8). Thread resumes to ready queue.');
+              }
+            }, 2500);
+          }
+          break;
+        case 'join':
+          if (simCurrentState === 'Running') {
+            setSimulatorState('WaitSleepJoin', 'Calling otherThread.Join(). Paused until other thread terminates (Rule #10).');
+          }
+          break;
+        case 'io_request':
+          if (simCurrentState === 'Running') {
+            setSimulatorState('Blocked', 'I/O request issued (File/Network/DB). OS blocks thread (Rule #5).');
+          }
+          break;
+        case 'pulse':
+          if (simCurrentState === 'WaitSleepJoin' || simCurrentState === 'Blocked') {
+            setSimulatorState('Running', 'Woken up via Pulse() / I/O finished. Returned to ready queue.');
+          }
+          break;
+        case 'interrupt':
+          if (simCurrentState === 'WaitSleepJoin') {
+            setSimulatorState('Running', 'Interrupt() was called! Sleep state abruptly terminated (Rule #9).');
+          }
+          break;
+        case 'abort':
+          if (simCurrentState !== 'Stopped') {
+            setSimulatorState('AbortRequested', 'child.Abort() called! ThreadAbortException raised (Rule #4).');
+            setTimeout(() => {
+              setSimulatorState('Stopped', 'ThreadAbortException completed. Thread terminated permanently.');
+            }, 1200);
+          }
+          break;
+        case 'finish':
+          if (simCurrentState === 'Running') {
+            setSimulatorState('Stopped', 'Delegate method completed all code. Thread terminated naturally.');
+          }
+          break;
+      }
+    }
+
+    function resetSimulation() {
+      if (simTimer) clearTimeout(simTimer);
+      simTimer = null;
+      setSimulatorState('Unstarted', 'Reset state machine to initial state.');
+    }
+
+    function logSimHistory(msg) {
+      const el = document.getElementById('sim-history-log');
+      const time = new Date().toLocaleTimeString().split(' ')[0];
+      const div = document.createElement('div');
+      div.innerHTML = `<span class="text-slate-500">[${time}]</span> ${msg}`;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function clearSimHistory() {
+      document.getElementById('sim-history-log').innerHTML = '';
+    }
+
+    /* ------------------------------------------------------------- */
+    /* 2. HANDOUT CODE LAB (CSS/HTML RENDERING ISSUE FIXED)          */
+    /* ------------------------------------------------------------- */
+    let labInitialized = false;
+    let labCurrentSample = 1;
+    let labCurrentLine = 0;
+    let labAutoInterval = null;
+
+    // Direct C# Handout source codes without HTML tags in text
+    const handoutCodeSamples = {
+      1: {
+        title: "ChildThreadBasic.cs",
+        rawCode: `// Sample Main Thread
+Thread basicThread = Thread.CurrentThread;
+basicThread.Name = "Basic C# Thread";
+Console.WriteLine("Current Thread: {0}", basicThread.Name);
+
+// Sample Child Thread
+private void btnRunThread_Click(object sender, EventArgs e)
+{
+    ThreadStart delThread = new ThreadStart(ChildThreadMethod);
+    Thread childThread = new Thread(delThread);
+    Thread.CurrentThread.Name = "Main Thread";
+    Console.WriteLine(Thread.CurrentThread.Name);
+    childThread.Start();
+}
+
+public void ChildThreadMethod()
+{
+    Console.WriteLine("Calling child thread");
+}`,
+        steps: [
+          { lineNo: 2, lineText: 'Thread basicThread = Thread.CurrentThread;', heading: 'Get Current Running Thread', desc: 'Queries the CLR to find out which thread is currently executing this statement.', clr: 'Retrieves managed thread reference from execution context.', output: null },
+          { lineNo: 3, lineText: 'basicThread.Name = "Basic C# Thread";', heading: 'Assign Friendly Name', desc: 'Sets the Name property so this thread is identifiable in logs and debugger.', clr: 'Sets thread metadata Name field.', output: null },
+          { lineNo: 4, lineText: 'Console.WriteLine("Current Thread: {0}", basicThread.Name);', heading: 'Print Thread Name', desc: 'Outputs the main thread\'s assigned name to console.', clr: 'Standard Console stdout write.', output: 'Current Thread: Basic C# Thread' },
+          { lineNo: 9, lineText: 'ThreadStart delThread = new ThreadStart(ChildThreadMethod);', heading: 'Create ThreadStart Delegate', desc: 'A delegate is a type-safe function pointer. It tells the new thread what method to run.', clr: 'Allocates ThreadStart pointing to ChildThreadMethod().', output: null },
+          { lineNo: 10, lineText: 'Thread childThread = new Thread(delThread);', heading: 'Instantiate Child Thread Object', desc: 'Instantiates the Thread object in Unstarted state.', clr: 'Allocates C# Thread instance. No OS thread spawned yet.', output: null },
+          { lineNo: 11, lineText: 'Thread.CurrentThread.Name = "Main Thread";', heading: 'Rename Main Thread', desc: 'Updates the caller thread\'s name to "Main Thread".', clr: 'Renames current thread in execution context.', output: null },
+          { lineNo: 12, lineText: 'Console.WriteLine(Thread.CurrentThread.Name);', heading: 'Print Main Thread', desc: 'Prints "Main Thread" to the console.', clr: 'Writes to stdout.', output: 'Main Thread' },
+          { lineNo: 13, lineText: 'childThread.Start();', heading: 'Call childThread.Start()', desc: 'Crucial transition! Shifts childThread from Unstarted to Started/Ready queue.', clr: 'Spawns OS thread and queues ChildThreadMethod for CPU time.', output: null },
+          { lineNo: 18, lineText: 'Console.WriteLine("Calling child thread");', heading: 'Child Thread Executes Callback', desc: 'The child thread runs concurrently and outputs its message!', clr: 'Child thread completes method and enters Stopped state.', output: 'Calling child thread' }
+        ]
+      },
+      2: {
+        title: "ThreadSleepAbortDemo.cs",
+        rawCode: `private Thread _childThread;
+
+private void btnCheck_Click(object sender, EventArgs e)
+{
+    ThreadStart delThreadObj = new ThreadStart(ThreadCycle);
+    Console.WriteLine("Will Create Child Thread In Main Thread...");
+    _childThread = new Thread(delThreadObj);
+    _childThread.Start();
+    Thread.Sleep(3000); // 3 seconds before aborting the thread.
+    Console.WriteLine("Aborting Child Thread");
+    _childThread.Abort();
+}
+
+public void ThreadCycle()
+{
+    try
+    {
+        Console.WriteLine("Thread starts here!");
+        Console.WriteLine("Paused for 2 seconds: child thread");
+        Console.Write("Countdown: ");
+        for(int x = 2; x > 0; x--)
+        {
+            Console.Write(x + " ");
+            Thread.Sleep(1000);
+        }
+        Console.WriteLine("\\nChild thread resume");
+        Console.WriteLine("WaitSleepJoin State: (Child Thread):" + (_childThread.ThreadState == ThreadState.WaitSleepJoin));
+        Thread.Sleep(1000);
+        Console.WriteLine("Child Thread Done.");
+    }
+    catch (ThreadAbortException ex)
+    {
+        Console.WriteLine("Exception Message: " + ex.Message);
+    }
+    finally
+    {
+        Console.WriteLine("Finally Block the Thread!");
+    }
+}`,
+        steps: [
+          { lineNo: 5, lineText: 'ThreadStart delThreadObj = new ThreadStart(ThreadCycle);', heading: 'Create Delegate', desc: 'Points to ThreadCycle method.', clr: 'ThreadStart delegate initialized.', output: null },
+          { lineNo: 6, lineText: 'Console.WriteLine("Will Create Child Thread In Main Thread...");', heading: 'Main Thread Output', desc: 'Main thread announces thread creation.', clr: 'stdout write.', output: 'Will Create Child Thread In Main Thread...' },
+          { lineNo: 7, lineText: '_childThread = new Thread(delThreadObj);', heading: 'Instantiate Thread', desc: 'Thread object created in Unstarted state.', clr: 'Unstarted thread allocated.', output: null },
+          { lineNo: 8, lineText: '_childThread.Start();', heading: 'Start Child Thread', desc: 'Child thread starts running ThreadCycle() asynchronously.', clr: 'Thread branches into parallel execution.', output: null },
+          { lineNo: 17, lineText: 'Console.WriteLine("Thread starts here!");', heading: 'Child Thread Begins', desc: 'Inside try block, child thread begins executing.', clr: 'Child thread execution.', output: 'Thread starts here!' },
+          { lineNo: 18, lineText: 'Console.WriteLine("Paused for 2 seconds: child thread");', heading: 'Child Announces Sleep', desc: 'Preparing countdown loop.', clr: 'stdout write.', output: 'Paused for 2 seconds: child thread' },
+          { lineNo: 22, lineText: 'Console.Write(x + " "); Thread.Sleep(1000);', heading: 'Countdown Loop: 2', desc: 'Prints 2 and sleeps for 1000ms (WaitSleepJoin state).', clr: 'Child thread suspended for 1 second.', output: 'Countdown: 2 ' },
+          { lineNo: 22, lineText: 'Console.Write(x + " "); Thread.Sleep(1000);', heading: 'Countdown Loop: 1', desc: 'Prints 1 and sleeps for another 1000ms.', clr: 'Child thread suspended for 1 second.', output: '1 ' },
+          { lineNo: 24, lineText: 'Console.WriteLine("\\nChild thread resume");', heading: 'Child Thread Resumed', desc: 'Loop finishes, thread resumes running state.', clr: 'Awakened from sleep.', output: '\nChild thread resume' },
+          { lineNo: 25, lineText: 'Console.WriteLine("WaitSleepJoin State: " + ...);', heading: 'Inspect ThreadState', desc: 'Child checks if its state is WaitSleepJoin (evaluates to False since it is running!).', clr: 'Queries ThreadState bitmask.', output: 'WaitSleepJoin State: (Child Thread): False' },
+          { lineNo: 10, lineText: 'Console.WriteLine("Aborting Child Thread"); _childThread.Abort();', heading: 'Main Thread Calls Abort()', desc: 'Main finishes its 3s sleep and calls _childThread.Abort()!', clr: 'CLR injects ThreadAbortException into child thread.', output: 'Aborting Child Thread' },
+          { lineNo: 31, lineText: 'Console.WriteLine("Exception Message: " + ex.Message);', heading: 'Catch ThreadAbortException', desc: 'The catch block catches the injected exception!', clr: 'Exception caught by runtime handler.', output: 'Exception Message: Thread was being aborted.' },
+          { lineNo: 35, lineText: 'Console.WriteLine("Finally Block the Thread!");', heading: 'Finally Block ALWAYS Runs', desc: 'Even after an Abort, the finally block is guaranteed to execute to prevent resource leaks!', clr: 'Clean up block executed before thread dies.', output: 'Finally Block the Thread!' }
+        ]
+      },
+      3: {
+        title: "MultithreadJoinRace.cs",
+        rawCode: `private int x = 2;
+private int y = 2;
+private Thread _childThread1, _childThread2, _childThread3;
+
+private void btnStart_Click(object sender, EventArgs e)
+{
+    Console.WriteLine("---");
+    Console.WriteLine("Main Thread Running...");
+    ThreadStart delObjThread = new ThreadStart(Method1);
+    _childThread1 = new Thread(delObjThread);
+    _childThread1.Name = "Child Thread 1";
+    _childThread2 = new Thread(delObjThread);
+    _childThread2.Name = "Child Thread 2";
+    _childThread3 = new Thread(new ThreadStart(Method2));
+    _childThread3.Name = "Child Thread 3";
+
+    _childThread1.Start();
+    _childThread2.Start();
+    _childThread3.Start();
+
+    _childThread1.Join();
+    _childThread2.Join();
+    _childThread3.Join();
+
+    Console.WriteLine("Value of x: " + x);
+    Console.WriteLine("Value of y: " + y);
+}
+
+public void Method1()
+{
+    Console.WriteLine(Thread.CurrentThread.Name + " running...");
+    x++;
+}
+
+public void Method2()
+{
+    Console.WriteLine(Thread.CurrentThread.Name + " running...");
+    y++;
+}`,
+        steps: [
+          { lineNo: 1, lineText: 'private int x = 2; private int y = 2;', heading: 'Declare Shared Heap Variables', desc: 'x and y exist in shared memory accessible by all threads.', clr: 'Heap allocation for process.', output: null },
+          { lineNo: 7, lineText: 'Console.WriteLine("---"); Console.WriteLine("Main Thread Running...");', heading: 'Main Starts', desc: 'Main thread begins orchestrating child threads.', clr: 'stdout write.', output: '---\nMain Thread Running...' },
+          { lineNo: 9, lineText: '_childThread1 = new Thread(delObjThread); _childThread2 = new Thread(delObjThread);', heading: 'Configure Threads 1 & 2', desc: 'Both Thread 1 and Thread 2 are given the SAME delegate pointing to Method1 (x++).', clr: '2 threads bound to same function.', output: null },
+          { lineNo: 13, lineText: '_childThread3 = new Thread(new ThreadStart(Method2));', heading: 'Configure Thread 3', desc: 'Thread 3 is given Method2 (y++).', clr: '1 thread bound to Method2.', output: null },
+          { lineNo: 16, lineText: '_childThread1.Start(); _childThread2.Start(); _childThread3.Start();', heading: 'Launch All 3 Threads Concurrently', desc: 'All 3 threads are dispatched to the CPU ready queue simultaneously!', clr: '3 OS threads scheduled for round-robin execution.', output: null },
+          { lineNo: 29, lineText: 'Console.WriteLine(Thread.CurrentThread.Name + " running..."); x++;', heading: 'Child Thread 1 Runs', desc: 'Thread 1 increments shared x from 2 to 3.', clr: 'Thread 1 modifies shared variable x.', output: 'Child Thread 1 running...' },
+          { lineNo: 29, lineText: 'Console.WriteLine(Thread.CurrentThread.Name + " running..."); x++;', heading: 'Child Thread 2 Runs (Race Condition)', desc: 'Thread 2 increments shared x from 3 to 4.', clr: 'Thread 2 modifies shared variable x concurrently.', output: 'Child Thread 2 running...' },
+          { lineNo: 35, lineText: 'Console.WriteLine(Thread.CurrentThread.Name + " running..."); y++;', heading: 'Child Thread 3 Runs', desc: 'Thread 3 increments y from 2 to 3.', clr: 'Thread 3 modifies shared variable y.', output: 'Child Thread 3 running...' },
+          { lineNo: 20, lineText: '_childThread1.Join(); _childThread2.Join(); _childThread3.Join();', heading: 'Main Thread Waits at Join()', desc: 'Main thread pauses and enters WaitSleepJoin until all 3 child threads complete execution.', clr: 'Main thread blocked awaiting child thread termination handles.', output: null },
+          { lineNo: 24, lineText: 'Console.WriteLine("Value of x: " + x);', heading: 'Print Final x', desc: 'Prints final calculated value of x.', clr: 'Safe read after Join().', output: 'Value of x: 4' },
+          { lineNo: 25, lineText: 'Console.WriteLine("Value of y: " + y);', heading: 'Print Final y', desc: 'Prints final calculated value of y.', clr: 'Safe read after Join().', output: 'Value of y: 3' }
+        ]
+      }
+    };
+
+    function initCodeLab() {
+      labInitialized = true;
+      selectCodeExample(1);
+    }
+
+    function selectCodeExample(id) {
+      labCurrentSample = id;
+      labCurrentLine = 0;
+      if (labAutoInterval) {
+        clearInterval(labAutoInterval);
+        labAutoInterval = null;
+      }
+
+      [1, 2, 3].forEach(i => {
+        const btn = document.getElementById('btn-sample-' + i);
+        if (i === id) {
+          btn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white shadow';
+        } else {
+          btn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white';
+        }
+      });
+
+      document.getElementById('lab-file-title').innerText = handoutCodeSamples[id].title;
+      renderCleanCodeDisplay();
+      clearVirtualTerminal();
+      updateLabStepUI();
+    }
+
+    // Secure syntax highlighter that avoids leaking raw CSS into the DOM
+    function highlightCSharpClean(text) {
+      const safe = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Comments first
+      if (safe.trim().startsWith('//')) {
+        return `<span class="com">${safe}</span>`;
+      }
+
+      return safe
+        .replace(/\b(Thread|ThreadStart|Console|EventArgs|object|int|void|string|ThreadState|ThreadAbortException|try|catch|finally|new|public|private|static)\b/g, '<span class="kw">$1</span>')
+        .replace(/\b(Start|Sleep|Abort|Join|WriteLine|Write|CurrentThread|Name|ThreadCycle|ChildThreadMethod|Method1|Method2|btnCheck_Click|btnRunThread_Click|btnStart_Click)\b/g, '<span class="fn">$1</span>')
+        .replace(/(".*?")/g, '<span class="str">$1</span>')
+        .replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+    }
+
+    function renderCleanCodeDisplay() {
+      const container = document.getElementById('code-lines-display');
+      const sample = handoutCodeSamples[labCurrentSample];
+      const lines = sample.rawCode.split('\n');
+      const currentStep = sample.steps[labCurrentLine];
+      const activeLineNo = currentStep ? currentStep.lineNo : -1;
+
+      let html = '<div class="space-y-0.5 font-mono">';
+      lines.forEach((lineText, idx) => {
+        const lineNo = idx + 1;
+        const isActive = (lineNo === activeLineNo);
+        const activeClass = isActive 
+          ? 'bg-sky-950/80 border-l-4 border-sky-400 pl-2 -ml-2 text-white font-semibold shadow-sm' 
+          : 'text-slate-400 pl-2';
+
+        html += `
+          <div id="c-line-${lineNo}" class="flex items-start gap-3 py-0.5 rounded-r transition-colors ${activeClass}">
+            <span class="w-6 text-right select-none text-slate-600 text-[11px]">${lineNo}</span>
+            <div class="flex-1 whitespace-pre">${highlightCSharpClean(lineText)}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+
+      container.innerHTML = html;
+
+      // Scroll active line smoothly into view
+      if (activeLineNo > 0) {
+        const lineEl = document.getElementById(`c-line-${activeLineNo}`);
+        if (lineEl) {
+          lineEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }
+
+    function updateLabStepUI() {
+      const sample = handoutCodeSamples[labCurrentSample];
+      const totalSteps = sample.steps.length;
+      document.getElementById('lab-step-count').innerText = `Step: ${labCurrentLine} / ${totalSteps}`;
+
+      if (labCurrentLine < totalSteps) {
+        const step = sample.steps[labCurrentLine];
+        document.getElementById('lab-current-line-no').innerText = `Line: ${step.lineNo}`;
+        document.getElementById('lab-step-heading').innerText = step.heading;
+        document.getElementById('lab-step-description').innerText = step.desc;
+        document.getElementById('lab-step-internals').innerText = step.clr;
+      } else {
+        document.getElementById('lab-current-line-no').innerText = 'Line: Completed';
+        document.getElementById('lab-step-heading').innerText = 'Execution Complete';
+        document.getElementById('lab-step-description').innerText = 'All steps in this handout example have executed successfully.';
+        document.getElementById('lab-step-internals').innerText = 'Threads terminated or joined. Heap memory clean.';
+      }
+    }
+
+    function stepCodeManual() {
+      const sample = handoutCodeSamples[labCurrentSample];
+      if (labCurrentLine < sample.steps.length) {
+        const step = sample.steps[labCurrentLine];
+        if (step.output) {
+          appendVirtualTerminal(step.output);
+        }
+        labCurrentLine++;
+        renderCleanCodeDisplay();
+        updateLabStepUI();
+      }
+    }
+
+    function runCodeAuto() {
+      resetCodeLabState();
+      const sample = handoutCodeSamples[labCurrentSample];
+      if (labAutoInterval) clearInterval(labAutoInterval);
+
+      labAutoInterval = setInterval(() => {
+        if (labCurrentLine < sample.steps.length) {
+          stepCodeManual();
+        } else {
+          clearInterval(labAutoInterval);
+          labAutoInterval = null;
+        }
+      }, 800);
+    }
+
+    function resetCodeLabState() {
+      if (labAutoInterval) {
+        clearInterval(labAutoInterval);
+        labAutoInterval = null;
+      }
+      labCurrentLine = 0;
+      renderCleanCodeDisplay();
+      clearVirtualTerminal();
+      updateLabStepUI();
+    }
+
+    function appendVirtualTerminal(txt) {
+      const term = document.getElementById('lab-terminal-output');
+      const lines = txt.split('\n');
+      lines.forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'text-emerald-400 font-mono text-xs';
+        div.innerText = l;
+        term.appendChild(div);
+      });
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function clearVirtualTerminal() {
+      document.getElementById('lab-terminal-output').innerHTML = '<div class="text-slate-600">// Terminal initialized. Output will appear here...</div>';
+    }
+
+    function copyCurrentCode() {
+      const sample = handoutCodeSamples[labCurrentSample];
+      const dummy = document.createElement('textarea');
+      dummy.value = sample.rawCode;
+      document.body.appendChild(dummy);
+      dummy.select();
+      document.execCommand('copy');
+      document.body.removeChild(dummy);
+
+      const msg = document.getElementById('lab-file-title');
+      const old = msg.innerText;
+      msg.innerText = "✓ Copied to Clipboard!";
+      setTimeout(() => { msg.innerText = old; }, 1500);
+    }
+
+    /* ------------------------------------------------------------- */
+    /* 3. MULTITHREADING, RACE CONDITION & INTUITIVE JOIN()          */
+    /* ------------------------------------------------------------- */
+    let isJoinModeEnabled = true;
+    let raceTimer = null;
+    let raceValX = 2;
+    let raceValY = 2;
+
+    function setJoinMode(enableJoin) {
+      isJoinModeEnabled = enableJoin;
+      const btnWith = document.getElementById('mode-join-with');
+      const btnWithout = document.getElementById('mode-join-without');
+      const takeaway = document.getElementById('race-takeaway-text');
+
+      if (enableJoin) {
+        btnWith.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition';
+        btnWithout.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
+        takeaway.innerHTML = 'When <strong>WITH Join()</strong> is enabled, Main Thread pauses and waits for Thread 1, 2, and 3 to finish. Output will reliably display <code class="text-white font-mono">x: 4</code> and <code class="text-white font-mono">y: 3</code>!';
+      } else {
+        btnWith.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
+        btnWithout.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white transition';
+        takeaway.innerHTML = 'When <strong>WITHOUT Join()</strong> is enabled, Main Thread does NOT wait! It immediately prints <code class="text-rose-300 font-mono">x: 2</code> and <code class="text-rose-300 font-mono">y: 2</code> while child threads are still running in the background!';
+      }
+      resetMultithreadSim();
+    }
+
+    function resetMultithreadSim() {
+      if (raceTimer) clearInterval(raceTimer);
+      raceTimer = null;
+      raceValX = 2;
+      raceValY = 2;
+
+      document.getElementById('race-val-x').innerText = '2';
+      document.getElementById('race-val-y').innerText = '2';
+      document.getElementById('race-bar-1').style.width = '0%';
+      document.getElementById('race-bar-2').style.width = '0%';
+      document.getElementById('race-bar-3').style.width = '0%';
+
+      document.getElementById('race-status-1').innerText = 'Unstarted';
+      document.getElementById('race-status-2').innerText = 'Unstarted';
+      document.getElementById('race-status-3').innerText = 'Unstarted';
+
+      document.getElementById('race-dot-1').className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+      document.getElementById('race-dot-2').className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+      document.getElementById('race-dot-3').className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+
+      document.getElementById('active-core-indicator').innerText = 'Idle';
+      document.getElementById('active-core-indicator').className = 'px-2.5 py-0.5 rounded-full text-xs font-mono bg-slate-800 text-sky-400 font-bold';
+
+      document.getElementById('race-console-result').innerHTML = 'Waiting to run simulation...';
+      document.getElementById('btn-start-race').disabled = false;
+      document.getElementById('btn-start-race').classList.remove('opacity-40', 'cursor-not-allowed');
+    }
+
+    function startMultithreadSim() {
+      resetMultithreadSim();
+      const startBtn = document.getElementById('btn-start-race');
+      startBtn.disabled = true;
+      startBtn.classList.add('opacity-40', 'cursor-not-allowed');
+
+      let t1Progress = 0;
+      let t2Progress = 0;
+      let t3Progress = 0;
+      let tick = 0;
+
+      const consoleBox = document.getElementById('race-console-result');
+
+      if (!isJoinModeEnabled) {
+        // WITHOUT JOIN(): Main thread prints immediately!
+        consoleBox.innerHTML = `
+          <span class="text-rose-400 font-bold">Main Thread (WITHOUT Join()):</span><br>
+          Console.WriteLine("Value of x: " + x); &rarr; <strong class="text-rose-300">2</strong> (Premature!)<br>
+          Console.WriteLine("Value of y: " + y); &rarr; <strong class="text-rose-300">2</strong> (Premature!)<br>
+          <span class="text-slate-400 italic">Notice: Children are still running below!</span>
+        `;
+      } else {
+        // WITH JOIN(): Main thread pauses and waits
+        consoleBox.innerHTML = `
+          <span class="text-sky-300 font-bold">Main Thread (WITH Join()):</span><br>
+          Invoked _childThread1.Join(), _childThread2.Join(), _childThread3.Join().<br>
+          <span class="text-amber-400 animate-pulse">⏸ Main Thread Paused in WaitSleepJoin... Waiting for children.</span>
+        `;
+      }
+
+      // Round-robin simulation loop
+      raceTimer = setInterval(() => {
+        tick++;
+        const turn = tick % 3;
+
+        // Reset dots
+        document.getElementById('race-dot-1').className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+        document.getElementById('race-dot-2').className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+        document.getElementById('race-dot-3').className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
+
+        if (turn === 0 && t1Progress < 100) {
+          t1Progress += 50;
+          document.getElementById('race-bar-1').style.width = t1Progress + '%';
+          document.getElementById('race-status-1').innerText = 'Running on CPU';
+          document.getElementById('race-dot-1').className = 'w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping';
+          document.getElementById('active-core-indicator').innerText = 'Core 0: Child Thread 1';
+          document.getElementById('active-core-indicator').className = 'px-2.5 py-0.5 rounded-full text-xs font-mono bg-sky-950 text-sky-400 border border-sky-800 font-bold';
+
+          if (t1Progress === 100) {
+            raceValX += 1; // Handout x++
+            pulseSharedX(raceValX);
+            document.getElementById('race-status-1').innerText = 'Stopped (Complete)';
+          }
+        } else if (turn === 1 && t2Progress < 100) {
+          t2Progress += 50;
+          document.getElementById('race-bar-2').style.width = t2Progress + '%';
+          document.getElementById('race-status-2').innerText = 'Running on CPU';
+          document.getElementById('race-dot-2').className = 'w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping';
+          document.getElementById('active-core-indicator').innerText = 'Core 0: Child Thread 2';
+          document.getElementById('active-core-indicator').className = 'px-2.5 py-0.5 rounded-full text-xs font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 font-bold';
+
+          if (t2Progress === 100) {
+            raceValX += 1; // Handout x++
+            pulseSharedX(raceValX);
+            document.getElementById('race-status-2').innerText = 'Stopped (Complete)';
+          }
+        } else if (turn === 2 && t3Progress < 100) {
+          t3Progress += 100;
+          document.getElementById('race-bar-3').style.width = t3Progress + '%';
+          document.getElementById('race-status-3').innerText = 'Running on CPU';
+          document.getElementById('race-dot-3').className = 'w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping';
+          document.getElementById('active-core-indicator').innerText = 'Core 0: Child Thread 3';
+          document.getElementById('active-core-indicator').className = 'px-2.5 py-0.5 rounded-full text-xs font-mono bg-purple-950 text-purple-400 border border-purple-800 font-bold';
+
+          raceValY += 1; // Handout y++
+          pulseSharedY(raceValY);
+          document.getElementById('race-status-3').innerText = 'Stopped (Complete)';
+        }
+
+        // All finished
+        if (t1Progress >= 100 && t2Progress >= 100 && t3Progress >= 100) {
+          clearInterval(raceTimer);
+          raceTimer = null;
+          document.getElementById('active-core-indicator').innerText = 'All Finished';
+          document.getElementById('active-core-indicator').className = 'px-2.5 py-0.5 rounded-full text-xs font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold';
+
+          if (isJoinModeEnabled) {
+            consoleBox.innerHTML = `
+              <span class="text-emerald-400 font-bold">Main Thread Resumed! (Join Complete):</span><br>
+              Console.WriteLine("Value of x: " + x); &rarr; <strong class="text-emerald-300">4</strong><br>
+              Console.WriteLine("Value of y: " + y); &rarr; <strong class="text-emerald-300">3</strong><br>
+              <span class="text-emerald-400">✓ Accurate synchronization guaranteed by Join()!</span>
+            `;
+          } else {
+            consoleBox.innerHTML += `
+              <div class="mt-1 pt-1 border-t border-slate-800 text-slate-400">
+                Children finished late: Heap currently has x=${raceValX}, y=${raceValY}, but Main Thread had already printed 2 and 2!
+              </div>
+            `;
+          }
+
+          startBtn.disabled = false;
+          startBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
+      }, 350);
+    }
+
+    function pulseSharedX(val) {
+      const el = document.getElementById('race-val-x');
+      el.innerText = val;
+      el.classList.add('text-amber-300', 'scale-125');
+      setTimeout(() => {
+        el.classList.remove('text-amber-300', 'scale-125');
+      }, 200);
+    }
+
+    function pulseSharedY(val) {
+      const el = document.getElementById('race-val-y');
+      el.innerText = val;
+      el.classList.add('text-purple-300', 'scale-125');
+      setTimeout(() => {
+        el.classList.remove('text-purple-300', 'scale-125');
+      }, 200);
+    }
+
+    // Startup initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      resetSimulation();
+      initCodeLab();
+    });
+  </script>
+</body>
+</html>
