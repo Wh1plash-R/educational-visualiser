@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Development: Player Elements & Story Development Quiz Deck</title>
+  <!-- STREAMING_CHUNK:Styling the presentation layout and themes... -->
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #162032;
+      --card-border: #22334d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.12);
+      --badge-mc: #6366f1;
+      --badge-tf: #0d9488;
+      --ans-bg: rgba(56, 189, 248, 0.08);
+      --ans-border: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* STREAMING_CHUNK:Styling top header and progress bar... */
+    header {
+      padding: 1.1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(11, 17, 32, 0.85);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .topic-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .slide-counter {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      transition: width 0.25s ease;
+    }
+
+    /* STREAMING_CHUNK:Styling main slide container and cards... */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      position: relative;
+    }
+
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 920px;
+      animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2.8rem 3.2rem;
+      box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      margin-bottom: 1.4rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .badge-type { background-color: var(--badge-mc); color: #fff; }
+    .badge-tf-type { background-color: var(--badge-tf); color: #fff; }
+
+    .question-number {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 0.3rem 0.8rem;
+      border-radius: 8px;
+    }
+
+    .question-text {
+      font-size: 1.45rem;
+      line-height: 1.45;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 2rem;
+    }
+
+    /* STREAMING_CHUNK:Styling choices and answer revelation components... */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .options-grid { grid-template-columns: 1fr; }
+      .card { padding: 2rem 1.5rem; }
+      .question-text { font-size: 1.25rem; }
+    }
+
+    .option-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      padding: 1.1rem 1.3rem;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.85rem;
+      line-height: 1.4;
+      color: #e2e8f0;
+    }
+
+    .option-letter {
+      font-weight: 800;
+      color: var(--accent);
+      min-width: 1.5rem;
+    }
+
+    .tf-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    .tf-card {
+      padding: 1.5rem;
+      text-align: center;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+    }
+
+    .answer-panel {
+      display: none;
+      margin-top: 1.8rem;
+      padding: 1.1rem 1.3rem;
+      border-radius: 10px;
+      background: var(--ans-bg);
+      border: 1px solid var(--ans-border);
+      color: #e0f2fe;
+    }
+
+    .answer-panel.show {
+      display: block;
+    }
+
+    .answer-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+
+    .answer-desc {
+      font-size: 0.95rem;
+      line-height: 1.4;
+      color: #cbd5e1;
+    }
+
+    /* STREAMING_CHUNK:Styling title slide and footer buttons... */
+    .title-slide-content {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .title-slide-content h1 {
+      font-size: 2.6rem;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .title-slide-content p {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 620px;
+      margin: 0 auto 2rem;
+      line-height: 1.5;
+    }
+
+    .meta-tag-group {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .meta-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    footer {
+      padding: 1.1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--card-border);
+      background: rgba(11, 17, 32, 0.85);
+      backdrop-filter: blur(10px);
+    }
+
+    .nav-hints {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    button {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.65rem 1.25rem;
+      border-radius: 9px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--accent);
+      color: #0b1120;
+      border-color: var(--accent);
+    }
+
+    button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    button.toggle-ans-btn {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--accent);
+    }
+
+    button.toggle-ans-btn:hover {
+      background: var(--accent);
+      color: #0b1120;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="progress-bar" id="progressBar"></div>
+
+  <header>
+    <div class="topic-title">
+      Game Development
+    </div>
+    <div class="slide-counter" id="slideCounter">Slide 1 of 26</div>
+  </header>
+
+  <main>
+    <!-- STREAMING_CHUNK:Rendering Title Slide... -->
+    <div class="slide active">
+      <div class="card">
+        <div class="title-slide-content">
+          <div class="badge-row" style="justify-content: center;">
+            <span class="badge" style="background: #38bdf8; color: #0b1120;">Midterm Review</span>
+          </div>
+          <h1>Player Elements &amp; Story Development</h1>
+          <p>A 25-item question deck focusing strictly on key terms, definitions, and classifications for Midterm topics.</p>
+          <div class="meta-tag-group">
+            <span class="meta-pill">Part I: Multiple Choice</span>
+            <span class="meta-pill">Part II: True or False </span>
+          </div>
+          <div style="font-size: 0.9rem; color: var(--text-muted);">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STREAMING_CHUNK:Rendering Multiple Choice Questions 1 to 5... -->
+    <!-- Q1 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 01</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which player motivation is defined by demonstrating the ability to dominate the game world and increase character skills to attain high scores and rankings?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Escapism</div>
+          <div class="option-item"><span class="option-letter">B.</span> Mastery</div>
+          <div class="option-item"><span class="option-letter">C.</span> Knowledge</div>
+          <div class="option-item"><span class="option-letter">D.</span> Competition</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Mastery</div>
+          <div class="answer-desc">Mastery is demonstrated by increasing character skills to win and assessing status through high scores and rankings.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 02</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which market element consists of people's values, attitudes, and lifestyles?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Geographics</div>
+          <div class="option-item"><span class="option-letter">B.</span> Demographics</div>
+          <div class="option-item"><span class="option-letter">C.</span> Psychographics</div>
+          <div class="option-item"><span class="option-letter">D.</span> Ergonomics</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: C. Psychographics</div>
+          <div class="answer-desc">Psychographics consists of values, attitudes, and lifestyles, which are more relevant to personality and harder to guess externally.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 03</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">In the Myers-Briggs Type Indicator (MBTI), which dichotomy measures whether a person's source of information/perception is present-oriented (data) or future-oriented (ideas)?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Extrovert (E) vs. Introvert (I)</div>
+          <div class="option-item"><span class="option-letter">B.</span> Sensing (S) vs. Intuitive (N)</div>
+          <div class="option-item"><span class="option-letter">C.</span> Thinking (T) vs. Feeling (F)</div>
+          <div class="option-item"><span class="option-letter">D.</span> Judging (J) vs. Perceiving (P)</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Sensing (S) vs. Intuitive (N)</div>
+          <div class="answer-desc">Sensing relies on data and present orientation, while Intuitive relies on ideas and future orientation.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 04</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which generation of players is associated with "latchkey" self-reliance and best connects with an independent, nomadic character who takes risks?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Silent Generation</div>
+          <div class="option-item"><span class="option-letter">B.</span> Boom Generation</div>
+          <div class="option-item"><span class="option-letter">C.</span> Generation X</div>
+          <div class="option-item"><span class="option-letter">D.</span> Millennial Generation</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: C. Generation X</div>
+          <div class="answer-desc">Generation X experienced falling fertility, divorce epidemic, and latchkey self-reliance, connecting with independent, risk-taking characters.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 05</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which generation came of age during the 1960s and 1970s spiritual revolution and responds best to games featuring social, spiritual, or political messages?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Boom Generation</div>
+          <div class="option-item"><span class="option-letter">B.</span> Silent Generation</div>
+          <div class="option-item"><span class="option-letter">C.</span> Generation X</div>
+          <div class="option-item"><span class="option-letter">D.</span> Millennial Generation</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: A. Boom Generation</div>
+          <div class="answer-desc">The Boom Generation started a society-wide, values-oriented spiritual revolution during their coming-of-age in the 1960s and 1970s.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STREAMING_CHUNK:Rendering Multiple Choice Questions 6 to 10... -->
+    <!-- Q6 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 06</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">In the traditional three-act plot structure, which act comprises the bulk of the dramatic tension by focusing on obstacles the character must overcome?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Act I (Beginning)</div>
+          <div class="option-item"><span class="option-letter">B.</span> Act II (Middle)</div>
+          <div class="option-item"><span class="option-letter">C.</span> Act III (End)</div>
+          <div class="option-item"><span class="option-letter">D.</span> Prologue</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Act II (Middle)</div>
+          <div class="answer-desc">Act II focuses on the series of obstacles standing in the way of solving the problem, comprising the bulk of the dramatic tension.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 07</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">A 1–2 sentence summary of a game's purpose and overall theme that appears on packaging to entice customers is the:</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Backstory</div>
+          <div class="option-item"><span class="option-letter">B.</span> Synopsis</div>
+          <div class="option-item"><span class="option-letter">C.</span> Premise</div>
+          <div class="option-item"><span class="option-letter">D.</span> Setting</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: C. Premise</div>
+          <div class="answer-desc">The premise (or high concept) summarizes the game's purpose and overall theme in 1–2 sentences or a short paragraph.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q8 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 08</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which story element provides information leading up to where the game begins, usually found in the manual or as introductory text with voice-over?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Theme</div>
+          <div class="option-item"><span class="option-letter">B.</span> Backstory</div>
+          <div class="option-item"><span class="option-letter">C.</span> Plot</div>
+          <div class="option-item"><span class="option-letter">D.</span> Premise</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Backstory</div>
+          <div class="answer-desc">Backstory provides information leading up to the start of the game, helping orient the player and establish initial bonds.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q9 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 09</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which storytelling technique draws players back to the main storyline by widening scope through subquests or introducing new characters?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Balancing conflict</div>
+          <div class="option-item"><span class="option-letter">B.</span> Shifting focus</div>
+          <div class="option-item"><span class="option-letter">C.</span> Suspension of disbelief</div>
+          <div class="option-item"><span class="option-letter">D.</span> Realism</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Shifting focus</div>
+          <div class="answer-desc">Shifting focus draws players back to the main storyline while capturing interest through subquests and new unexplored areas.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q10 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 10</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which storytelling device causes players to forget real life and accept artificial rules that might not make sense in the real world?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Suspension of disbelief</div>
+          <div class="option-item"><span class="option-letter">B.</span> Realism</div>
+          <div class="option-item"><span class="option-letter">C.</span> Character arc</div>
+          <div class="option-item"><span class="option-letter">D.</span> Unity of opposites</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: A. Suspension of disbelief</div>
+          <div class="answer-desc">Suspension of disbelief refers to players accepting rules and experiences that contradict real-world logic.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STREAMING_CHUNK:Rendering Multiple Choice Questions 11 to 15... -->
+    <!-- Q11 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 11</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which archetype represents the hero's opposite, often the ultimate evil character or the dark side of the hero?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Guardian</div>
+          <div class="option-item"><span class="option-letter">B.</span> Shadow</div>
+          <div class="option-item"><span class="option-letter">C.</span> Herald</div>
+          <div class="option-item"><span class="option-letter">D.</span> Trickster</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Shadow</div>
+          <div class="answer-desc">The shadow represents the hero's opposite, often the ultimate evil character or the hero's dark side.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q12 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 12</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which archetype blocks the hero's progress by whatever means necessary until the hero has proven his or her worth?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Mentor</div>
+          <div class="option-item"><span class="option-letter">B.</span> Ally</div>
+          <div class="option-item"><span class="option-letter">C.</span> Guardian</div>
+          <div class="option-item"><span class="option-letter">D.</span> Herald</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: C. Guardian</div>
+          <div class="answer-desc">The guardian tests the hero and blocks progress (through riddles, combat, or internal blocks) until worth is proven.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q13 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 13</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">What narrative device links the protagonist and antagonist together when they both want the exact same thing?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Unity of opposites</div>
+          <div class="option-item"><span class="option-letter">B.</span> Character triangle</div>
+          <div class="option-item"><span class="option-letter">C.</span> Character arc</div>
+          <div class="option-item"><span class="option-letter">D.</span> Balancing conflict</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: A. Unity of opposites</div>
+          <div class="answer-desc">When both opposing characters desire the exact same goal or object, this device is known as the unity of opposites.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q14 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 14</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">Which type of antagonist is an anti-hero who could have been a protagonist, but whose destructive power leads to punishment and death to satisfy justice?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Mistaken antagonist</div>
+          <div class="option-item"><span class="option-letter">B.</span> Transformational antagonist</div>
+          <div class="option-item"><span class="option-letter">C.</span> Exaggerated antagonist</div>
+          <div class="option-item"><span class="option-letter">D.</span> Realistic antagonist</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: B. Transformational antagonist</div>
+          <div class="answer-desc">A transformational antagonist is an anti-hero who could have been a protagonist but must receive punishment/death at the end.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q15 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 15</span>
+          <span class="badge badge-type">Multiple Choice</span>
+        </div>
+        <div class="question-text">According to the character arc levels based on Maslow's hierarchy, which level involves bonding with a small group such as an MMOG guild?</div>
+        <div class="options-grid">
+          <div class="option-item"><span class="option-letter">A.</span> Level 1: Intrapersonal</div>
+          <div class="option-item"><span class="option-letter">B.</span> Level 2: Interpersonal</div>
+          <div class="option-item"><span class="option-letter">C.</span> Level 3: Team</div>
+          <div class="option-item"><span class="option-letter">D.</span> Level 4: Community</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: C. Level 3: Team</div>
+          <div class="answer-desc">At Level 3 (Team), the protagonist bonds with a small group with common interests, fulfilling the need to belong.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STREAMING_CHUNK:Rendering True/False Questions 16 to 20... -->
+    <!-- Q16 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 16</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">Players motivated by physical seclusion prefer private places like their homes, but they may still interact socially with others in online games.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: TRUE</div>
+          <div class="answer-desc"> Players seeking physical seclusion still interact socially with people in the privacy of their own physical environments.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q17 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 17</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">Generations are considered part of demographics only, with no relation to psychographics.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: FALSE</div>
+          <div class="answer-desc">Generations are explicitly defined as part of both demographics and psychographics due to shared historical shifts, beliefs, and values.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q18 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 18</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">In the MBTI model, Thinking (T) vs. Feeling (F) describes whether judgment-formation is objective or subjective.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: TRUE</div>
+          <div class="answer-desc">Thinking is objective, whereas Feeling is subjective judgment-formation.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q19 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 19</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">A storyline is necessary for a satisfying playing experience in all types of games, including puzzle games such as Tetris.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: FALSE</div>
+          <div class="answer-desc">Storylines exist in many games, but they are not necessary for a satisfying experience in games such as Tetris.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q20 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 20</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">In the three-act plot structure, Act I focuses on capturing the audience's attention and introducing the character's problem immediately.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: TRUE</div>
+          <div class="answer-desc">Act I captures attention and introduces the character's problem immediately.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STREAMING_CHUNK:Rendering True/False Questions 21 to 25... -->
+    <!-- Q21 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 21</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">The herald archetype is a neutral jester who primarily makes mischief and provides comic relief.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: FALSE</div>
+          <div class="answer-desc">The jester/prankster is the Trickster; the Herald facilitates change and provides the hero with direction.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q22 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 22</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">Supporting characters are also known as pivotal characters because they exist primarily to prevent the protagonist from walking away.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: TRUE</div>
+          <div class="answer-desc">Supporting (pivotal) characters exist primarily to prevent the protagonist from walking away and jump-start the action.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q23 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 23</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">Non-player characters (NPCs) are characters in a game world created and controlled by the game's artificial intelligence (AI) engine.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: TRUE</div>
+          <div class="answer-desc">NPCs are not controlled by players; they are created and controlled by the game's AI engine.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q24 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 24</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">A character arc is illustrated through a character's monologue and spoken dialogue rather than their behavior.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: FALSE</div>
+          <div class="answer-desc">The handout specifies that character growth and arc are illustrated through a character's behavior rather than monologue or dialogue.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q25 -->
+    <div class="slide">
+      <div class="card">
+        <div class="badge-row">
+          <span class="question-number">Question 25</span>
+          <span class="badge badge-tf-type">True or False</span>
+        </div>
+        <div class="question-text">In character development levels, Level 5 (Humanity) involves what Abraham Maslow calls self-actualization.</div>
+        <div class="tf-container">
+          <div class="tf-card">TRUE</div>
+          <div class="tf-card">FALSE</div>
+        </div>
+        <div class="answer-panel">
+          <div class="answer-title">Answer: TRUE</div>
+          <div class="answer-desc">Level 5 (Humanity) represents spiritual growth and self-actualization once acceptance across a larger community is achieved.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- STREAMING_CHUNK:Setting up footer navigation and interactive script... -->
+  <footer>
+    <div class="nav-hints">
+      Keys: <strong>←</strong> / <strong>→</strong> or <strong>Space</strong> &nbsp;|&nbsp; <strong>K</strong> = Toggle Answer
+    </div>
+    <div class="btn-group">
+      <button class="toggle-ans-btn" id="toggleAnsBtn" onclick="toggleAnswer()">Show Answer</button>
+      <button id="prevBtn" onclick="prevSlide()">Previous</button>
+      <button id="nextBtn" onclick="nextSlide()">Next</button>
+    </div>
+  </footer>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    let currentSlide = 0;
+
+    const counter = document.getElementById('slideCounter');
+    const progressBar = document.getElementById('progressBar');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const toggleAnsBtn = document.getElementById('toggleAnsBtn');
+
+    function updatePresentation() {
+      slides.forEach((slide, index) => {
+        slide.classList.toggle('active', index === currentSlide);
+      });
+
+      counter.textContent = `Slide ${currentSlide + 1} of ${slides.length}`;
+      const progressPercent = ((currentSlide + 1) / slides.length) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+
+      prevBtn.disabled = currentSlide === 0;
+      nextBtn.disabled = currentSlide === slides.length - 1;
+
+      if (currentSlide === 0) {
+        toggleAnsBtn.style.visibility = 'hidden';
+      } else {
+        toggleAnsBtn.style.visibility = 'visible';
+        syncAnswerBtnText();
+      }
+    }
+
+    function toggleAnswer() {
+      const activeSlide = slides[currentSlide];
+      const panel = activeSlide.querySelector('.answer-panel');
+      if (panel) {
+        panel.classList.toggle('show');
+        syncAnswerBtnText();
+      }
+    }
+
+    function syncAnswerBtnText() {
+      const activeSlide = slides[currentSlide];
+      const panel = activeSlide.querySelector('.answer-panel');
+      if (panel && panel.classList.contains('show')) {
+        toggleAnsBtn.textContent = 'Hide Answer';
+      } else {
+        toggleAnsBtn.textContent = 'Show Answer';
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        updatePresentation();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updatePresentation();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Spacebar' || e.code === 'Space') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleAnswer();
+      }
+    });
+
+    updatePresentation();
+  </script>
+</body>
+</html>
