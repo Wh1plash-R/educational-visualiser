@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Guide to Software Design Patterns - Student Edition</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #1e293b;
+      --card-bg-light: #243248;
+      --border: #334155;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-green: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      --accent-purple: #c084fc;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    /* Category Navigation */
+    .category-pills {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      padding: 10px 22px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .pill-btn:hover {
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    .pill-btn.active {
+      background: var(--primary);
+      color: #0f172a;
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Pattern Subnav Tabs */
+    .pattern-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+      scrollbar-width: thin;
+    }
+
+    .tab-btn {
+      padding: 8px 16px;
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      background: #27354a;
+      color: #fff;
+    }
+
+    .tab-btn.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(56, 189, 248, 0.12);
+      font-weight: 700;
+    }
+
+    /* Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 950px) {
+      .main-grid {
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .badge-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 800;
+    }
+
+    .badge.creational { background: rgba(52, 211, 153, 0.15); color: var(--accent-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge.structural { background: rgba(56, 189, 248, 0.15); color: var(--primary); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge.behavioral { background: rgba(192, 132, 252, 0.15); color: var(--accent-purple); border: 1px solid rgba(192, 132, 252, 0.3); }
+
+    .pattern-title {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .pattern-definition {
+      color: #cbd5e1;
+      font-size: 1rem;
+      margin-bottom: 18px;
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
+    }
+
+    .analogy-box {
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.25);
+      border-left: 4px solid var(--accent-amber);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+
+    .analogy-title {
+      color: var(--accent-amber);
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .analogy-text {
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .detail-item p {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .detail-item code {
+      background: #0f172a;
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    /* Visualizer Panel */
+    .visualizer-box {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .visual-stage {
+      background: #090e1a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      flex: 1;
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .interactive-controls {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      padding: 10px 12px;
+      background: #334155;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .ctrl-btn:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary);
+    }
+
+    .console-box {
+      margin-top: 12px;
+      background: #050811;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.82rem;
+      color: #38bdf8;
+      min-height: 60px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    /* Diagram Nodes & Shapes */
+    .box-node {
+      border: 2px solid var(--primary);
+      border-radius: 6px;
+      background: #1e293b;
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .uml-box {
+      border: 1px solid #475569;
+      background: #131d2e;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 320px;
+      overflow: hidden;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+    }
+
+    .uml-header {
+      background: #1e293b;
+      padding: 6px 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      border-bottom: 1px solid #334155;
+      color: var(--primary);
+    }
+
+    .uml-body {
+      padding: 8px 12px;
+      font-size: 0.78rem;
+      font-family: monospace;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+
+    .pulse {
+      animation: pulseAnim 0.7s infinite alternate;
+    }
+
+    @keyframes pulseAnim {
+      0% { transform: scale(1); filter: brightness(1); }
+      100% { transform: scale(1.04); filter: brightness(1.3); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Software Design Patterns Visualizer</h1>
+      <p>Interactive textbook companion: Step-by-step simulations, architectural structure, and real-world software scenarios.</p>
+    </header>
+
+    <!-- Category Switcher -->
+    <div class="category-pills">
+      <button class="pill-btn active" onclick="switchCategory('creational')">Creational Patterns (5)</button>
+      <button class="pill-btn" onclick="switchCategory('structural')">Structural Patterns (7)</button>
+      <button class="pill-btn" onclick="switchCategory('behavioral')">Behavioral Patterns (3)</button>
+    </div>
+
+    <!-- Patterns Subnav -->
+    <div class="pattern-tabs" id="pattern-tabs"></div>
+
+    <!-- Main Content Layout -->
+    <div class="main-grid">
+      <!-- Left Panel: Educational Context -->
+      <div class="panel">
+        <div class="badge-bar">
+          <span class="badge" id="pattern-category-badge">Creational</span>
+          <span style="color: var(--text-muted); font-size: 0.8rem; font-weight:600;" id="pattern-alias">Pattern Category</span>
+        </div>
+
+        <h2 class="pattern-title" id="pattern-title">Pattern Name</h2>
+        <p class="pattern-definition" id="pattern-definition">Pattern definition statement.</p>
+
+        <!-- Layman Analogy -->
+        <div class="analogy-box">
+          <div class="analogy-title">
+            <span>💡</span> Intuitive Real-World Analogy
+          </div>
+          <p class="analogy-text" id="pattern-analogy"></p>
+        </div>
+
+        <!-- Problem Handout Breakdown -->
+        <div class="section-title">⚠️ The Realistic Problem</div>
+        <div class="detail-item">
+          <p id="pattern-problem"></p>
+        </div>
+
+        <!-- Architectural Solution -->
+        <div class="section-title">🛠️ The Architectural Solution</div>
+        <div class="detail-item">
+          <p id="pattern-solution"></p>
+        </div>
+
+        <!-- Structure Components -->
+        <div class="section-title">📐 Participant Structure & Roles</div>
+        <div class="detail-item">
+          <p id="pattern-structure"></p>
+        </div>
+      </div>
+
+      <!-- Right Panel: Step-by-Step Visualizer -->
+      <div class="panel visualizer-box">
+        <div class="section-title">🖥️ Interactive Architecture Visualizer</div>
+        <div class="visual-stage" id="visual-stage">
+          <!-- Dynamic Visual Canvas -->
+        </div>
+
+        <div class="interactive-controls" id="interactive-controls">
+          <!-- Action Buttons -->
+        </div>
+
+        <div class="console-box" id="console-output">
+          > Click an action button below to trigger the architecture.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const patterns = {
+      // ==========================================
+      // 1. CREATIONAL PATTERNS
+      // ==========================================
+      singleton: {
+        category: 'creational',
+        name: 'Singleton Pattern',
+        alias: 'Guaranteed Single Instance',
+        def: 'Ensures that a class has only one single instance throughout the application lifecycle and provides a global static point of access to it.',
+        analogy: 'The Office Coffee Machine or the President of a nation. Everyone in the building accesses the exact same machine. No employee manufactures an entire coffee machine just to brew one cup.',
+        problem: 'Multiple client threads and controllers need to interact with a centralized Database Connection Pool or File Logger. If every caller calls "new DatabaseConnection()", memory is depleted, connection pools hit exhaustion, and file writes cause locks and race conditions.',
+        solution: '1. Set the default constructor to private so other classes cannot use "new".\n2. Declare a private static instance variable.\n3. Create a public static method getInstance() that instantiates the object once and returns that exact cached instance to every future caller.',
+        structure: '• Singleton Class: contains private static instance, private constructor Singleton(), and public static getInstance(): Singleton.\n• Client: calls Singleton.getInstance() rather than using the constructor.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:20px; width:100%;">
+            <div id="singleton-node" class="uml-box" style="border-color:#475569;">
+              <div class="uml-header">Singleton: DatabasePool</div>
+              <div class="uml-body" id="singleton-state">
+                - instance: null<br>
+                - status: Not Allocated<br>
+                - memoryAddress: none
+              </div>
+            </div>
+            <div style="display:flex; gap:16px; justify-content:center; width:100%;">
+              <div id="client-a" class="box-node" style="font-size:0.8rem; background:#1e293b;">Client Thread A</div>
+              <div id="client-b" class="box-node" style="font-size:0.8rem; background:#1e293b;">Client Thread B</div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Thread A: getInstance()', action: 'callSingleton("Client Thread A")' },
+          { label: 'Thread B: getInstance()', action: 'callSingleton("Client Thread B")' },
+          { label: 'Reset Instance', action: 'resetSingleton()' }
+        ]
+      },
+
+      factory_method: {
+        category: 'creational',
+        name: 'Factory Method Pattern',
+        alias: 'Virtual Constructor / Subclass Decider',
+        def: 'Provides an interface for creating objects in a superclass, but allows subclasses to alter the type of objects that will be created without modifying client code.',
+        analogy: 'A Logistics Delivery Network. The main dispatch office sets the rule: "planDelivery() -> createTransport()". A coastal branch overrides it to spawn Ships, while an inland branch overrides it to spawn Trucks.',
+        problem: 'A logistics software started exclusively with a Truck class. As the company expands into maritime shipping, the codebase is flooded with "if (mode == TRUCK) new Truck() else if (mode == SHIP) new Ship()". Coupling core business logic directly to concrete classes makes adding Airplanes or Trains painful and error-prone.',
+        solution: 'Declare an abstract method createTransport() inside the Creator class. Concrete subclasses (RoadLogistics, SeaLogistics) implement this method to construct and return their specific transport "Product".',
+        structure: '• Product Interface: declares doStuff() / deliver().\n• Concrete Products: Truck, Ship.\n• Creator: declares factory method createTransport(): Product.\n• Concrete Creators: RoadLogistics, SeaLogistics.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:16px; width:100%;">
+            <div id="factory-creator" class="box-node" style="border-color:#38bdf8; width:260px;">
+              Dispatch Creator: <span id="creator-type">None</span><br>
+              <span style="font-size:0.75rem; color:#94a3b8;">Executes: createTransport()</span>
+            </div>
+            <div style="color:#94a3b8; font-size:1.1rem;">↓ instantiates ↓</div>
+            <div id="factory-product" class="box-node" style="border-color:#475569; width:260px; min-height:48px;">
+              [ No Product Instantiated ]
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Select RoadLogistics', action: 'runFactory("RoadLogistics")' },
+          { label: 'Select SeaLogistics', action: 'runFactory("SeaLogistics")' },
+          { label: 'Select AirLogistics', action: 'runFactory("AirLogistics")' }
+        ]
+      },
+
+      prototype: {
+        category: 'creational',
+        name: 'Prototype Pattern',
+        alias: 'Object Cloning',
+        def: 'Enables copying existing objects without making client code dependent on their concrete classes or private field internals.',
+        analogy: 'Cell Division (Mitosis) or using "Duplicate Layer" in Photoshop. Instead of building 40 shape parameters, shadow effects, and blend modes from scratch, you duplicate an existing template with one click.',
+        problem: 'An object contains 30 configured properties, some of which are private or hidden deep in third-party parent classes. A client cannot read or replicate those private fields from outside, making exact duplication impossible without breaking encapsulation.',
+        solution: 'Declare a Prototype interface with a clone() method. The concrete class itself implements clone(), accesses its own internal private variables, and returns a new duplicate instance.',
+        structure: '• Prototype Interface: declares clone(): Prototype.\n• Concrete Prototype: copies its own fields (this.field1 = old.field1).\n• Prototype Registry (Optional): catalog storing pre-made button/game-unit templates ready to be copied.',
+        renderSim: () => `
+          <div style="display:flex; gap:16px; align-items:center; justify-content:center; width:100%;">
+            <div class="uml-box" style="width:160px;">
+              <div class="uml-header">Original Prototype</div>
+              <div class="uml-body">
+                - width: 120px<br>
+                - bg: #0284c7<br>
+                - [private] token: 9Xz4<br>
+                - label: "Checkout"
+              </div>
+            </div>
+            <div style="color:#94a3b8; font-weight:700;">.clone() ➔</div>
+            <div id="prototype-clones" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; width:180px;">
+              <div class="box-node" style="border-style:dashed; font-size:0.75rem; color:#94a3b8;">No clones yet</div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Clone Object', action: 'cloneObject()' },
+          { label: 'Modify Clone Label', action: 'modifyClone()' },
+          { label: 'Clear Clones', action: 'resetClones()' }
+        ]
+      },
+
+      abstract_factory: {
+        category: 'creational',
+        name: 'Abstract Factory Pattern',
+        alias: 'Product Family Factory',
+        def: 'Provides an interface for creating families of related or dependent objects without specifying their concrete classes.',
+        analogy: 'An Interior Design Furniture Brand. If you choose the "Victorian" theme, the showroom delivers a Victorian Chair, Victorian Sofa, and Victorian Table that match seamlessly. You are guaranteed not to mix modern glass chairs with Victorian oak furniture.',
+        problem: 'A multi-platform GUI toolkit needs to create matching widgets: Windows (Button + Checkbox) vs. Mac (Button + Checkbox). If client code directly instantiates individual UI elements, developers risk rendering a Windows checkbox on top of a MacOS themed window.',
+        solution: 'Create an AbstractFactory interface with methods like createButton() and createCheckbox(). Concrete factories (WinFactory, MacFactory) produce whole product suites belonging to that single cohesive platform.',
+        structure: '• AbstractFactory: createChair(), createSofa().\n• ConcreteFactories: ModernFactory, VictorianFactory.\n• AbstractProducts: Chair, Sofa.\n• ConcreteProducts: ModernChair, VictorianChair, ModernSofa, VictorianSofa.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:100%;">
+            <div class="box-node" id="active-family-label" style="border-color:#38bdf8; font-size:0.85rem; width:280px;">
+              Active Factory: <span id="family-name">ModernFactory</span>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:center; width:100%;">
+              <div id="family-prod-1" class="uml-box" style="width:135px;">
+                <div class="uml-header">Product A: Chair</div>
+                <div class="uml-body" id="family-chair-text">Modern Glass Chair</div>
+              </div>
+              <div id="family-prod-2" class="uml-box" style="width:135px;">
+                <div class="uml-header">Product B: Sofa</div>
+                <div class="uml-body" id="family-sofa-text">Modern Minimalist Sofa</div>
+              </div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Use ModernFactory', action: 'switchFactorySuite("Modern")' },
+          { label: 'Use VictorianFactory', action: 'switchFactorySuite("Victorian")' },
+          { label: 'Use ArtDecoFactory', action: 'switchFactorySuite("ArtDeco")' }
+        ]
+      },
+
+      builder: {
+        category: 'creational',
+        name: 'Builder Pattern',
+        alias: 'Step-by-Step Construction',
+        def: 'Separates the construction of a complex object from its representation, allowing the exact same construction process to produce diverse outputs.',
+        analogy: 'Subway Sandwich or Custom Gaming PC. Instead of ordering a pre-assembled mystery sandwich, you guide the builder step-by-step: Bread -> Cheese -> Meats -> Veggies. You pick only what you need.',
+        problem: 'A House class constructor requires 15 arguments: walls, doors, windows, roof, garage, swimmingPool, garden, heating, statues, securitySystem. Most houses do not need swimming pools or statues, leading to clumsy constructor calls: "new House(4, 2, 4, true, null, null, null, null, true...)".',
+        solution: 'Extract the construction steps into a Builder interface (buildWalls(), buildDoors(), buildPool()). A Director class can optionally orchestrate popular step combinations (e.g. buildStandardHouse(), buildLuxuryVilla()).',
+        structure: '• Builder Interface: defines all build steps.\n• ConcreteBuilder: maintains the product being built and yields getResult().\n• Director: orchestrates the sequence of building steps.\n• Product: the complex object produced.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
+            <div class="uml-box" style="width:280px;">
+              <div class="uml-header">Director: Construction Manager</div>
+              <div class="uml-body" id="builder-recipe">Active Preset: Custom Manual Build</div>
+            </div>
+            <div id="house-canvas" class="box-node" style="width:280px; min-height:85px; border-color:#fbbf24; text-align:left; font-size:0.75rem;">
+              <strong>House Blueprint:</strong><br>
+              <span id="house-components">• Base Foundation</span>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: '+ Add Stone Walls', action: 'addBuildStep("Stone Walls")' },
+          { label: '+ Add Glass Roof', action: 'addBuildStep("Glass Skylight Roof")' },
+          { label: '+ Add Swimming Pool', action: 'addBuildStep("Olympic Pool")' },
+          { label: 'Director: Standard House', action: 'directorPreset("standard")' },
+          { label: 'Director: Luxury Villa', action: 'directorPreset("luxury")' },
+          { label: 'Reset Build', action: 'resetBuild()' }
+        ]
+      },
+
+      // ==========================================
+      // 2. STRUCTURAL PATTERNS
+      // ==========================================
+      adapter: {
+        category: 'structural',
+        name: 'Adapter Pattern',
+        alias: 'Interface Wrapper / Translator',
+        def: 'Allows objects with incompatible interfaces to collaborate by converting the interface of one class into another interface expected by clients.',
+        analogy: 'International Travel Plug Adapter. A European laptop plug cannot physically fit a US dual-flat pin wall outlet. You insert an adapter in between; you do not tear apart the wall socket.',
+        problem: 'A stock monitoring system downloads market feeds in XML format. The company purchases a high-performance predictive analytics library, but it only accepts input formatted strictly as JSON. You do not have access to rewrite the third-party library.',
+        solution: 'Create an XMLToJsonAdapter that implements the client interface, internally translates incoming XML into JSON, and forwards the transformed payload to the external library.',
+        structure: '• Client: expects ClientInterface.\n• Adapter: implements ClientInterface and wraps Adaptee.\n• Adaptee (Service): third-party class with incompatible interface.',
+        renderSim: () => `
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%;">
+            <div class="box-node" style="font-size:0.75rem; border-color:#38bdf8; width:95px;">
+              Stock App<br><span style="color:#38bdf8;">[XML Output]</span>
+            </div>
+            <div style="color:#94a3b8; font-size:0.8rem;">➔ &lt;xml&gt; ➔</div>
+            <div id="adapter-chip" class="box-node" style="font-size:0.75rem; border-color:#fbbf24; background:#451a03; width:110px;">
+              Adapter<br><span style="color:#fde68a;">[XML➔JSON]</span>
+            </div>
+            <div style="color:#94a3b8; font-size:0.8rem;">➔ {json} ➔</div>
+            <div class="box-node" style="font-size:0.75rem; border-color:#34d399; width:95px;">
+              Analytics Lib<br><span style="color:#34d399;">[Needs JSON]</span>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Feed Stock XML', action: 'triggerAdapter()' }
+        ]
+      },
+
+      bridge: {
+        category: 'structural',
+        name: 'Bridge Pattern',
+        alias: 'Dimension Decoupler',
+        def: 'Splits a large class into two separate hierarchies—Abstraction and Implementation—which can be developed independently without class explosions.',
+        analogy: 'Universal TV Remote vs. Device Hardware. The Remote (Abstraction) has standard power/volume buttons. The TV brands (Sony, Samsung) represent the Implementation. You can change remote features without remodeling TV screens.',
+        problem: 'You have Shape (Circle, Square) and Color (Red, Blue). Extending them via inheritance produces 4 classes: RedCircle, BlueCircle, RedSquare, BlueSquare. Adding 5 more shapes and 5 more colors creates 7x7 = 49 classes (combinatorial explosion!).',
+        solution: 'Decouple into two orthogonal dimensions: Abstraction (Shapes) contains a composition reference to Implementation (Color). Red and Blue become swappable color implementations.',
+        structure: '• Abstraction: Shape (holds reference to Color).\n• RefinedAbstraction: Circle, Square.\n• Implementation Interface: Color.\n• ConcreteImplementations: RedColor, BlueColor.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:100%;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="uml-box" style="width:140px;">
+                <div class="uml-header">Abstraction</div>
+                <div class="uml-body" id="bridge-shape-type">Shape: Circle</div>
+              </div>
+              <div style="color:#38bdf8; font-weight:700;">-- references --➔</div>
+              <div class="uml-box" style="width:140px;">
+                <div class="uml-header">Implementation</div>
+                <div class="uml-body" id="bridge-color-type">Color: Red</div>
+              </div>
+            </div>
+            <div id="bridge-render-sample" style="width:70px; height:70px; border-radius:9999px; background:#ef4444; border:2px solid #fff; transition:0.3s all;"></div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Set Shape: Square', action: 'changeBridgeShape("square")' },
+          { label: 'Set Shape: Circle', action: 'changeBridgeShape("circle")' },
+          { label: 'Apply Red Color', action: 'changeBridgeColor("red", "#ef4444")' },
+          { label: 'Apply Emerald Color', action: 'changeBridgeColor("emerald", "#10b981")' }
+        ]
+      },
+
+      composite: {
+        category: 'structural',
+        name: 'Composite Pattern',
+        alias: 'Tree Structure Part-Whole Unifier',
+        def: 'Composes objects into tree structures to represent part-whole hierarchies, allowing clients to treat individual objects and nested containers uniformly.',
+        analogy: 'Shipping Containers or Russian Nesting Dolls. A large shipping crate can contain individual loose items OR smaller sealed boxes containing items. To weigh the entire crate, you ask the outer crate; it sums the weights recursively.',
+        problem: 'An e-commerce order can consist of direct products or boxes containing combinations of products and other boxes. Writing custom loops with nested "if (item instanceof Box)" checks makes calculating order totals complex and brittle.',
+        solution: 'Make both Product (Leaf) and Box (Composite) implement the same Component interface with a calculatePrice() method. A Box loops over its children and sums their returned prices.',
+        structure: '• Component: interface declaring execute() / calculatePrice().\n• Leaf: individual end item (Product).\n• Composite: container storing array of child Components, delegating calculations recursively.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; width:100%; gap:8px;">
+            <div class="box-node" style="border-color:#fbbf24; font-size:0.75rem; width:260px;">
+              📦 Order Root Box (Composite)
+            </div>
+            <div style="display:flex; gap:8px; justify-content:center; width:100%;">
+              <div class="box-node" style="font-size:0.7rem; border-color:#38bdf8; width:125px;">
+                📦 Gift Box ($5)<br>
+                └ 🏷️ Watch ($100)
+              </div>
+              <div class="box-node" style="font-size:0.7rem; border-color:#34d399; width:125px;">
+                🏷️ Loose Book ($25)
+              </div>
+            </div>
+            <div id="composite-sum" style="font-size:0.85rem; color:#38bdf8; font-weight:700; margin-top:4px;">
+              Total Calculated: $0.00
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Call Root.calculatePrice()', action: 'calcCompositeTree()' },
+          { label: 'Add Leaf: $15 Cable', action: 'addCompositeLeaf()' }
+        ]
+      },
+
+      decorator: {
+        category: 'structural',
+        name: 'Decorator Pattern',
+        alias: 'Dynamic Wrapper / Layered Behavior',
+        def: 'Attaches new behaviors to objects dynamically by placing them inside special wrapper objects without modifying original class code.',
+        analogy: 'Layering clothes for sub-zero weather. You start with a base shirt. If it is cold, wrap a sweater on top. If it rains, wrap a waterproof raincoat over the sweater. Each layer enhances functionality without modifying your physical body.',
+        problem: 'A Notification library has a basic EmailNotifier. Clients start requesting SMS notifications, WhatsApp messages, and Slack pings. Subclassing every combination (Email+SMS, Email+Slack, Email+SMS+Slack) causes subclass explosion.',
+        solution: 'Wrap the base notifier in Decorators that implement the same interface. Each decorator adds its alert behavior and delegates the send() call down to the wrapped object inside.',
+        structure: '• Component: interface for notifiers.\n• ConcreteComponent: EmailNotifier.\n• BaseDecorator: wraps a Component instance.\n• ConcreteDecorators: SMSDecorator, SlackDecorator.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px; width:100%;">
+            <div style="font-size:0.75rem; color:#94a3b8;">Active Wrapper Hierarchy:</div>
+            <div id="decorator-layers" style="display:flex; flex-direction:column-reverse; gap:4px; align-items:center; width:100%;">
+              <div class="box-node" style="border-color:#38bdf8; font-size:0.78rem; width:220px;">
+                BaseComponent: EmailNotifier
+              </div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: '+ Wrap SMS Alert', action: 'wrapDecorator("SMS")' },
+          { label: '+ Wrap Slack Alert', action: 'wrapDecorator("Slack")' },
+          { label: 'Execute send() Call', action: 'fireNotifier()' },
+          { label: 'Reset Wrappers', action: 'resetDecorators()' }
+        ]
+      },
+
+      facade: {
+        category: 'structural',
+        name: 'Facade Pattern',
+        alias: 'Unified Front-Door Interface',
+        def: 'Provides a simple, high-level interface to a complex subsystem of classes, libraries, or frameworks.',
+        analogy: 'A Home Theater Master Remote or ordering at a Drive-Thru. To start a movie, you press one "Play" button. You do not manually tune optical sound channels, calibrate projector lamps, and switch HDMI inputs one by one.',
+        problem: 'To convert video clips, client code has to initialize and coordinate half a dozen complex subsystem classes: BitrateReader, AudioTrackMixer, OggDecoder, CodecFactory, and BufferStream. The client becomes completely coupled to low-level implementation details.',
+        solution: 'Create a VideoConverterFacade class exposing a single method convertVideo(file, format). The facade configures and choreographs all complex subsystem components internally.',
+        structure: '• Facade: provides high-level simple methods.\n• Subsystem Classes: complex internal objects unaware of the facade.\n• Client: communicates strictly with the Facade.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
+            <div class="box-node" id="facade-door" style="border-color:#34d399; background:#064e3b; width:250px;">
+              Facade: VideoConverter.convert()
+            </div>
+            <div style="font-size:0.75rem; color:#94a3b8;">↓ orchestrates complex hidden subsystems ↓</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; width:250px;">
+              <div id="sub-1" class="box-node" style="font-size:0.65rem; padding:4px;">CodecFactory</div>
+              <div id="sub-2" class="box-node" style="font-size:0.65rem; padding:4px;">BitrateReader</div>
+              <div id="sub-3" class="box-node" style="font-size:0.65rem; padding:4px;">AudioMixer</div>
+              <div id="sub-4" class="box-node" style="font-size:0.65rem; padding:4px;">MP4Writer</div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Execute convertVideo()', action: 'triggerFacade()' }
+        ]
+      },
+
+      flyweight: {
+        category: 'structural',
+        name: 'Flyweight Pattern',
+        alias: 'Intrinsic Shared State / Memory Optimizer',
+        def: 'Fits more objects into available RAM by sharing common identical state (intrinsic) across multiple instances instead of duplicating it in every object.',
+        analogy: 'Rendering a forest of 1,000,000 pine trees in a 3D game. You do not load 1,000,000 heavy 3D mesh files into memory. You store 1 shared 3D tree mesh in RAM and only track individual X, Y coordinates and scale per tree.',
+        problem: 'A particle simulation spawns 200,000 bullets. If each Bullet object stores its own heavy 2MB sprite image and sound clip, the game consumes hundreds of gigabytes of RAM and crashes with OutOfMemoryError.',
+        solution: 'Separate state into Intrinsic (immutable, shared state like sprite and color stored in Flyweight) and Extrinsic (contextual state like coordinates x, y, and velocity passed in at runtime).',
+        structure: '• Flyweight: stores intrinsic shared state.\n• FlyweightFactory: caches and reuses existing flyweights.\n• Context: stores extrinsic unique coordinates and holds reference to flyweight.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px; width:100%;">
+            <div class="uml-box" style="width:260px; border-color:#c084fc;">
+              <div class="uml-header" style="color:#c084fc;">Shared Flyweight (1 in RAM)</div>
+              <div class="uml-body">
+                - Sprite: bullet_red.png (2 MB)<br>
+                - Sound: blast.wav (1 MB)
+              </div>
+            </div>
+            <div id="flyweight-stats" class="box-node" style="font-size:0.75rem; width:260px; border-color:#38bdf8;">
+              Extrinsic Instances (x,y coords): 0<br>
+              RAM Without Flyweight: 0 MB<br>
+              RAM With Flyweight: 3.0 MB
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: '+ Spawn 50,000 Bullets', action: 'spawnFlyweights(50000)' },
+          { label: 'Reset Simulation', action: 'resetFlyweights()' }
+        ]
+      },
+
+      proxy: {
+        category: 'structural',
+        name: 'Proxy Pattern',
+        alias: 'Surrogate / Access Gatekeeper',
+        def: 'Provides a placeholder or surrogate for another object to control access, perform lazy initialization, or cache requests.',
+        analogy: 'Bank Debit Card or a Secretary. A debit card represents funds in your bank account without carrying a sack of cash. The secretary verifies permissions and screens calls before allowing visitors into the executive office.',
+        problem: 'A heavy DatabaseService takes 10 seconds and 500MB of RAM to initialize. Loading it during app startup degrades boot times even if the user never navigates to that section.',
+        solution: 'Create a Proxy implementing the identical service interface. The proxy intercepts client calls, verifies authentication, lazily loads the heavy service upon first invocation, and caches repeated queries.',
+        structure: '• ServiceInterface: declares common operation().\n• Service (RealSubject): the heavy, protected resource.\n• Proxy: intercepts calls, initializes Service on demand, and forwards valid requests.',
+        renderSim: () => `
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%;">
+            <div class="box-node" style="font-size:0.75rem; border-color:#38bdf8; width:80px;">Client</div>
+            <div style="color:#94a3b8;">➔</div>
+            <div id="proxy-gate" class="box-node" style="font-size:0.75rem; border-color:#fbbf24; background:#451a03; width:105px;">
+              Proxy<br><span style="font-size:0.65rem; color:#fde68a;">[Cache & Auth]</span>
+            </div>
+            <div style="color:#94a3b8;">➔</div>
+            <div id="real-heavy" class="box-node" style="font-size:0.75rem; border-color:#475569; color:#94a3b8; width:110px;">
+              RealService<br><span style="font-size:0.65rem;">[Uninitialized]</span>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Client: Query Data', action: 'queryProxy()' },
+          { label: 'Reset Server', action: 'resetProxyState()' }
+        ]
+      },
+
+      // ==========================================
+      // 3. BEHAVIORAL PATTERNS
+      // ==========================================
+      iterator: {
+        category: 'behavioral',
+        name: 'Iterator Pattern',
+        alias: 'Sequential Traversal',
+        def: 'Provides a standard way to access elements of a collection sequentially without exposing its underlying data structure (array, linked list, or tree).',
+        analogy: 'TV Channel Up/Down Remote button or a tour guide through a museum. You press "Next" to view exhibits in sequence without needing to know the museum’s architectural blueprints.',
+        problem: 'A collection needs to support multiple traversal algorithms (breadth-first, depth-first, priority-order). Blurring data storage with diverse traversal routines bloats the collection class and exposes its private internal node pointers.',
+        solution: 'Extract traversal state (current index, pointer) into an Iterator object with standardized getNext() and hasMore() methods. Multiple iterators can traverse the same collection independently.',
+        structure: '• Iterator Interface: getNext(), hasMore().\n• ConcreteIterator: tracks iterationState.\n• IterableCollection: declares createIterator(): Iterator.\n• ConcreteCollection: returns fresh iterator instance.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
+            <div style="display:flex; gap:6px;" id="iterator-nodes">
+              <div class="box-node" style="padding:6px 10px; font-size:0.75rem;">Item 0</div>
+              <div class="box-node" style="padding:6px 10px; font-size:0.75rem;">Item 1</div>
+              <div class="box-node" style="padding:6px 10px; font-size:0.75rem;">Item 2</div>
+              <div class="box-node" style="padding:6px 10px; font-size:0.75rem;">Item 3</div>
+            </div>
+            <div id="iter-pointer-box" class="uml-box" style="width:240px;">
+              <div class="uml-header">Iterator State</div>
+              <div class="uml-body" id="iter-body">
+                - cursorIndex: null<br>
+                - hasMore(): true
+              </div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'call getNext()', action: 'stepIter()' },
+          { label: 'Reset Iterator', action: 'resetIter()' }
+        ]
+      },
+
+      observer: {
+        category: 'behavioral',
+        name: 'Observer Pattern',
+        alias: 'Publisher / Subscriber (Pub-Sub)',
+        def: 'Defines a subscription mechanism to automatically notify multiple observer objects of any state change occurring in the subject they are observing.',
+        analogy: 'Subscribing to a YouTube Channel or newspaper home delivery. Instead of walking to the store daily to see if a product arrived, the store automatically notifies you the instant the item is restocked.',
+        problem: 'Customers are waiting for a new smartphone to arrive in stock. If customers query the server every 10 seconds (polling), the server is flooded with wasted HTTP requests. Alternatively, emailing all registered users indiscriminately spams uninterested users.',
+        solution: 'Give the Subject (Publisher) an array of subscribers and methods subscribe(s) and unsubscribe(s). When stock arrives, it iterates through its registered subscribers and invokes update().',
+        structure: '• Publisher (Subject): maintains subscriber list and executes notifySubscribers().\n• Subscriber (Observer) Interface: declares update(context).\n• ConcreteSubscribers: CustomerMobileApp, AnalyticsLogger.',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:100%;">
+            <div id="pub-box" class="box-node" style="border-color:#c084fc; background:#3b0764; width:220px; font-size:0.8rem;">
+              📢 Publisher: Smartphone Store<br>
+              <span id="pub-status" style="font-size:0.7rem; color:#cbd5e1;">Stock: Out of Stock (0)</span>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:center; width:100%;">
+              <div id="obs-1" class="box-node" style="font-size:0.7rem; width:110px;">User App 1<br><span id="obs-1-status" style="color:#94a3b8;">Idle</span></div>
+              <div id="obs-2" class="box-node" style="font-size:0.7rem; width:110px;">User App 2<br><span id="obs-2-status" style="color:#94a3b8;">Idle</span></div>
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Restock: Notify Observers', action: 'publishEvent()' },
+          { label: 'Toggle User 2 Unsubscribe', action: 'toggleObserver2()' }
+        ]
+      },
+
+      strategy: {
+        category: 'behavioral',
+        name: 'Strategy Pattern',
+        alias: 'Interchangeable Algorithm Family',
+        def: 'Defines a family of algorithms, encapsulates each into a separate class, and makes them interchangeable at runtime.',
+        analogy: 'Travel Route Navigation. To reach the airport, a navigation app can compute routes via Driving, Walking, or Public Transit. The goal is the same, but the internal pathfinding algorithm is cleanly swapped based on user choice.',
+        problem: 'A navigation app class has bloated conditional blocks: "if (mode == CAR) { ... } else if (mode == WALK) { ... } else if (mode == BUS) { ... }". Adding bike or scooter paths doubles class size and risks breaking tested vehicle logic.',
+        solution: 'Extract each algorithm into a concrete strategy implementing a shared Strategy interface. The Navigator Context holds a reference to a Strategy object and delegates routing to it.',
+        structure: '• Strategy Interface: declares execute(a, b).\n• Concrete Strategies: RoadStrategy, WalkingStrategy, PublicTransitStrategy.\n• Context: maintains reference to strategy and exposes setStrategy(s).',
+        renderSim: () => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%;">
+            <div class="uml-box" style="width:260px;">
+              <div class="uml-header">Navigator Context</div>
+              <div class="uml-body">
+                - activeStrategy: <span id="active-strat-name" style="color:#38bdf8;">RoadStrategy</span><br>
+                - routeDuration: <span id="strat-time">25 mins (Highways)</span>
+              </div>
+            </div>
+            <div id="strat-node-view" class="box-node" style="width:260px; font-size:0.75rem; border-color:#34d399; background:#064e3b;">
+              🚗 Using RoadStrategy: Prioritizing expressways & tollways
+            </div>
+          </div>
+        `,
+        setupControls: () => [
+          { label: 'Select RoadStrategy', action: 'selectStrategy("Road")' },
+          { label: 'Select WalkingStrategy', action: 'selectStrategy("Walk")' },
+          { label: 'Select TransitStrategy', action: 'selectStrategy("Transit")' }
+        ]
+      }
+    };
+
+    let currentCategory = 'creational';
+    let currentPatternKey = 'singleton';
+
+    function switchCategory(cat) {
+      currentCategory = cat;
+      document.querySelectorAll('.pill-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(cat));
+      });
+      renderTabs();
+      const firstInCat = Object.keys(patterns).find(k => patterns[k].category === cat);
+      if (firstInCat) selectPattern(firstInCat);
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('pattern-tabs');
+      container.innerHTML = '';
+      Object.keys(patterns).forEach(k => {
+        if (patterns[k].category === currentCategory) {
+          const btn = document.createElement('button');
+          btn.className = `tab-btn ${k === currentPatternKey ? 'active' : ''}`;
+          btn.textContent = patterns[k].name.replace(' Pattern', '');
+          btn.onclick = () => selectPattern(k);
+          container.appendChild(btn);
+        }
+      });
+    }
+
+    function selectPattern(key) {
+      currentPatternKey = key;
+      const data = patterns[key];
+
+      const badge = document.getElementById('pattern-category-badge');
+      badge.textContent = data.category;
+      badge.className = `badge ${data.category}`;
+
+      document.getElementById('pattern-alias').textContent = data.alias;
+      document.getElementById('pattern-title').textContent = data.name;
+      document.getElementById('pattern-definition').textContent = data.def;
+      document.getElementById('pattern-analogy').innerHTML = data.analogy;
+      document.getElementById('pattern-problem').innerHTML = data.problem.replace(/\n/g, '<br>');
+      document.getElementById('pattern-solution').innerHTML = data.solution.replace(/\n/g, '<br>');
+      document.getElementById('pattern-structure').innerHTML = data.structure.replace(/\n/g, '<br>');
+
+      document.getElementById('visual-stage').innerHTML = data.renderSim();
+
+      const controlsBox = document.getElementById('interactive-controls');
+      controlsBox.innerHTML = '';
+      data.setupControls().forEach(ctrl => {
+        const btn = document.createElement('button');
+        btn.className = 'ctrl-btn';
+        btn.textContent = ctrl.label;
+        btn.setAttribute('onclick', ctrl.action);
+        controlsBox.appendChild(btn);
+      });
+
+      document.getElementById('console-output').textContent = `> Loaded [${data.name}]. Click the controls below to run the simulation.`;
+
+      document.querySelectorAll('.tab-btn').forEach(tab => {
+        tab.classList.toggle('active', tab.textContent.trim() === data.name.replace(' Pattern', ''));
+      });
+    }
+
+    // ==========================================
+    // SIMULATION EVENT HANDLERS
+    // ==========================================
+
+    // 1. Singleton Handler
+    let singletonObj = null;
+    function callSingleton(clientName) {
+      const stateBox = document.getElementById('singleton-state');
+      const node = document.getElementById('singleton-node');
+      const consoleOut = document.getElementById('console-output');
+
+      if (!singletonObj) {
+        singletonObj = { memoryAddr: '0x7FFD98A1', time: new Date().toLocaleTimeString() };
+        node.style.borderColor = '#34d399';
+        stateBox.innerHTML = `
+          - instance: Allocated<br>
+          - status: Active Database Connection<br>
+          - memoryAddress: ${singletonObj.memoryAddr}
+        `;
+        consoleOut.textContent = `> ${clientName} executed Singleton.getInstance():\n  No instance existed. Initialized NEW instance at address [${singletonObj.memoryAddr}].`;
+      } else {
+        node.classList.add('pulse');
+        setTimeout(() => node.classList.remove('pulse'), 600);
+        consoleOut.textContent = `> ${clientName} executed Singleton.getInstance():\n  Instance already exists! Returned cached memory address [${singletonObj.memoryAddr}]. Zero memory duplicated.`;
+      }
+    }
+
+    function resetSingleton() {
+      singletonObj = null;
+      const node = document.getElementById('singleton-node');
+      if (node) {
+        node.style.borderColor = '#475569';
+        document.getElementById('singleton-state').innerHTML = `
+          - instance: null<br>
+          - status: Not Allocated<br>
+          - memoryAddress: none
+        `;
+      }
+      document.getElementById('console-output').textContent = '> Singleton instance destroyed. Memory freed.';
+    }
+
+    // 2. Factory Method Handler
+    function runFactory(creatorType) {
+      const typeSpan = document.getElementById('creator-type');
+      const prodNode = document.getElementById('factory-product');
+      const consoleOut = document.getElementById('console-output');
+
+      typeSpan.textContent = creatorType;
+
+      if (creatorType === 'RoadLogistics') {
+        prodNode.innerHTML = '🚚 <strong>Truck</strong> Product Created<br><span style="font-size:0.7rem; color:#34d399;">Routes: Land Roads</span>';
+        prodNode.style.borderColor = '#34d399';
+        prodNode.style.background = '#064e3b';
+        consoleOut.textContent = `> RoadLogistics.planDelivery() triggered:\n  Overridden factory method instantiated concrete product [Truck].`;
+      } else if (creatorType === 'SeaLogistics') {
+        prodNode.innerHTML = '🚢 <strong>Cargo Ship</strong> Product Created<br><span style="font-size:0.7rem; color:#38bdf8;">Routes: Oceanic Shipping</span>';
+        prodNode.style.borderColor = '#38bdf8';
+        prodNode.style.background = '#0c4a6e';
+        consoleOut.textContent = `> SeaLogistics.planDelivery() triggered:\n  Overridden factory method instantiated concrete product [Cargo Ship].`;
+      } else {
+        prodNode.innerHTML = '✈️ <strong>Cargo Plane</strong> Product Created<br><span style="font-size:0.7rem; color:#c084fc;">Routes: International Airway</span>';
+        prodNode.style.borderColor = '#c084fc';
+        prodNode.style.background = '#3b0764';
+        consoleOut.textContent = `> AirLogistics.planDelivery() triggered:\n  Overridden factory method instantiated concrete product [Cargo Plane].`;
+      }
+    }
+
+    // 3. Prototype Handler
+    let cloneCount = 0;
+    function cloneObject() {
+      const container = document.getElementById('prototype-clones');
+      const consoleOut = document.getElementById('console-output');
+      if (cloneCount === 0) container.innerHTML = '';
+      cloneCount++;
+
+      const clone = document.createElement('div');
+      clone.className = 'box-node';
+      clone.id = `clone-item-${cloneCount}`;
+      clone.style.fontSize = '0.72rem';
+      clone.style.padding = '6px';
+      clone.style.borderColor = '#34d399';
+      clone.innerHTML = `Clone #${cloneCount} [token: 9Xz4]<br>label: "Checkout"`;
+      container.appendChild(clone);
+
+      consoleOut.textContent = `> Prototype.clone() invoked:\n  Duplicated original Button with private field (token: 9Xz4) preserved without exposing private setters.`;
+    }
+
+    function modifyClone() {
+      if (cloneCount === 0) return;
+      const lastClone = document.getElementById(`clone-item-${cloneCount}`);
+      if (lastClone) {
+        lastClone.innerHTML = `Clone #${cloneCount} [token: 9Xz4]<br><span style="color:#fbbf24;">label: "Buy Now"</span>`;
+        document.getElementById('console-output').textContent = `> Modified Clone #${cloneCount} label to "Buy Now". Notice that Original Prototype is completely unaffected!`;
+      }
+    }
+
+    function resetClones() {
+      cloneCount = 0;
+      document.getElementById('prototype-clones').innerHTML = '<div class="box-node" style="border-style:dashed; font-size:0.75rem; color:#94a3b8;">No clones yet</div>';
+      document.getElementById('console-output').textContent = '> Reset prototype registry.';
+    }
+
+    // 4. Abstract Factory Handler
+    function switchFactorySuite(theme) {
+      document.getElementById('family-name').textContent = `${theme}Factory`;
+      const chair = document.getElementById('family-chair-text');
+      const sofa = document.getElementById('family-sofa-text');
+      const consoleOut = document.getElementById('console-output');
+
+      if (theme === 'Modern') {
+        chair.textContent = 'Modern Minimalist Chair 🪑';
+        sofa.textContent = 'Modern Minimalist Sofa 🛋️';
+      } else if (theme === 'Victorian') {
+        chair.textContent = 'Victorian Carved Wood Chair 🪑';
+        sofa.textContent = 'Victorian Velvet Chesterfield 🛋️';
+      } else {
+        chair.textContent = 'ArtDeco Geometric Gold Chair 🪑';
+        sofa.textContent = 'ArtDeco Emerald Velour Sofa 🛋️';
+      }
+
+      consoleOut.textContent = `> AbstractFactory switched to [${theme}Factory]:\n  Guaranteed that both Chair and Sofa belong to the cohesive "${theme}" design family.`;
+    }
+
+    // 5. Builder Handler
+    let houseParts = [];
+    function addBuildStep(part) {
+      if (!houseParts.includes(part)) houseParts.push(part);
+      updateHouseVisual(`Manual Custom Build`);
+      document.getElementById('console-output').textContent = `> ConcreteBuilder executed step: build("${part}").`;
+    }
+
+    function directorPreset(type) {
+      if (type === 'standard') {
+        houseParts = ['Concrete Walls', 'Reinforced Roof', 'Standard Glass Windows'];
+        updateHouseVisual('Director Preset: Standard House');
+        document.getElementById('console-output').textContent = '> Director orchestrated: buildWalls() -> buildRoof() -> buildWindows().';
+      } else {
+        houseParts = ['Marble Walls', 'Glass Skylight Roof', 'Smart Security Windows', 'Olympic Pool', 'Sprawling Garden'];
+        updateHouseVisual('Director Preset: Luxury Villa');
+        document.getElementById('console-output').textContent = '> Director orchestrated: 5-step luxury sequence including swimming pool and garden.';
+      }
+    }
+
+    function updateHouseVisual(recipeName) {
+      document.getElementById('builder-recipe').textContent = `Active: ${recipeName}`;
+      const compSpan = document.getElementById('house-components');
+      compSpan.innerHTML = '• Base Foundation<br>' + houseParts.map(p => `• ${p}`).join('<br>');
+    }
+
+    function resetBuild() {
+      houseParts = [];
+      updateHouseVisual('Custom Manual Build');
+      document.getElementById('console-output').textContent = '> Builder reset. Ready for next construction sequence.';
+    }
+
+    // 6. Adapter Handler
+    function triggerAdapter() {
+      const chip = document.getElementById('adapter-chip');
+      chip.classList.add('pulse');
+      setTimeout(() => chip.classList.remove('pulse'), 700);
+      document.getElementById('console-output').textContent = `> Adapter in Action:\n  1. Received client payload: <stocks><symbol>AAPL</symbol><price>180</price></stocks>\n  2. Translated schema to: {"symbol": "AAPL", "price": 180}\n  3. Passed JSON safely to Analytics Library.`;
+    }
+
+    // 7. Bridge Handler
+    let curShape = 'circle';
+    let curColor = '#ef4444';
+    function changeBridgeShape(shape) {
+      curShape = shape;
+      const el = document.getElementById('bridge-render-sample');
+      el.style.borderRadius = shape === 'circle' ? '9999px' : '6px';
+      document.getElementById('bridge-shape-type').textContent = `Shape: ${shape.toUpperCase()}`;
+      document.getElementById('console-output').textContent = `> Abstraction (Shape) updated to [${shape}]. Implementation remains completely untouched.`;
+    }
+
+    function changeBridgeColor(colorName, hex) {
+      curColor = hex;
+      const el = document.getElementById('bridge-render-sample');
+      el.style.backgroundColor = hex;
+      document.getElementById('bridge-color-type').textContent = `Color: ${colorName.toUpperCase()}`;
+      document.getElementById('console-output').textContent = `> Implementation (Color) swapped to [${colorName}]. Abstraction layer does not need recompilation.`;
+    }
+
+    // 8. Composite Handler
+    let extraLeaves = 0;
+    function calcCompositeTree() {
+      const total = 5 + 100 + 25 + (extraLeaves * 15);
+      document.getElementById('composite-sum').textContent = `Total Calculated: $${total}.00`;
+      document.getElementById('console-output').textContent = `> Composite calculatePrice() invoked recursively:\n  Root Box delegates to: Gift Box ($5 + Watch $100) + Loose Book ($25)${extraLeaves > 0 ? ` + ${extraLeaves} extra items ($${extraLeaves*15})` : ''} = Total $${total}.`;
+    }
+
+    function addCompositeLeaf() {
+      extraLeaves++;
+      calcCompositeTree();
+    }
+
+    // 9. Decorator Handler
+    let activeDecorators = [];
+    function wrapDecorator(type) {
+      if (!activeDecorators.includes(type)) {
+        activeDecorators.push(type);
+        const layers = document.getElementById('decorator-layers');
+        const box = document.createElement('div');
+        box.className = 'box-node';
+        box.style.borderColor = '#fbbf24';
+        box.style.fontSize = '0.78rem';
+        box.style.width = '220px';
+        box.textContent = `+ ${type} Decorator Wrapper`;
+        layers.appendChild(box);
+        document.getElementById('console-output').textContent = `> Wrapped Notifier with [${type}Decorator].`;
+      }
+    }
+
+    function fireNotifier() {
+      const sequence = ['Email', ...activeDecorators].join(' ➔ ');
+      document.getElementById('console-output').textContent = `> Executing send("Server Alert!"):\n  Invocation flow down stack: ${sequence}.`;
+    }
+
+    function resetDecorators() {
+      activeDecorators = [];
+      document.getElementById('decorator-layers').innerHTML = `
+        <div class="box-node" style="border-color:#38bdf8; font-size:0.78rem; width:220px;">
+          BaseComponent: EmailNotifier
+        </div>
+      `;
+      document.getElementById('console-output').textContent = '> Decorators reset to BaseComponent.';
+    }
+
+    // 10. Facade Handler
+    function triggerFacade() {
+      const s1 = document.getElementById('sub-1');
+      const s2 = document.getElementById('sub-2');
+      const s3 = document.getElementById('sub-3');
+      const s4 = document.getElementById('sub-4');
+      [s1, s2, s3, s4].forEach((s, idx) => {
+        setTimeout(() => {
+          s.style.borderColor = '#34d399';
+          s.style.color = '#34d399';
+        }, idx * 150);
+      });
+      document.getElementById('console-output').textContent = `> Client called one simple Facade method: VideoConverter.convert("clip.mov", "mp4")\n  The Facade coordinated BitrateReader -> CodecFactory -> AudioMixer -> MP4Writer automatically.`;
+    }
+
+    // 11. Flyweight Handler
+    let totalBullets = 0;
+    function spawnFlyweights(count) {
+      totalBullets += count;
+      const ramWithout = ((totalBullets * 3) / 1024).toFixed(1);
+      const stats = document.getElementById('flyweight-stats');
+      stats.innerHTML = `
+        Extrinsic Instances (x,y coords): ${totalBullets.toLocaleString()}<br>
+        RAM Without Flyweight: ${ramWithout} GB (CRASH!)<br>
+        RAM With Flyweight: 3.0 MB (Shared Sprite)
+      `;
+      document.getElementById('console-output').textContent = `> Flyweight Optimization:\n  Spawned ${totalBullets.toLocaleString()} bullet entities. All ${totalBullets.toLocaleString()} share the EXACT same 1 Sprite in RAM (3MB total).`;
+    }
+
+    function resetFlyweights() {
+      totalBullets = 0;
+      document.getElementById('flyweight-stats').innerHTML = `
+        Extrinsic Instances (x,y coords): 0<br>
+        RAM Without Flyweight: 0 MB<br>
+        RAM With Flyweight: 3.0 MB
+      `;
+      document.getElementById('console-output').textContent = '> Reset bullet particle simulation.';
+    }
+
+    // 12. Proxy Handler
+    let realInitialized = false;
+    function queryProxy() {
+      const real = document.getElementById('real-heavy');
+      const consoleOut = document.getElementById('console-output');
+
+      if (!realInitialized) {
+        realInitialized = true;
+        real.style.borderColor = '#34d399';
+        real.style.color = '#fff';
+        real.innerHTML = 'RealService<br><span style="font-size:0.65rem; color:#34d399;">[Lazy Loaded]</span>';
+        consoleOut.textContent = `> Proxy received query:\n  1. Authenticated client credentials.\n  2. RealService was not in memory; initialized it lazily.\n  3. Cached result for future callers.`;
+      } else {
+        consoleOut.textContent = `> Proxy received query:\n  Cache HIT! Returned saved result directly from Proxy. Heavy RealService was bypassed entirely!`;
+      }
+    }
+
+    function resetProxyState() {
+      realInitialized = false;
+      const real = document.getElementById('real-heavy');
+      real.style.borderColor = '#475569';
+      real.style.color = '#94a3b8';
+      real.innerHTML = 'RealService<br><span style="font-size:0.65rem;">[Uninitialized]</span>';
+      document.getElementById('console-output').textContent = '> Reset Proxy state and unloaded heavy service.';
+    }
+
+    // 13. Iterator Handler
+    let curIterIndex = -1;
+    function stepIter() {
+      const nodes = document.querySelectorAll('#iterator-nodes .box-node');
+      nodes.forEach(n => { n.style.borderColor = '#38bdf8'; n.style.background = '#1e293b'; });
+
+      curIterIndex++;
+      const body = document.getElementById('iter-body');
+      if (curIterIndex < nodes.length) {
+        nodes[curIterIndex].style.borderColor = '#34d399';
+        nodes[curIterIndex].style.background = '#064e3b';
+        body.innerHTML = `
+          - cursorIndex: ${curIterIndex}<br>
+          - currentItem: "Item ${curIterIndex}"<br>
+          - hasMore(): ${curIterIndex < nodes.length - 1}
+        `;
+        document.getElementById('console-output').textContent = `> Iterator.getNext():\n  Returned "Item ${curIterIndex}". Client does not know if internal structure is an array, linked-list, or tree.`;
+      } else {
+        body.innerHTML = `
+          - cursorIndex: Completed<br>
+          - hasMore(): false
+        `;
+        document.getElementById('console-output').textContent = `> Iterator.hasMore() returned false. Traversal complete.`;
+      }
+    }
+
+    function resetIter() {
+      curIterIndex = -1;
+      const nodes = document.querySelectorAll('#iterator-nodes .box-node');
+      nodes.forEach(n => { n.style.borderColor = '#38bdf8'; n.style.background = '#1e293b'; });
+      document.getElementById('iter-body').innerHTML = `
+        - cursorIndex: null<br>
+        - hasMore(): true
+      `;
+      document.getElementById('console-output').textContent = '> Iterator reset to starting index.';
+    }
+
+    // 14. Observer Handler
+    let sub2Active = true;
+    function publishEvent() {
+      document.getElementById('pub-status').textContent = 'Stock: IN STOCK (50 Available)';
+      document.getElementById('obs-1-status').textContent = '🔔 Received Update!';
+      document.getElementById('obs-1-status').style.color = '#34d399';
+
+      if (sub2Active) {
+        document.getElementById('obs-2-status').textContent = '🔔 Received Update!';
+        document.getElementById('obs-2-status').style.color = '#34d399';
+      }
+
+      document.getElementById('console-output').textContent = `> Publisher executed notifySubscribers():\n  Broadcasting new state change to all active registered subscribers automatically.`;
+    }
+
+    function toggleObserver2() {
+      sub2Active = !sub2Active;
+      const s2 = document.getElementById('obs-2');
+      if (sub2Active) {
+        s2.style.opacity = '1';
+        document.getElementById('obs-2-status').textContent = 'Subscribed';
+        document.getElementById('obs-2-status').style.color = '#38bdf8';
+        document.getElementById('console-output').textContent = '> User App 2 called publisher.subscribe(this).';
+      } else {
+        s2.style.opacity = '0.4';
+        document.getElementById('obs-2-status').textContent = 'Unsubscribed';
+        document.getElementById('obs-2-status').style.color = '#94a3b8';
+        document.getElementById('console-output').textContent = '> User App 2 called publisher.unsubscribe(this).';
+      }
+    }
+
+    // 15. Strategy Handler
+    function selectStrategy(strat) {
+      const name = document.getElementById('active-strat-name');
+      const time = document.getElementById('strat-time');
+      const view = document.getElementById('strat-node-view');
+      const consoleOut = document.getElementById('console-output');
+
+      if (strat === 'Road') {
+        name.textContent = 'RoadStrategy';
+        time.textContent = '25 mins (Highways & Tolls)';
+        view.innerHTML = '🚗 Using RoadStrategy: Fast route via Interstate Highway';
+        view.style.borderColor = '#34d399';
+        view.style.background = '#064e3b';
+        consoleOut.textContent = '> Context.setStrategy(new RoadStrategy()):\n  Pathfinding algorithm switched dynamically to highway routing.';
+      } else if (strat === 'Walk') {
+        name.textContent = 'WalkingStrategy';
+        time.textContent = '1 hr 45 mins (Footpaths)';
+        view.innerHTML = '🚶 Using WalkingStrategy: Pedestrian sidewalks & city park trails';
+        view.style.borderColor = '#fbbf24';
+        view.style.background = '#451a03';
+        consoleOut.textContent = '> Context.setStrategy(new WalkingStrategy()):\n  Swapped algorithm to pedestrian walking pathways without changing the Navigator UI.';
+      } else {
+        name.textContent = 'PublicTransitStrategy';
+        time.textContent = '40 mins (Bus & Subway)';
+        view.innerHTML = '🚌 Using TransitStrategy: Subway line A + Metro bus schedules';
+        view.style.borderColor = '#c084fc';
+        view.style.background = '#3b0764';
+        consoleOut.textContent = '> Context.setStrategy(new PublicTransitStrategy()):\n  Swapped algorithm to timetable-based transit routing.';
+      }
+    }
+
+    // Start on Creational
+    switchCategory('creational');
+  </script>
+</body>
+</html>
