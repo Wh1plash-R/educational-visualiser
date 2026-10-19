@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HashMap & Collision Handling Visualizer</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .glow-active {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    }
+    .glow-collision {
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.6);
+    }
+    .glow-success {
+      box-shadow: 0 0 18px rgba(34, 197, 94, 0.6);
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(59, 130, 246, 1); }
+      50% { border-color: rgba(147, 51, 234, 1); }
+    }
+    .animate-pulse-border {
+      animation: pulse-border 2s infinite;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl shadow-lg shadow-blue-500/20 text-white">
+          <i class="fa-solid fa-cubes-stacked text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+            HashMap & Hashing Visualizer
+          </h1>
+          <p class="text-xs text-slate-400">Interactive DSA Learning Module</p>
+        </div>
+      </div>
+
+      <!-- Quick Preset Selector & Java Code Popup Button -->
+      <div class="flex items-center gap-2 flex-wrap text-sm">
+        <button onclick="openJavaModal()" class="px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow">
+          <i class="fa-brands fa-java text-amber-400"></i>
+          <span>View Java Code</span>
+        </button>
+        <span class="text-xs text-slate-400 font-medium flex items-center gap-1 ml-1">
+          <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Presets:
+        </span>
+        <button onclick="loadPreset('chaining_demo')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition border border-slate-700">
+          Chaining Collisions
+        </button>
+        <button onclick="loadPreset('linear_probing')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition border border-slate-700">
+          Linear Probing Cluster
+        </button>
+        <button onclick="loadPreset('rehashing_demo')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition border border-slate-700">
+          Load Factor & Rehash
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- LEFT PANEL: Controls & Settings & Math Pipeline (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+
+      <!-- Operation Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <span><i class="fa-solid fa-play text-blue-400 mr-2"></i>Map Operations</span>
+          <span id="opBadge" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-normal">Ready</span>
+        </h2>
+
+        <!-- Tabbed Operation Input -->
+        <div class="flex gap-1 bg-slate-950 p-1 rounded-xl mb-3 border border-slate-800 text-xs">
+          <button id="tabPut" onclick="setOpTab('PUT')" class="flex-1 py-1.5 font-medium rounded-lg bg-blue-600 text-white shadow">
+            <i class="fa-solid fa-plus mr-1"></i> Put (Insert)
+          </button>
+          <button id="tabGet" onclick="setOpTab('GET')" class="flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-magnifying-glass mr-1"></i> Get (Find)
+          </button>
+          <button id="tabRemove" onclick="setOpTab('REMOVE')" class="flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-trash mr-1"></i> Remove
+          </button>
+        </div>
+
+        <!-- Dynamic Inputs -->
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Key (e.g. "Jack", "27")</label>
+              <input type="text" id="inputKey" value="Jack" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-100 placeholder-slate-600" placeholder="Key" />
+            </div>
+            <div id="valInputGroup">
+              <label class="block text-xs font-medium text-slate-400 mb-1">Value (e.g. "Room 101")</label>
+              <input type="text" id="inputValue" value="Book A" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-100 placeholder-slate-600" placeholder="Value" />
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="flex items-center gap-2">
+            <button id="btnExecute" onclick="startOperation()" class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 text-sm">
+              <i class="fa-solid fa-bolt"></i> <span id="btnExecText">Execute Step-by-Step</span>
+            </button>
+            <button onclick="quickAddRandom()" title="Add Random Entry" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-sm">
+              <i class="fa-solid fa-dice"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animation Execution Controller -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-film text-purple-400"></i> Step Control
+          </span>
+          <span id="stepCounter" class="text-xs font-mono text-purple-400 bg-purple-950/60 border border-purple-800/60 px-2 py-0.5 rounded-full">Step 0 / 0</span>
+        </div>
+
+        <!-- Controls toolbar -->
+        <div class="flex items-center justify-between gap-2 my-2">
+          <div class="flex items-center gap-1">
+            <button id="btnPrevStep" onclick="prevStep()" disabled class="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-slate-200 text-xs font-semibold transition border border-slate-700">
+              <i class="fa-solid fa-backward-step"></i> Back
+            </button>
+            <button id="btnPlayPause" onclick="togglePlayPause()" disabled class="p-2 px-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded-lg text-white text-xs font-semibold transition shadow shadow-indigo-500/20">
+              <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+            </button>
+            <button id="btnNextStep" onclick="nextStep()" disabled class="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-slate-200 text-xs font-semibold transition border border-slate-700">
+              Next <i class="fa-solid fa-forward-step"></i>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Speed:</span>
+            <input type="range" id="speedSlider" min="300" max="2000" step="100" value="1000" class="w-20 accent-indigo-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer" />
+          </div>
+        </div>
+
+        <!-- Step Description Display -->
+        <div id="stepExplanation" class="mt-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 min-h-[56px] flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-blue-400 text-base shrink-0"></i>
+          <span id="stepText">Enter a key-value pair and click 'Execute Step-by-Step' to visualize how hashing works!</span>
+        </div>
+      </div>
+
+      <!-- Config & Table Design Settings -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <span><i class="fa-solid fa-sliders text-emerald-400 mr-2"></i>Table Design & Settings</span>
+          <button onclick="resetTable()" class="text-xs text-red-400 hover:text-red-300 transition">
+            <i class="fa-solid fa-rotate-right mr-1"></i>Reset Table
+          </button>
+        </h2>
+
+        <div class="space-y-3 text-xs">
+          <!-- Table Size -->
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-slate-400">Initial Buckets (<span class="font-serif italic text-indigo-300">m</span>):</label>
+            <select id="selectCapacity" onchange="changeTableDesign()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-xs focus:outline-none">
+              <option value="5">5 (Small - High Collisions)</option>
+              <option value="7" selected>7 (Prime Number)</option>
+              <option value="10">10 (Standard)</option>
+              <option value="11">11 (Prime Number)</option>
+            </select>
+          </div>
+
+          <!-- Collision Strategy -->
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-slate-400">Collision Resolution:</label>
+            <select id="selectStrategy" onchange="changeTableDesign()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none">
+              <option value="CHAINING">Separate Chaining (LinkedList)</option>
+              <option value="LINEAR">Open Addressing: Linear Probing</option>
+              <option value="QUADRATIC">Open Addressing: Quadratic Probing</option>
+              <option value="DOUBLE_HASH">Open Addressing: Double Hashing</option>
+            </select>
+          </div>
+
+          <!-- Hash Strategy -->
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-slate-400">Hash Function <span class="font-serif italic text-amber-300">h(k)</span>:</label>
+            <select id="selectHashFunc" onchange="changeTableDesign()" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 text-xs focus:outline-none">
+              <option value="DEFAULT">Standard (Numeric or ASCII Sum % m)</option>
+              <option value="FIRST_CHAR">First Char ASCII % m</option>
+              <option value="LENGTH">Key Length % m</option>
+            </select>
+          </div>
+
+          <!-- Auto Rehash Toggle -->
+          <div class="flex items-center justify-between pt-1 border-t border-slate-800">
+            <span class="text-slate-400">Auto-Rehash Threshold (&alpha; &gt; 0.75):</span>
+            <input type="checkbox" id="checkAutoRehash" checked class="w-4 h-4 accent-emerald-500 rounded cursor-pointer" />
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Visualizer & Metrics & Math Breakdown (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+
+      <!-- Real-time Metrics Dashboard -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-lg">
+          <p class="text-[10px] uppercase font-bold text-slate-400">Entries (<span class="font-serif italic text-blue-300">N</span>)</p>
+          <p id="metricCount" class="text-2xl font-bold font-mono text-blue-400">0</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-lg">
+          <p class="text-[10px] uppercase font-bold text-slate-400">Buckets (<span class="font-serif italic text-indigo-300">m</span>)</p>
+          <p id="metricCapacity" class="text-2xl font-bold font-mono text-indigo-400">7</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-lg">
+          <p class="text-[10px] uppercase font-bold text-slate-400">Load Factor (&alpha; = <span class="font-serif italic">N</span>/<span class="font-serif italic">m</span>)</p>
+          <div class="flex items-baseline gap-1">
+            <p id="metricLoadFactor" class="text-2xl font-bold font-mono text-emerald-400">0.00</p>
+            <span id="loadFactorWarning" class="text-[10px] text-amber-400 hidden"><i class="fa-solid fa-triangle-exclamation"></i> High</span>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-lg">
+          <p class="text-[10px] uppercase font-bold text-slate-400">Total Collisions</p>
+          <p id="metricCollisions" class="text-2xl font-bold font-mono text-rose-400">0</p>
+        </div>
+      </div>
+
+      <!-- Live Calculation Pipeline Visualizer -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <span><i class="fa-solid fa-calculator text-amber-400 mr-2"></i>Hash Calculation Step-By-Step</span>
+          <span id="calcStageBadge" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono">Idle</span>
+        </h3>
+
+        <!-- Pipeline Flow Graphic -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs font-mono">
+          <!-- Step 1: Input key -->
+          <div id="pipeBox1" class="bg-slate-950 border border-slate-800 p-2.5 rounded-xl transition-all">
+            <span class="block text-[10px] text-slate-500 uppercase font-sans mb-1">1. Key Input</span>
+            <div id="pipeKey" class="text-sm font-bold text-blue-300 truncate">--</div>
+          </div>
+
+          <!-- Step 2: Key to Hash integer -->
+          <div id="pipeBox2" class="bg-slate-950 border border-slate-800 p-2.5 rounded-xl transition-all">
+            <span class="block text-[10px] text-slate-500 uppercase font-sans mb-1">2. Hash Code <span class="font-serif italic text-amber-300">h(k)</span></span>
+            <div id="pipeHashMath" class="text-xs text-purple-300 truncate">hash("?")</div>
+          </div>
+
+          <!-- Step 3: Index Modulo -->
+          <div id="pipeBox3" class="bg-slate-950 border border-slate-800 p-2.5 rounded-xl transition-all">
+            <span class="block text-[10px] text-slate-500 uppercase font-sans mb-1">3. Index = <span class="font-serif italic">h(k)</span> mod <span class="font-serif italic">m</span></span>
+            <div id="pipeIndexMath" class="text-sm font-bold text-emerald-400 truncate">Index = --</div>
+          </div>
+        </div>
+
+        <!-- Probing Formula detail (if open addressing) -->
+        <div id="probeFormulaBox" class="mt-2 hidden text-[11px] p-2 bg-slate-950/80 border border-indigo-900/50 rounded-lg text-indigo-300 font-mono text-center">
+          Probing Sequence: <span id="probeFormulaText">i = 0 &rarr; (Index + i) % m</span>
+        </div>
+      </div>
+
+      <!-- Interactive Visual Hash Table Display -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[380px]">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i class="fa-solid fa-table-cells text-indigo-400"></i>
+            <span>Hash Table Array (Buckets)</span>
+          </h3>
+
+          <div class="flex items-center gap-3 text-[11px] text-slate-400">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Probing/Checking</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Collision</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Target/Stored</span>
+          </div>
+        </div>
+
+        <!-- Bucket List Rendering Container -->
+        <div id="bucketsContainer" class="flex-1 space-y-2.5 overflow-y-auto max-h-[460px] pr-1">
+          <!-- Dynamic Bucket Elements injected here -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Clickable Java Code Popup Modal -->
+  <div id="javaModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div id="javaModalCard" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl relative transform scale-95 transition-transform duration-200">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+            <i class="fa-brands fa-java text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-100 text-sm">Java HashMap Code Snippet</h3>
+            <p class="text-[11px] text-slate-400">Equivalent code for current step operation</p>
+          </div>
+        </div>
+        <button onclick="closeJavaModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="relative group">
+        <pre id="javaCodePreview" class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-emerald-400 overflow-x-auto text-xs font-mono leading-relaxed max-h-64">
+// Java HashMap Equivalent Code
+HashMap&lt;String, String&gt; hashTable = new HashMap&lt;&gt;();
+hashTable.put("Jack", "Book A");
+        </pre>
+        <button onclick="copyJavaCode()" class="absolute top-2.5 right-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1 shadow">
+          <i class="fa-regular fa-copy"></i> Copy
+        </button>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-[11px]">
+        <span class="text-slate-500"></span>
+        <button onclick="closeJavaModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition border border-slate-700">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Alert Container for notifications -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // Core Visualizer State
+    let tableCapacity = 7;
+    let collisionStrategy = 'CHAINING'; // 'CHAINING', 'LINEAR', 'QUADRATIC', 'DOUBLE_HASH'
+    let hashStrategy = 'DEFAULT'; // 'DEFAULT', 'FIRST_CHAR', 'LENGTH'
+    let autoRehash = true;
+
+    // Hash table internal representation
+    let hashTable = [];
+    let totalCollisions = 0;
+
+    // Animation Steps Queue & Execution State
+    let stepsQueue = [];
+    let currentStepIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let currentOpType = 'PUT'; // 'PUT', 'GET', 'REMOVE'
+
+    // Node ID counter for UI DOM tracking
+    let nodeIdCounter = 1;
+
+    // Initialize on Load
+    window.onload = function() {
+      initTable(tableCapacity);
+      updateMetrics();
+      renderTableUI();
+      
+      // Speed slider binding
+      document.getElementById('speedSlider').addEventListener('input', function() {
+        if (isPlaying) {
+          stopPlay();
+          startPlay();
+        }
+      });
+
+      // Keyboard handler for closing Java modal
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeJavaModal();
+        }
+      });
+
+      // Backdrop click handler for Java modal
+      const modal = document.getElementById('javaModal');
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          closeJavaModal();
+        }
+      });
+    };
+
+    // Helper to ensure capacity dropdown has option for current capacity
+    function syncCapacitySelect(cap) {
+      const select = document.getElementById('selectCapacity');
+      if (!select) return;
+
+      let found = false;
+      for (let i = 0; i < select.options.length; i++) {
+        if (parseInt(select.options[i].value, 10) === cap) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found && !isNaN(cap) && cap > 0) {
+        const opt = document.createElement('option');
+        opt.value = cap;
+        opt.innerText = `${cap} (Rehashed / Custom)`;
+        select.appendChild(opt);
+      }
+
+      select.value = String(cap);
+    }
+
+    // Initialize or Reset the Hash Table structure
+    function initTable(capacity) {
+      let cap = parseInt(capacity, 10);
+      if (isNaN(cap) || cap < 1) {
+        cap = (tableCapacity && !isNaN(tableCapacity) && tableCapacity > 0) ? tableCapacity : 7;
+      }
+      cap = Math.min(Math.max(1, Math.floor(cap)), 100); // Safe bounds check
+      tableCapacity = cap;
+
+      syncCapacitySelect(cap);
+
+      hashTable = new Array(cap);
+      if (collisionStrategy === 'CHAINING') {
+        for (let i = 0; i < cap; i++) {
+          hashTable[i] = [];
+        }
+      } else {
+        for (let i = 0; i < cap; i++) {
+          hashTable[i] = null;
+        }
+      }
+      totalCollisions = 0;
+    }
+
+    // Compute Primary Hash Value h(k)
+    function computeHashCode(key) {
+      const strKey = String(key);
+      let numKey = parseInt(key, 10);
+
+      // If key is purely numeric, use the integer value
+      if (!isNaN(numKey) && String(numKey) === strKey) {
+        return Math.abs(numKey);
+      }
+
+      // String hashing strategies
+      if (hashStrategy === 'FIRST_CHAR') {
+        return strKey.length > 0 ? strKey.charCodeAt(0) : 0;
+      } else if (hashStrategy === 'LENGTH') {
+        return strKey.length;
+      } else {
+        // Default ASCII sum
+        let sum = 0;
+        for (let i = 0; i < strKey.length; i++) {
+          sum += strKey.charCodeAt(i);
+        }
+        return sum;
+      }
+    }
+
+    // Primary Hash Function: index = hash % capacity
+    function getPrimaryIndex(key, cap = tableCapacity) {
+      const hash = computeHashCode(key);
+      return hash % cap;
+    }
+
+    // Second Hash Function for Double Hashing: h2(k) = R - (k % R)
+    function getSecondaryHash(key, cap = tableCapacity) {
+      const hash = computeHashCode(key);
+      const R = getPrimeLessThan(cap);
+      return R - (hash % R);
+    }
+
+    function getPrimeLessThan(n) {
+      if (n <= 3) return 2;
+      for (let p = n - 1; p >= 2; p--) {
+        if (isPrime(p)) return p;
+      }
+      return 3;
+    }
+
+    function isPrime(num) {
+      if (num <= 1) return false;
+      if (num <= 3) return true;
+      if (num % 2 === 0 || num % 3 === 0) return false;
+      for (let i = 5; i * i <= num; i += 6) {
+        if (num % i === 0 || num % (i + 2) === 0) return false;
+      }
+      return true;
+    }
+
+    // Count stored entries
+    function getEntryCount() {
+      let count = 0;
+      if (collisionStrategy === 'CHAINING') {
+        for (let i = 0; i < tableCapacity; i++) {
+          count += hashTable[i].length;
+        }
+      } else {
+        for (let i = 0; i < tableCapacity; i++) {
+          if (hashTable[i] !== null && !hashTable[i].deleted) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    // Tab switching (PUT, GET, REMOVE)
+    function setOpTab(op) {
+      currentOpType = op;
+      const btnPut = document.getElementById('tabPut');
+      const btnGet = document.getElementById('tabGet');
+      const btnRemove = document.getElementById('tabRemove');
+      const valGroup = document.getElementById('valInputGroup');
+      const btnExecText = document.getElementById('btnExecText');
+      const opBadge = document.getElementById('opBadge');
+
+      [btnPut, btnGet, btnRemove].forEach(b => {
+        b.className = "flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200";
+      });
+
+      if (op === 'PUT') {
+        btnPut.className = "flex-1 py-1.5 font-medium rounded-lg bg-blue-600 text-white shadow";
+        valGroup.style.display = 'block';
+        btnExecText.innerText = "Execute Put (Insert)";
+        opBadge.innerText = "put(key, value)";
+      } else if (op === 'GET') {
+        btnGet.className = "flex-1 py-1.5 font-medium rounded-lg bg-emerald-600 text-white shadow";
+        valGroup.style.display = 'none';
+        btnExecText.innerText = "Execute Get (Search)";
+        opBadge.innerText = "get(key)";
+      } else if (op === 'REMOVE') {
+        btnRemove.className = "flex-1 py-1.5 font-medium rounded-lg bg-rose-600 text-white shadow";
+        valGroup.style.display = 'none';
+        btnExecText.innerText = "Execute Remove (Delete)";
+        opBadge.innerText = "remove(key)";
+      }
+    }
+
+    // Prepare step queue for PUT
+    function buildPutSteps(key, val) {
+      const steps = [];
+      const hashCode = computeHashCode(key);
+      const initialIndex = hashCode % tableCapacity;
+      let codeSnippet = `HashMap<String, String> hashTable = new HashMap<>();\nhashTable.put("${key}", "${val}");`;
+
+      // Step 1: Input Received
+      steps.push({
+        type: 'INIT',
+        key, val, hashCode, index: initialIndex,
+        explanation: `Starting <b>put("${key}", "${val}")</b>. Preparing to calculate hash for key: <b>${key}</b>.`,
+        code: codeSnippet,
+        pipelineStage: 1
+      });
+
+      // Step 2: Hash Code Calculation
+      let hashExplanation = `Computing Hash Code for "${key}". `;
+      if (!isNaN(parseInt(key, 10)) && String(parseInt(key, 10)) === key) {
+        hashExplanation += `Numeric Key value = <b>${hashCode}</b>.`;
+      } else if (hashStrategy === 'FIRST_CHAR') {
+        hashExplanation += `ASCII of first char '${key.charAt(0)}' = <b>${hashCode}</b>.`;
+      } else if (hashStrategy === 'LENGTH') {
+        hashExplanation += `Length of string = <b>${hashCode}</b>.`;
+      } else {
+        hashExplanation += `Sum of ASCII values = <b>${hashCode}</b>.`;
+      }
+
+      steps.push({
+        type: 'HASH_CALC',
+        key, val, hashCode, index: initialIndex,
+        explanation: hashExplanation,
+        code: codeSnippet,
+        pipelineStage: 2
+      });
+
+      // Step 3: Index Modulo Calculation
+      steps.push({
+        type: 'INDEX_CALC',
+        key, val, hashCode, index: initialIndex,
+        explanation: `Bucket Index = Hash Code % Capacity &rArr; <b>${hashCode} % ${tableCapacity} = ${initialIndex}</b>.`,
+        code: codeSnippet,
+        pipelineStage: 3
+      });
+
+      // Step 4: Collision Resolution & Insertion
+      if (collisionStrategy === 'CHAINING') {
+        // Separate Chaining
+        const bucketList = hashTable[initialIndex];
+        const existingIdx = bucketList.findIndex(e => e.key === key);
+
+        if (bucketList.length > 0 && existingIdx === -1) {
+          // Collision occurred!
+          steps.push({
+            type: 'COLLISION',
+            key, val, hashCode, index: initialIndex,
+            probeIndex: initialIndex,
+            explanation: `<b>Collision detected at Bucket [${initialIndex}]!</b> Slot already holds key "${bucketList[0].key}". Separate Chaining will append to the Linked List.`,
+            code: codeSnippet
+          });
+        }
+
+        if (existingIdx !== -1) {
+          // Key exists -> Update value
+          steps.push({
+            type: 'UPDATE_KEY',
+            key, val, hashCode, index: initialIndex,
+            existingIdx,
+            nodeId: bucketList[existingIdx].id,
+            explanation: `Key "${key}" already exists in bucket [${initialIndex}]. Updating value to "<b>${val}</b>".`,
+            code: codeSnippet
+          });
+        } else {
+          // Append new node
+          const newNodeId = 'node-' + (nodeIdCounter++);
+          steps.push({
+            type: 'INSERT_CHAINING',
+            key, val, hashCode, index: initialIndex,
+            nodeId: newNodeId,
+            explanation: `Successfully added <b>("${key}", "${val}")</b> to Bucket [${initialIndex}] list.`,
+            code: codeSnippet
+          });
+        }
+
+      } else {
+        // Open Addressing (Linear, Quadratic, Double Hash)
+        let probed = 0;
+        let foundSlot = -1;
+        let isUpdate = false;
+        const stepSize2 = getSecondaryHash(key);
+
+        while (probed < tableCapacity) {
+          let currIdx;
+          let formulaStr = "";
+
+          if (collisionStrategy === 'LINEAR') {
+            currIdx = (initialIndex + probed) % tableCapacity;
+            formulaStr = `Linear Probe i=${probed}: (${initialIndex} + ${probed}) % ${tableCapacity} = ${currIdx}`;
+          } else if (collisionStrategy === 'QUADRATIC') {
+            currIdx = (initialIndex + probed * probed) % tableCapacity;
+            formulaStr = `Quadratic Probe i=${probed}: (${initialIndex} + ${probed}<sup>2</sup>) % ${tableCapacity} = ${currIdx}`;
+          } else if (collisionStrategy === 'DOUBLE_HASH') {
+            currIdx = (initialIndex + probed * stepSize2) % tableCapacity;
+            formulaStr = `Double Hash Probe i=${probed}: (${initialIndex} + ${probed} &times; ${stepSize2}) % ${tableCapacity} = ${currIdx}`;
+          }
+
+          const slot = hashTable[currIdx];
+
+          steps.push({
+            type: 'PROBE_CHECK',
+            key, val, hashCode, index: initialIndex,
+            probeIndex: currIdx,
+            probeI: probed,
+            formulaStr,
+            explanation: `Probing Bucket [${currIdx}] (Attempt #${probed + 1}). Checking availability...`,
+            code: codeSnippet
+          });
+
+          if (slot === null || slot.deleted) {
+            // Found empty slot
+            foundSlot = currIdx;
+            break;
+          } else if (slot.key === key) {
+            // Key update
+            foundSlot = currIdx;
+            isUpdate = true;
+            break;
+          } else {
+            // Collision on occupied slot
+            steps.push({
+              type: 'COLLISION',
+              key, val, hashCode, index: initialIndex,
+              probeIndex: currIdx,
+              probeI: probed,
+              formulaStr,
+              explanation: `<b>Collision at Bucket [${currIdx}]!</b> Occupied by ("${slot.key}", "${slot.value}"). Probing next position...`,
+              code: codeSnippet
+            });
+            probed++;
+          }
+        }
+
+        if (foundSlot !== -1) {
+          const newNodeId = isUpdate ? hashTable[foundSlot].id : 'node-' + (nodeIdCounter++);
+          steps.push({
+            type: 'INSERT_OPEN',
+            key, val, hashCode, index: initialIndex,
+            targetIndex: foundSlot,
+            nodeId: newNodeId,
+            isUpdate,
+            explanation: isUpdate ?
+              `Key "${key}" found at Bucket [${foundSlot}]. Value updated to "<b>${val}</b>".` :
+              `Found open slot at Bucket [${foundSlot}]. Stored <b>("${key}", "${val}")</b>.`,
+            code: codeSnippet
+          });
+        } else {
+          steps.push({
+            type: 'TABLE_FULL',
+            explanation: `<b>Table Full / Max Probes reached!</b> Cannot insert ("${key}", "${val}"). Rehashing required!`,
+            code: codeSnippet
+          });
+        }
+      }
+
+      return steps;
+    }
+
+    // Prepare step queue for GET
+    function buildGetSteps(key) {
+      const steps = [];
+      const hashCode = computeHashCode(key);
+      const initialIndex = hashCode % tableCapacity;
+      let codeSnippet = `// Java Retrieval\nString value = hashTable.get("${key}");`;
+
+      steps.push({
+        type: 'INIT',
+        key, hashCode, index: initialIndex,
+        explanation: `Searching for key: <b>"${key}"</b>. Computing hash code...`,
+        code: codeSnippet,
+        pipelineStage: 1
+      });
+
+      steps.push({
+        type: 'HASH_CALC',
+        key, hashCode, index: initialIndex,
+        explanation: `Hash code for "${key}" = <b>${hashCode}</b>.`,
+        code: codeSnippet,
+        pipelineStage: 2
+      });
+
+      steps.push({
+        type: 'INDEX_CALC',
+        key, hashCode, index: initialIndex,
+        explanation: `Mapped Bucket Index = <b>${hashCode} % ${tableCapacity} = ${initialIndex}</b>.`,
+        code: codeSnippet,
+        pipelineStage: 3
+      });
+
+      if (collisionStrategy === 'CHAINING') {
+        const bucketList = hashTable[initialIndex];
+        let foundNode = null;
+
+        steps.push({
+          type: 'PROBE_CHECK',
+          key, index: initialIndex, probeIndex: initialIndex,
+          explanation: `Checking Bucket [${initialIndex}] linked list (${bucketList.length} items)...`,
+          code: codeSnippet
+        });
+
+        for (let i = 0; i < bucketList.length; i++) {
+          if (bucketList[i].key === key) {
+            foundNode = bucketList[i];
+            break;
+          }
+        }
+
+        if (foundNode) {
+          steps.push({
+            type: 'FOUND',
+            key, index: initialIndex, targetIndex: initialIndex,
+            value: foundNode.value, nodeId: foundNode.id,
+            explanation: `<b>Key Found!</b> Value associated with "${key}" is "<b>${foundNode.value}</b>".`,
+            code: codeSnippet
+          });
+        } else {
+          steps.push({
+            type: 'NOT_FOUND',
+            key, index: initialIndex,
+            explanation: `<b>Key Not Found!</b> Key "${key}" does not exist in bucket [${initialIndex}].`,
+            code: codeSnippet
+          });
+        }
+
+      } else {
+        // Open Addressing search
+        let probed = 0;
+        let foundSlot = -1;
+        const stepSize2 = getSecondaryHash(key);
+
+        while (probed < tableCapacity) {
+          let currIdx;
+          if (collisionStrategy === 'LINEAR') currIdx = (initialIndex + probed) % tableCapacity;
+          else if (collisionStrategy === 'QUADRATIC') currIdx = (initialIndex + probed * probed) % tableCapacity;
+          else currIdx = (initialIndex + probed * stepSize2) % tableCapacity;
+
+          const slot = hashTable[currIdx];
+
+          steps.push({
+            type: 'PROBE_CHECK',
+            key, index: initialIndex, probeIndex: currIdx, probeI: probed,
+            explanation: `Checking Bucket [${currIdx}] (Attempt #${probed + 1})...`,
+            code: codeSnippet
+          });
+
+          if (slot === null) {
+            // Reached empty un-deleted slot -> Key does not exist
+            break;
+          } else if (!slot.deleted && slot.key === key) {
+            foundSlot = currIdx;
+            break;
+          }
+
+          probed++;
+        }
+
+        if (foundSlot !== -1) {
+          const slot = hashTable[foundSlot];
+          steps.push({
+            type: 'FOUND',
+            key, targetIndex: foundSlot, value: slot.value, nodeId: slot.id,
+            explanation: `<b>Key Found at Bucket [${foundSlot}]!</b> Value = "<b>${slot.value}</b>".`,
+            code: codeSnippet
+          });
+        } else {
+          steps.push({
+            type: 'NOT_FOUND',
+            key,
+            explanation: `<b>Key "${key}" Not Found</b> in table after probing.`,
+            code: codeSnippet
+          });
+        }
+      }
+
+      return steps;
+    }
+
+    // Prepare step queue for REMOVE
+    function buildRemoveSteps(key) {
+      const steps = [];
+      const hashCode = computeHashCode(key);
+      const initialIndex = hashCode % tableCapacity;
+      let codeSnippet = `// Java Deletion\nhashTable.remove("${key}");`;
+
+      steps.push({
+        type: 'INIT',
+        key, hashCode, index: initialIndex,
+        explanation: `Preparing to remove key: <b>"${key}"</b>.`,
+        code: codeSnippet,
+        pipelineStage: 1
+      });
+
+      steps.push({
+        type: 'INDEX_CALC',
+        key, hashCode, index: initialIndex,
+        explanation: `Key "${key}" hashes to Bucket Index <b>${initialIndex}</b>.`,
+        code: codeSnippet,
+        pipelineStage: 3
+      });
+
+      if (collisionStrategy === 'CHAINING') {
+        const bucketList = hashTable[initialIndex];
+        const idx = bucketList.findIndex(e => e.key === key);
+
+        if (idx !== -1) {
+          steps.push({
+            type: 'REMOVE_SUCCESS',
+            key, index: initialIndex, targetIndex: initialIndex,
+            nodeId: bucketList[idx].id,
+            explanation: `Removed ("${key}", "${bucketList[idx].value}") from Bucket [${initialIndex}] list.`,
+            code: codeSnippet
+          });
+        } else {
+          steps.push({
+            type: 'NOT_FOUND',
+            key, index: initialIndex,
+            explanation: `Cannot remove: Key "${key}" not found in Bucket [${initialIndex}].`,
+            code: codeSnippet
+          });
+        }
+      } else {
+        // Open addressing remove
+        let probed = 0;
+        let foundSlot = -1;
+        const stepSize2 = getSecondaryHash(key);
+
+        while (probed < tableCapacity) {
+          let currIdx;
+          if (collisionStrategy === 'LINEAR') currIdx = (initialIndex + probed) % tableCapacity;
+          else if (collisionStrategy === 'QUADRATIC') currIdx = (initialIndex + probed * probed) % tableCapacity;
+          else currIdx = (initialIndex + probed * stepSize2) % tableCapacity;
+
+          const slot = hashTable[currIdx];
+
+          steps.push({
+            type: 'PROBE_CHECK',
+            key, index: initialIndex, probeIndex: currIdx,
+            explanation: `Checking Bucket [${currIdx}] for key "${key}"...`,
+            code: codeSnippet
+          });
+
+          if (slot === null) break;
+          if (!slot.deleted && slot.key === key) {
+            foundSlot = currIdx;
+            break;
+          }
+          probed++;
+        }
+
+        if (foundSlot !== -1) {
+          steps.push({
+            type: 'REMOVE_SUCCESS',
+            key, targetIndex: foundSlot,
+            nodeId: hashTable[foundSlot].id,
+            explanation: `Removed key "${key}" at Bucket [${foundSlot}]. Flagged slot as tombstone/deleted.`,
+            code: codeSnippet
+          });
+        } else {
+          steps.push({
+            type: 'NOT_FOUND',
+            key,
+            explanation: `Cannot remove: Key "${key}" not found in table.`,
+            code: codeSnippet
+          });
+        }
+      }
+
+      return steps;
+    }
+
+    // Execute Operations
+    function startOperation() {
+      stopPlay();
+      const keyInput = document.getElementById('inputKey').value.trim();
+      const valInput = document.getElementById('inputValue').value.trim();
+
+      if (!keyInput) {
+        showToast("Please enter a valid key!", "warning");
+        return;
+      }
+
+      if (currentOpType === 'PUT') {
+        stepsQueue = buildPutSteps(keyInput, valInput || "Val");
+      } else if (currentOpType === 'GET') {
+        stepsQueue = buildGetSteps(keyInput);
+      } else if (currentOpType === 'REMOVE') {
+        stepsQueue = buildRemoveSteps(keyInput);
+      }
+
+      currentStepIdx = 0;
+      updateStepControls();
+      applyStep(stepsQueue[0]);
+    }
+
+    // Step Execution & Rendering Manager
+    function applyStep(step) {
+      if (!step) return;
+
+      // Reset DOM highlights
+      clearHighlights();
+
+      // Update Explanation & Code Snippet
+      document.getElementById('stepText').innerHTML = step.explanation;
+      if (step.code) {
+        document.getElementById('javaCodePreview').innerText = step.code;
+      }
+
+      // Update Step Counter
+      document.getElementById('stepCounter').innerText = `Step ${currentStepIdx + 1} / ${stepsQueue.length}`;
+
+      // Pipeline Box Highlighting
+      const pipe1 = document.getElementById('pipeBox1');
+      const pipe2 = document.getElementById('pipeBox2');
+      const pipe3 = document.getElementById('pipeBox3');
+      const calcStageBadge = document.getElementById('calcStageBadge');
+
+      if (step.key !== undefined) document.getElementById('pipeKey').innerText = step.key;
+      if (step.hashCode !== undefined) {
+        document.getElementById('pipeHashMath').innerText = `hash("${step.key}") = ${step.hashCode}`;
+      }
+      if (step.index !== undefined) {
+        document.getElementById('pipeIndexMath').innerText = `${step.hashCode} % ${tableCapacity} = Index ${step.index}`;
+      }
+
+      // Probing formula display
+      const probeFormulaBox = document.getElementById('probeFormulaBox');
+      if (step.formulaStr) {
+        probeFormulaBox.classList.remove('hidden');
+        document.getElementById('probeFormulaText').innerHTML = step.formulaStr;
+      } else {
+        probeFormulaBox.classList.add('hidden');
+      }
+
+      // Pipeline box stage glow
+      if (step.pipelineStage === 1) {
+        pipe1.classList.add('border-blue-500', 'bg-blue-950/40');
+        calcStageBadge.innerText = "Parsing Key";
+      } else if (step.pipelineStage === 2) {
+        pipe2.classList.add('border-purple-500', 'bg-purple-950/40');
+        calcStageBadge.innerText = "Calculating Hash";
+      } else if (step.pipelineStage === 3) {
+        pipe3.classList.add('border-emerald-500', 'bg-emerald-950/40');
+        calcStageBadge.innerText = "Computing Index";
+      } else {
+        calcStageBadge.innerText = "Table Search/Insert";
+      }
+
+      // Bucket UI Highlights based on step action
+      if (step.probeIndex !== undefined) {
+        highlightBucket(step.probeIndex, 'checking');
+      }
+      if (step.targetIndex !== undefined) {
+        highlightBucket(step.targetIndex, 'target');
+      }
+
+      if (step.type === 'COLLISION') {
+        totalCollisions++;
+        document.getElementById('metricCollisions').innerText = totalCollisions;
+        highlightBucket(step.probeIndex, 'collision');
+      } else if (step.type === 'INSERT_CHAINING') {
+        // Commit to internal structure
+        hashTable[step.index].push({ key: step.key, value: step.val, id: step.nodeId });
+        renderTableUI();
+        highlightBucket(step.index, 'target');
+        checkAutoRehashTrigger();
+      } else if (step.type === 'UPDATE_KEY') {
+        if (collisionStrategy === 'CHAINING') {
+          hashTable[step.index][step.existingIdx].value = step.val;
+        }
+        renderTableUI();
+        highlightBucket(step.index, 'target');
+      } else if (step.type === 'INSERT_OPEN') {
+        if (!step.isUpdate) {
+          hashTable[step.targetIndex] = { key: step.key, value: step.val, id: step.nodeId, deleted: false };
+        } else {
+          hashTable[step.targetIndex].value = step.val;
+        }
+        renderTableUI();
+        highlightBucket(step.targetIndex, 'target');
+        checkAutoRehashTrigger();
+      } else if (step.type === 'REMOVE_SUCCESS') {
+        if (collisionStrategy === 'CHAINING') {
+          hashTable[step.targetIndex] = hashTable[step.targetIndex].filter(e => e.key !== step.key);
+        } else {
+          hashTable[step.targetIndex] = { key: step.key, value: 'DELETED', id: step.nodeId, deleted: true };
+        }
+        renderTableUI();
+        highlightBucket(step.targetIndex, 'collision');
+      }
+
+      updateMetrics();
+    }
+
+    // Step Controls (Next, Prev, Play)
+    function nextStep() {
+      if (currentStepIdx < stepsQueue.length - 1) {
+        currentStepIdx++;
+        applyStep(stepsQueue[currentStepIdx]);
+      } else {
+        stopPlay();
+      }
+      updateStepControls();
+    }
+
+    function prevStep() {
+      if (currentStepIdx > 0) {
+        currentStepIdx--;
+        rebuildTableUpToStep(currentStepIdx);
+      }
+      updateStepControls();
+    }
+
+    function rebuildTableUpToStep(stepLimitIdx) {
+      renderTableUI();
+      applyStep(stepsQueue[stepLimitIdx]);
+    }
+
+    function togglePlayPause() {
+      if (isPlaying) {
+        stopPlay();
+      } else {
+        startPlay();
+      }
+    }
+
+    function startPlay() {
+      if (currentStepIdx >= stepsQueue.length - 1) {
+        currentStepIdx = 0;
+      }
+      isPlaying = true;
+      document.getElementById('playIcon').className = "fa-solid fa-pause";
+      document.getElementById('playText').innerText = "Pause";
+      
+      const speed = parseInt(document.getElementById('speedSlider').value, 10);
+      playTimer = setInterval(() => {
+        if (currentStepIdx < stepsQueue.length - 1) {
+          nextStep();
+        } else {
+          stopPlay();
+        }
+      }, speed);
+    }
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearInterval(playTimer);
+      document.getElementById('playIcon').className = "fa-solid fa-play";
+      document.getElementById('playText').innerText = "Play";
+    }
+
+    function updateStepControls() {
+      const prevBtn = document.getElementById('btnPrevStep');
+      const nextBtn = document.getElementById('btnNextStep');
+      const playBtn = document.getElementById('btnPlayPause');
+
+      const hasSteps = stepsQueue.length > 0;
+      prevBtn.disabled = !hasSteps || currentStepIdx === 0;
+      nextBtn.disabled = !hasSteps || currentStepIdx === stepsQueue.length - 1;
+      playBtn.disabled = !hasSteps;
+    }
+
+    // Render the Hash Table Array in the HTML UI
+    function renderTableUI() {
+      const container = document.getElementById('bucketsContainer');
+      container.innerHTML = '';
+
+      for (let i = 0; i < tableCapacity; i++) {
+        const bucketDiv = document.createElement('div');
+        bucketDiv.id = `bucket-${i}`;
+        bucketDiv.className = "p-2.5 bg-slate-950 border border-slate-800 rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2";
+
+        // Bucket Index Label
+        const labelDiv = document.createElement('div');
+        labelDiv.className = "flex items-center gap-2 min-w-[100px]";
+        labelDiv.innerHTML = `
+          <span class="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 font-mono text-xs font-bold flex items-center justify-center shrink-0">
+            ${i}
+          </span>
+          <span class="text-[11px] font-mono text-slate-400">Bucket [${i}]</span>
+        `;
+        bucketDiv.appendChild(labelDiv);
+
+        // Slot Value Content Container
+        const contentDiv = document.createElement('div');
+        contentDiv.className = "flex-1 flex items-center gap-2 flex-wrap w-full";
+
+        if (collisionStrategy === 'CHAINING') {
+          const list = hashTable[i];
+          if (!list || list.length === 0) {
+            contentDiv.innerHTML = `<span class="text-xs text-slate-600 font-mono italic">null (empty)</span>`;
+          } else {
+            list.forEach((item, idx) => {
+              const nodeEl = document.createElement('div');
+              nodeEl.id = item.id;
+              nodeEl.className = "flex items-center gap-1 bg-slate-900 border border-blue-500/40 text-blue-200 px-2.5 py-1 rounded-lg text-xs font-mono shadow-sm transition-all";
+              nodeEl.innerHTML = `
+                <span class="font-bold text-blue-400">${escapeHtml(item.key)}</span>
+                <span class="text-slate-500">:</span>
+                <span class="text-slate-300">${escapeHtml(item.value)}</span>
+              `;
+              contentDiv.appendChild(nodeEl);
+
+              // Render arrow pointer if not last node in chaining list
+              if (idx < list.length - 1) {
+                const arrow = document.createElement('span');
+                arrow.className = "text-indigo-400 font-bold text-xs";
+                arrow.innerHTML = `<i class="fa-solid fa-arrow-right"></i>`;
+                contentDiv.appendChild(arrow);
+              }
+            });
+          }
+        } else {
+          // Open Addressing Single Slot
+          const slot = hashTable[i];
+          if (slot === null) {
+            contentDiv.innerHTML = `<span class="text-xs text-slate-600 font-mono italic">null (empty)</span>`;
+          } else if (slot.deleted) {
+            contentDiv.innerHTML = `
+              <span class="px-2 py-0.5 rounded bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs font-mono flex items-center gap-1">
+                <i class="fa-solid fa-skull"></i> Tombstone (Deleted: ${escapeHtml(slot.key)})
+              </span>`;
+          } else {
+            contentDiv.innerHTML = `
+              <div id="${slot.id}" class="flex items-center gap-2 bg-slate-900 border border-emerald-500/40 text-emerald-200 px-3 py-1 rounded-lg text-xs font-mono shadow-sm">
+                <span class="font-bold text-emerald-400">${escapeHtml(slot.key)}</span>
+                <span class="text-slate-500">&rarr;</span>
+                <span class="text-slate-200">${escapeHtml(slot.value)}</span>
+              </div>`;
+          }
+        }
+
+        bucketDiv.appendChild(contentDiv);
+        container.appendChild(bucketDiv);
+      }
+    }
+
+    // Highlight Bucket UI Helper
+    function highlightBucket(index, status) {
+      const bucket = document.getElementById(`bucket-${index}`);
+      if (!bucket) return;
+
+      if (status === 'checking') {
+        bucket.classList.add('border-blue-500', 'bg-blue-950/30', 'glow-active');
+      } else if (status === 'collision') {
+        bucket.classList.add('border-rose-500', 'bg-rose-950/40', 'glow-collision');
+      } else if (status === 'target') {
+        bucket.classList.add('border-emerald-500', 'bg-emerald-950/40', 'glow-success');
+      }
+    }
+
+    function clearHighlights() {
+      for (let i = 0; i < tableCapacity; i++) {
+        const bucket = document.getElementById(`bucket-${i}`);
+        if (bucket) {
+          bucket.className = "p-2.5 bg-slate-950 border border-slate-800 rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2";
+        }
+      }
+      const pipe1 = document.getElementById('pipeBox1');
+      const pipe2 = document.getElementById('pipeBox2');
+      const pipe3 = document.getElementById('pipeBox3');
+      [pipe1, pipe2, pipe3].forEach(p => {
+        p.className = "bg-slate-950 border border-slate-800 p-2.5 rounded-xl transition-all";
+      });
+    }
+
+    // Update Live Metrics Dashboard
+    function updateMetrics() {
+      const count = getEntryCount();
+      const loadFactor = (count / tableCapacity).toFixed(2);
+
+      document.getElementById('metricCount').innerText = count;
+      document.getElementById('metricCapacity').innerText = tableCapacity;
+      document.getElementById('metricLoadFactor').innerText = loadFactor;
+
+      const warningEl = document.getElementById('loadFactorWarning');
+      if (parseFloat(loadFactor) > 0.75) {
+        warningEl.classList.remove('hidden');
+      } else {
+        warningEl.classList.add('hidden');
+      }
+    }
+
+    // Auto-Rehash Check
+    function checkAutoRehashTrigger() {
+      if (!document.getElementById('checkAutoRehash').checked) return;
+
+      const count = getEntryCount();
+      const loadFactor = count / tableCapacity;
+
+      if (loadFactor > 0.75) {
+        showToast(`Load Factor (${loadFactor.toFixed(2)}) > 0.75! Triggering Automatic Rehashing...`, "info");
+        setTimeout(() => {
+          rehashTable(getNextPrime(tableCapacity * 2));
+        }, 1200);
+      }
+    }
+
+    // Rehashing procedure
+    function rehashTable(newCapacity) {
+      const oldTable = hashTable;
+      const oldCap = tableCapacity;
+
+      let validNewCap = parseInt(newCapacity, 10);
+      if (isNaN(validNewCap) || validNewCap <= oldCap) {
+        validNewCap = getNextPrime(oldCap * 2);
+      }
+
+      initTable(validNewCap);
+
+      // Re-insert existing elements
+      if (collisionStrategy === 'CHAINING') {
+        for (let i = 0; i < oldCap; i++) {
+          oldTable[i].forEach(item => {
+            const idx = getPrimaryIndex(item.key, validNewCap);
+            hashTable[idx].push({ key: item.key, value: item.value, id: 'node-' + (nodeIdCounter++) });
+          });
+        }
+      } else {
+        for (let i = 0; i < oldCap; i++) {
+          const item = oldTable[i];
+          if (item !== null && !item.deleted) {
+            let probed = 0;
+            const initialIdx = getPrimaryIndex(item.key, validNewCap);
+            const step2 = getSecondaryHash(item.key, validNewCap);
+
+            while (probed < validNewCap) {
+              let currIdx;
+              if (collisionStrategy === 'LINEAR') currIdx = (initialIdx + probed) % validNewCap;
+              else if (collisionStrategy === 'QUADRATIC') currIdx = (initialIdx + probed * probed) % validNewCap;
+              else currIdx = (initialIdx + probed * step2) % validNewCap;
+
+              if (hashTable[currIdx] === null) {
+                hashTable[currIdx] = { key: item.key, value: item.value, id: 'node-' + (nodeIdCounter++), deleted: false };
+                break;
+              }
+              probed++;
+            }
+          }
+        }
+      }
+
+      renderTableUI();
+      updateMetrics();
+      showToast(`Rehashed! Table resized from ${oldCap} to ${validNewCap} buckets.`, "success");
+    }
+
+    function getNextPrime(n) {
+      let p = n;
+      while (!isPrime(p)) p++;
+      return p;
+    }
+
+    // Handle Table Design option changes from select menus
+    function changeTableDesign() {
+      const selectVal = document.getElementById('selectCapacity').value;
+      let newCap = parseInt(selectVal, 10);
+      if (isNaN(newCap) || newCap < 1) {
+        newCap = tableCapacity || 7;
+      }
+      collisionStrategy = document.getElementById('selectStrategy').value;
+      hashStrategy = document.getElementById('selectHashFunc').value;
+
+      initTable(newCap);
+      renderTableUI();
+      updateMetrics();
+      showToast("Table design updated & reset.", "info");
+    }
+
+    // Reset Table completely
+    function resetTable() {
+      stopPlay();
+      stepsQueue = [];
+      currentStepIdx = 0;
+      updateStepControls();
+
+      const selectVal = document.getElementById('selectCapacity').value;
+      let cap = parseInt(selectVal, 10);
+      if (isNaN(cap) || cap < 1) cap = 7;
+
+      initTable(cap);
+      renderTableUI();
+      updateMetrics();
+
+      document.getElementById('stepText').innerHTML = "Table reset. Ready for new operations!";
+      document.getElementById('pipeKey').innerText = "--";
+      document.getElementById('pipeHashMath').innerText = 'hash("?")';
+      document.getElementById('pipeIndexMath').innerText = "Index = --";
+      clearHighlights();
+    }
+
+    // Load Presets
+    function loadPreset(presetType) {
+      stopPlay();
+      if (presetType === 'chaining_demo') {
+        document.getElementById('selectCapacity').value = "5";
+        document.getElementById('selectStrategy').value = "CHAINING";
+        document.getElementById('selectHashFunc').value = "DEFAULT";
+        changeTableDesign();
+
+        // Add items that cause collisions in capacity 5
+        const items = [
+          { k: "10", v: "Apple" }, // 10 % 5 = 0
+          { k: "15", v: "Banana" }, // 15 % 5 = 0 (Collision!)
+          { k: "20", v: "Cherry" }  // 20 % 5 = 0 (Collision!)
+        ];
+
+        items.forEach(item => {
+          const idx = getPrimaryIndex(item.k, 5);
+          hashTable[idx].push({ key: item.k, value: item.v, id: 'node-' + (nodeIdCounter++) });
+        });
+
+        renderTableUI();
+        updateMetrics();
+        showToast("Loaded Preset: Chaining Collisions at Bucket 0!", "info");
+        document.getElementById('stepText').innerHTML = "Preset Loaded: Keys 10, 15, 20 all hash to Bucket 0. Linked List chaining handles collisions gracefully!";
+
+      } else if (presetType === 'linear_probing') {
+        document.getElementById('selectCapacity').value = "7";
+        document.getElementById('selectStrategy').value = "LINEAR";
+        document.getElementById('selectHashFunc').value = "DEFAULT";
+        changeTableDesign();
+
+        const keys = ["Jack", "Jill", "John"];
+        keys.forEach(k => {
+          const initIdx = getPrimaryIndex(k, 7);
+          let probed = 0;
+          while (probed < 7) {
+            const curr = (initIdx + probed) % 7;
+            if (hashTable[curr] === null) {
+              hashTable[curr] = { key: k, value: "Room " + (100 + probed), id: 'node-' + (nodeIdCounter++), deleted: false };
+              break;
+            }
+            probed++;
+          }
+        });
+
+        renderTableUI();
+        updateMetrics();
+        showToast("Loaded Preset: Linear Probing Cluster!", "info");
+        document.getElementById('stepText').innerHTML = "Preset Loaded: Open Addressing checks sequential slots when collisions occur.";
+
+      } else if (presetType === 'rehashing_demo') {
+        document.getElementById('selectCapacity').value = "5";
+        document.getElementById('selectStrategy').value = "CHAINING";
+        changeTableDesign();
+
+        const demoItems = [
+          { k: "A", v: "1" }, { k: "B", v: "2" }, { k: "C", v: "3" }, { k: "D", v: "4" }
+        ];
+
+        demoItems.forEach(item => {
+          const idx = getPrimaryIndex(item.k, 5);
+          hashTable[idx].push({ key: item.k, value: item.v, id: 'node-' + (nodeIdCounter++) });
+        });
+
+        renderTableUI();
+        updateMetrics();
+        showToast("Loaded Preset: High Load Factor (&alpha; = 0.80)!", "info");
+        document.getElementById('stepText').innerHTML = "High Load Factor reached! Adding 1 more item will trigger auto-rehashing to resize table.";
+      }
+    }
+
+    // Quick add random pair
+    function quickAddRandom() {
+      const names = ["Alice", "Bob", "Charlie", "David", "Eva", "Frank", "Grace", "Hannah", "Isaac", "Jack"];
+      const randomKey = names[Math.floor(Math.random() * names.length)] + Math.floor(Math.random() * 90 + 10);
+      const randomVal = "Val_" + Math.floor(Math.random() * 500);
+
+      document.getElementById('inputKey').value = randomKey;
+      document.getElementById('inputValue').value = randomVal;
+      setOpTab('PUT');
+      startOperation();
+    }
+
+    // Java Code Modal Handlers
+    function openJavaModal() {
+      const modal = document.getElementById('javaModal');
+      const card = document.getElementById('javaModalCard');
+      if (!modal || !card) return;
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeJavaModal() {
+      const modal = document.getElementById('javaModal');
+      const card = document.getElementById('javaModalCard');
+      if (!modal || !card) return;
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
+    function copyJavaCode() {
+      const codeText = document.getElementById('javaCodePreview').innerText;
+      const textarea = document.createElement('textarea');
+      textarea.value = codeText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast("Java code snippet copied to clipboard!", "success");
+    }
+
+    // Utility Toast notifications
+    function showToast(message, type = "info") {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      let bgColor = "bg-slate-800 border-slate-700 text-slate-100";
+      if (type === "warning") bgColor = "bg-amber-950 border-amber-800 text-amber-200";
+      if (type === "success") bgColor = "bg-emerald-950 border-emerald-800 text-emerald-200";
+      if (type === "info") bgColor = "bg-blue-950 border-blue-800 text-blue-200";
+
+      toast.className = `p-3 rounded-xl border shadow-xl text-xs flex items-center gap-2 transition-all duration-300 transform translate-y-2 pointer-events-auto ${bgColor}`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info text-base"></i> <span>${message}</span>`;
+
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.remove('translate-y-2'), 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
