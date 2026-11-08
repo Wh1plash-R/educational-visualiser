@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graph Data Structure & Traversal Visualizer</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Glow utility classes for graph canvas */
+    .glow-active {
+      filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.8));
+    }
+    .glow-visited {
+      filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.7));
+    }
+    .glow-queued {
+      filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.7));
+    }
+    .edge-active {
+      stroke: #f59e0b;
+      stroke-width: 4.5px;
+      stroke-dasharray: 8;
+      animation: dash 1s linear infinite;
+      filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8));
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -16;
+      }
+    }
+
+    /* Active code line highlight */
+    .code-line-active {
+      background-color: rgba(245, 158, 11, 0.15);
+      border-left: 3px solid #f59e0b;
+      color: #fef08a;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/20 text-white">
+          <i class="fa-solid fa-diagram-project text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+            Graph & Traversal Visualizer
+          </h1>
+          <p class="text-xs text-slate-400">Adjacency List &bull; DFS &bull; BFS &bull; IT2503 Handout 6</p>
+        </div>
+      </div>
+
+      <!-- Header Controls & Presets -->
+      <div class="flex items-center gap-2 flex-wrap text-xs">
+        <button onclick="openJavaModal()" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-semibold flex items-center gap-1.5 transition shadow">
+          <i class="fa-brands fa-java text-amber-400 text-sm"></i>
+          <span>Full Java Code</span>
+        </button>
+
+        <span class="text-slate-500 font-medium ml-1">Presets:</span>
+        <button onclick="loadPreset('handout_4node')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition border border-slate-700">
+          Handout 4-Node (A-D)
+        </button>
+        <button onclick="loadPreset('handout_5node')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition border border-slate-700">
+          Handout 5-Node (0-4)
+        </button>
+        <button onclick="clearGraph()" class="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-xl font-medium transition border border-rose-800/60">
+          <i class="fa-solid fa-trash-can mr-1"></i> Clear
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- LEFT PANEL: Controls, Builder & Code Line Tracer (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-4">
+
+      <!-- Traversal Execution Control Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <span><i class="fa-solid fa-play text-indigo-400 mr-2"></i>Traversal Setup</span>
+          <span id="traversalStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-normal">Ready</span>
+        </h2>
+
+        <!-- Algorithm Tabs (DFS vs BFS) -->
+        <div class="flex gap-1 bg-slate-950 p-1 rounded-xl mb-3 border border-slate-800 text-xs">
+          <button id="tabDFS" onclick="setAlgorithm('DFS')" class="flex-1 py-1.5 font-medium rounded-lg bg-indigo-600 text-white shadow">
+            <i class="fa-solid fa-layer-group mr-1"></i> DFS (Stack)
+          </button>
+          <button id="tabBFS" onclick="setAlgorithm('BFS')" class="flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200">
+            <i class="fa-solid fa-bars-staggered mr-1"></i> BFS (Queue)
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Start Vertex:</label>
+            <select id="selectStartNode" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:outline-none focus:border-indigo-500 text-slate-100">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Graph Direction:</label>
+            <button id="btnToggleDirection" onclick="toggleDirected()" class="w-full bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-lg px-2 py-1.5 text-xs text-slate-300 font-medium flex items-center justify-center gap-1.5 transition">
+              <i id="directionIcon" class="fa-solid fa-arrows-left-right text-indigo-400"></i>
+              <span id="directionText">Undirected</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Traversal Trigger Button -->
+        <button id="btnStartTraversal" onclick="startTraversal()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 text-xs">
+          <i class="fa-solid fa-bolt"></i> <span id="btnStartText">Start DFS Traversal</span>
+        </button>
+      </div>
+
+      <!-- Step Controls & Speed -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-purple-400"></i> Step Controller
+          </span>
+          <span id="stepCounter" class="text-xs font-mono text-purple-400 bg-purple-950/60 border border-purple-800/60 px-2 py-0.5 rounded-full">Step 0 / 0</span>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 my-2">
+          <div class="flex items-center gap-1">
+            <button id="btnPrevStep" onclick="prevStep()" disabled class="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-slate-200 text-xs font-semibold transition border border-slate-700">
+              <i class="fa-solid fa-backward-step"></i> Back
+            </button>
+            <button id="btnPlayPause" onclick="togglePlayPause()" disabled class="p-2 px-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded-lg text-white text-xs font-semibold transition shadow shadow-indigo-500/20">
+              <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+            </button>
+            <button id="btnNextStep" onclick="nextStep()" disabled class="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-slate-200 text-xs font-semibold transition border border-slate-700">
+              Next <i class="fa-solid fa-forward-step"></i>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400">Speed:</span>
+            <input type="range" id="speedSlider" min="300" max="2000" step="100" value="1000" class="w-20 accent-indigo-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer" />
+          </div>
+        </div>
+
+        <!-- Step Explanation -->
+        <div id="stepExplanation" class="mt-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 min-h-[54px] flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-indigo-400 text-base shrink-0"></i>
+          <span id="stepText">Select a start vertex and click 'Start Traversal' to watch step-by-step!</span>
+        </div>
+      </div>
+
+      <!-- Live Code Line Tracer -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+          <span><i class="fa-code text-amber-400 mr-2"></i>Live Java Execution Tracer</span>
+          <span id="algoModeBadge" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono">DFS Method</span>
+        </h3>
+
+        <div class="bg-slate-950 rounded-xl border border-slate-800 p-2 overflow-x-auto text-[11px] font-mono leading-relaxed text-slate-300 flex-1">
+          <div id="codeTracerContainer" class="space-y-0.5">
+            <!-- Code lines dynamically rendered with step highlight -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Graph Builder Tool Box -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-pen-to-square text-emerald-400"></i> Custom Graph Builder
+        </h3>
+        
+        <div class="space-y-2 text-xs">
+          <!-- Add Node -->
+          <div class="flex gap-2">
+            <input type="text" id="inputNodeName" placeholder="Node Name (e.g. E)" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200 font-mono focus:outline-none focus:border-emerald-500" />
+            <button onclick="addCustomNode()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg shadow transition">
+              <i class="fa-solid fa-plus mr-1"></i> Add Node
+            </button>
+          </div>
+
+          <!-- Add Edge -->
+          <div class="flex gap-2 items-center">
+            <input type="text" id="inputEdgeU" placeholder="From (u)" class="w-1/2 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-center focus:outline-none focus:border-emerald-500" />
+            <span class="text-slate-500">&rarr;</span>
+            <input type="text" id="inputEdgeV" placeholder="To (v)" class="w-1/2 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-200 font-mono text-center focus:outline-none focus:border-emerald-500" />
+            <button onclick="addCustomEdge()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg shadow transition shrink-0">
+              <i class="fa-solid fa-link mr-1"></i> Add Edge
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Visual SVG Canvas & Data Structure Monitors (8 cols) -->
+    <section class="lg:col-span-8 flex flex-col gap-4">
+
+      <!-- Visual Interactive SVG Graph Canvas -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[380px] relative overflow-hidden">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i class="fa-solid fa-network-wired text-indigo-400"></i>
+            <span>Interactive Graph View (Drag Nodes to reposition)</span>
+          </h3>
+
+          <div class="flex items-center gap-3 text-[11px] text-slate-400">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span> Unvisited</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Stack/Queue</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Active</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Visited</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="flex-1 w-full h-full bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden">
+          <svg id="graphSvg" class="w-full h-full min-h-[320px] select-none cursor-crosshair">
+            <!-- SVG Marker definition for directed arrows -->
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="22" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+              </marker>
+              <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="22" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b" />
+              </marker>
+            </defs>
+
+            <!-- Lines and Nodes rendered here -->
+            <g id="edgesGroup"></g>
+            <g id="nodesGroup"></g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Bottom Split: Adjacency List & Data Structure Monitors -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Live Adjacency List Display -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center justify-between">
+            <span><i class="fa-solid fa-list-ol text-purple-400 mr-2"></i>Adjacency List (<code class="font-mono text-purple-300">Map&lt;String, List&lt;String&gt;&gt;</code>)</span>
+            <span class="text-[10px] text-slate-500">Vertex &rarr; Neighbors</span>
+          </h3>
+
+          <div id="adjListContainer" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+            <!-- Dynamic Adjacency List Cards injected here -->
+          </div>
+        </div>
+
+        <!-- Stack / Queue & Visited Monitor -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col justify-between">
+          <div>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+              <span id="dsMonitorTitle"><i class="fa-solid fa-layer-group text-indigo-400 mr-2"></i>Call Stack Monitor (DFS)</span>
+              <span id="dsPointerBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300">LIFO Order</span>
+            </h3>
+
+            <!-- Dynamic Container for Stack / Queue visual blocks -->
+            <div id="dsVisualContainer" class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 min-h-[64px] flex items-center gap-1.5 overflow-x-auto my-2">
+              <span class="text-xs text-slate-600 font-mono italic">Structure Empty</span>
+            </div>
+          </div>
+
+          <!-- Visited Set & Traversal Log -->
+          <div class="space-y-2 pt-2 border-t border-slate-800 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-400 min-w-[75px]">Visited Set:</span>
+              <div id="visitedSetContainer" class="flex items-center gap-1 flex-wrap font-mono text-emerald-400">
+                <span class="text-slate-600 italic">{ }</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-slate-400 min-w-[75px]">Traversal Path:</span>
+              <div id="traversalLogContainer" class="font-mono text-amber-300 font-bold truncate">
+                <span class="text-slate-600 font-normal italic">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Full Java Code Modal -->
+  <div id="javaModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div id="javaModalCard" class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-5 shadow-2xl relative transform scale-95 transition-transform duration-200 flex flex-col max-h-[85vh]">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+            <i class="fa-brands fa-java text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-100 text-sm">Java Graph Data Structure Reference</h3>
+            <p class="text-[11px] text-slate-400">Exact code implementations from IT2503 Handout 6</p>
+          </div>
+        </div>
+        <button onclick="closeJavaModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="flex gap-2 border-b border-slate-800 my-3 text-xs">
+        <button id="modalTabAdj" onclick="switchModalTab('ADJ')" class="py-1.5 px-3 font-semibold text-amber-400 border-b-2 border-amber-400">
+          Adjacency List Graph
+        </button>
+        <button id="modalTabDFS" onclick="switchModalTab('DFS')" class="py-1.5 px-3 font-medium text-slate-400 hover:text-slate-200">
+          DFS Algorithm
+        </button>
+        <button id="modalTabBFS" onclick="switchModalTab('BFS')" class="py-1.5 px-3 font-medium text-slate-400 hover:text-slate-200">
+          BFS Algorithm
+        </button>
+      </div>
+
+      <!-- Code Container -->
+      <div class="relative flex-1 overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+        <pre id="modalCodeSnippet" class="p-4 text-emerald-400 overflow-auto text-xs font-mono leading-relaxed h-full">
+// Select tab to view Java implementation
+        </pre>
+        <button onclick="copyModalCode()" class="absolute top-2.5 right-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] px-2.5 py-1 rounded-lg border border-slate-700 transition flex items-center gap-1 shadow">
+          <i class="fa-regular fa-copy"></i> Copy Code
+        </button>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-[11px]">
+        <span class="text-slate-500">STI IT2503 Handout 6 &bull; Graph Data Structure</span>
+        <button onclick="closeJavaModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition border border-slate-700">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // --- GRAPH MODEL STATE ---
+    let nodes = []; // [{ id: "A", x: 100, y: 150 }]
+    let edges = []; // [{ u: "A", v: "B" }]
+    let isDirected = false;
+    let selectedAlgorithm = 'DFS'; // 'DFS' or 'BFS'
+
+    // --- ANIMATION & STEP CONTROL STATE ---
+    let stepsQueue = [];
+    let currentStepIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+
+    // Node Dragging State
+    let draggedNode = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    // --- HANDOUT 6 JAVA CODE SNIPPETS FOR TRACER ---
+    const DFS_JAVA_TRACER_LINES = [
+      { num: 1, code: "void dfs(String u, Set<String> visited) {" },
+      { num: 2, code: "    visited.add(u);              // Mark node as visited" },
+      { num: 3, code: "    System.out.print(u + \" \");   // Process/Print node" },
+      { num: 4, code: "    for (String v : adj.getOrDefault(u, List.of())) {" },
+      { num: 5, code: "        if (!visited.contains(v)) {" },
+      { num: 6, code: "            dfs(v, visited);      // Visit neighbor" },
+      { num: 7, code: "        }" },
+      { num: 8, code: "    }" },
+      { num: 9, code: "}" }
+    ];
+
+    const BFS_JAVA_TRACER_LINES = [
+      { num: 1, code: "void bfs(String s) {" },
+      { num: 2, code: "    Set<String> visited = new HashSet<>();" },
+      { num: 3, code: "    Queue<String> q = new ArrayDeque<>();" },
+      { num: 4, code: "    visited.add(s); q.add(s);    // Enqueue start" },
+      { num: 5, code: "    while (!q.isEmpty()) {" },
+      { num: 6, code: "        String u = q.poll();       // Dequeue front" },
+      { num: 7, code: "        System.out.print(u + \" \"); // Process node" },
+      { num: 8, code: "        for (String v : adj.getOrDefault(u, List.of())) {" },
+      { num: 9, code: "            if (!visited.contains(v)) {" },
+      { num: 10, code: "                visited.add(v);    // Mark neighbor visited" },
+      { num: 11, code: "                q.add(v);          // Enqueue neighbor" },
+      { num: 12, code: "            }" },
+      { num: 13, code: "        }" },
+      { num: 14, code: "    }" },
+      { num: 15, code: "}" }
+    ];
+
+    // Full Java Modal Snippets
+    const FULL_JAVA_SNIPPETS = {
+      ADJ: `import java.util.*;
+
+public class GraphExample {
+    static class Graph {
+        // Adjacency List: Each vertex maps to a list of its neighbors
+        private final Map<String, List<String>> adj = new HashMap<>();
+
+        public void addVertex(String v) {
+            adj.computeIfAbsent(v, k -> new ArrayList<>());
+        }
+
+        public void addEdge(String u, String v, boolean directed) {
+            addVertex(u);
+            addVertex(v);
+            adj.get(u).add(v);
+            if (!directed) {
+                adj.get(v).add(u); // Undirected edge goes both ways
+            }
+        }
+
+        public void printAdjacency() {
+            for (var entry : adj.entrySet()) {
+                System.out.println(entry.getKey() + " -> " + entry.getValue());
+            }
+        }
+    }
+}`,
+      DFS: `// Depth-First Search (DFS) Implementation - IT2503 Handout 6
+void dfs(String u, Set<String> visited) {
+    visited.add(u);              // 1. Mark current node as visited
+    System.out.print(u + " ");   // 2. Process (print) the node
+
+    // 3. Visit all unvisited neighbors recursively
+    for (String v : adj.getOrDefault(u, List.of())) {
+        if (!visited.contains(v)) {
+            dfs(v, visited);     // Recursive call
+        }
+    }
+}
+
+// Main call:
+// g.dfs("A", new HashSet<>());`,
+      BFS: `// Breadth-First Search (BFS) Implementation - IT2503 Handout 6
+void bfs(String s) {
+    Set<String> visited = new HashSet<>(); // Track visited nodes
+    Queue<String> q = new ArrayDeque<>();  // Queue for BFS level-by-level
+
+    visited.add(s); // Mark start as visited
+    q.add(s);       // Enqueue start
+
+    while (!q.isEmpty()) {
+        String u = q.poll();              // Dequeue front item
+        System.out.print(u + " ");        // Process (print) the node
+
+        for (String v : adj.getOrDefault(u, List.of())) {
+            if (!visited.contains(v)) {
+                visited.add(v);           // Mark neighbor as visited
+                q.add(v);                 // Enqueue neighbor
+            }
+        }
+    }
+}
+
+// Main call:
+// g.bfs("A");`
+    };
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+      loadPreset('handout_4node');
+      renderTracerCode();
+      setupSvgEvents();
+
+      document.getElementById('speedSlider').addEventListener('input', function() {
+        if (isPlaying) {
+          stopPlay();
+          startPlay();
+        }
+      });
+    };
+
+    // Load Presets from Handout 6
+    function loadPreset(presetName) {
+      stopPlay();
+      if (presetName === 'handout_4node') {
+        // Handout Page 5 & 7 (A, B, C, D)
+        isDirected = false;
+        nodes = [
+          { id: "A", x: 120, y: 100 },
+          { id: "B", x: 280, y: 100 },
+          { id: "C", x: 120, y: 240 },
+          { id: "D", x: 280, y: 240 }
+        ];
+        edges = [
+          { u: "A", v: "B" },
+          { u: "A", v: "C" },
+          { u: "B", v: "D" },
+          { u: "C", v: "D" }
+        ];
+        showToast("Loaded Preset: Handout 4-Node Graph (A, B, C, D)", "info");
+
+      } else if (presetName === 'handout_5node') {
+        // Handout Page 6 & 8 (0, 1, 2, 3, 4)
+        isDirected = false;
+        nodes = [
+          { id: "0", x: 100, y: 100 },
+          { id: "1", x: 100, y: 260 },
+          { id: "2", x: 220, y: 180 },
+          { id: "3", x: 280, y: 80 },
+          { id: "4", x: 320, y: 260 }
+        ];
+        edges = [
+          { u: "0", v: "1" },
+          { u: "0", v: "2" },
+          { u: "0", v: "3" },
+          { u: "1", v: "2" },
+          { u: "2", v: "4" }
+        ];
+        showToast("Loaded Preset: Handout 5-Node Graph (0, 1, 2, 3, 4)", "info");
+      }
+
+      updateDirectionUI();
+      populateStartNodeSelect();
+      renderGraphSVG();
+      renderAdjacencyListUI();
+      resetStepState();
+    }
+
+    function clearGraph() {
+      stopPlay();
+      nodes = [];
+      edges = [];
+      populateStartNodeSelect();
+      renderGraphSVG();
+      renderAdjacencyListUI();
+      resetStepState();
+      showToast("Canvas cleared.", "info");
+    }
+
+    function toggleDirected() {
+      isDirected = !isDirected;
+      updateDirectionUI();
+      renderGraphSVG();
+      renderAdjacencyListUI();
+      resetStepState();
+    }
+
+    function updateDirectionUI() {
+      const btnIcon = document.getElementById('directionIcon');
+      const btnText = document.getElementById('directionText');
+      if (isDirected) {
+        btnIcon.className = "fa-solid fa-arrow-right text-purple-400";
+        btnText.innerText = "Directed";
+      } else {
+        btnIcon.className = "fa-solid fa-arrows-left-right text-indigo-400";
+        btnText.innerText = "Undirected";
+      }
+    }
+
+    function populateStartNodeSelect() {
+      const select = document.getElementById('selectStartNode');
+      select.innerHTML = '';
+      if (nodes.length === 0) {
+        select.innerHTML = '<option value="">(No Nodes)</option>';
+        return;
+      }
+      nodes.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n.id;
+        opt.innerText = `Node ${n.id}`;
+        select.appendChild(opt);
+      });
+    }
+
+    // --- ADJACENCY LIST MAP DATA STRUCTURE ---
+    function getAdjacencyMap() {
+      const adj = {};
+      nodes.forEach(n => adj[n.id] = []);
+
+      edges.forEach(e => {
+        if (adj[e.u] && !adj[e.u].includes(e.v)) {
+          adj[e.u].push(e.v);
+        }
+        if (!isDirected) {
+          if (adj[e.v] && !adj[e.v].includes(e.u)) {
+            adj[e.v].push(e.u);
+          }
+        }
+      });
+
+      // Sort neighbor lists for deterministic step visualization
+      for (let k in adj) {
+        adj[k].sort();
+      }
+      return adj;
+    }
+
+    // Render Adjacency List Cards in UI
+    function renderAdjacencyListUI(activeRowNode = null, activeNeighborNode = null) {
+      const container = document.getElementById('adjListContainer');
+      container.innerHTML = '';
+
+      const adjMap = getAdjacencyMap();
+
+      if (Object.keys(adjMap).length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-600 italic font-mono">No vertices in graph</span>`;
+        return;
+      }
+
+      for (let u in adjMap) {
+        const neighbors = adjMap[u];
+        const rowDiv = document.createElement('div');
+        rowDiv.id = `adj-row-${u}`;
+        
+        let isRowActive = activeRowNode === u;
+        rowDiv.className = `p-2 rounded-xl border text-xs font-mono transition-all flex items-center justify-between gap-2 ${
+          isRowActive ? 'bg-indigo-950/60 border-indigo-500 shadow-md shadow-indigo-500/20' : 'bg-slate-950 border-slate-800'
+        }`;
+
+        let neighborsHTML = '';
+        if (neighbors.length === 0) {
+          neighborsHTML = `<span class="text-slate-600 italic">[] (No edges)</span>`;
+        } else {
+          neighborsHTML = neighbors.map(v => {
+            const isNeighActive = isRowActive && activeNeighborNode === v;
+            return `<span class="px-2 py-0.5 rounded-lg border font-bold transition-all ${
+              isNeighActive 
+                ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse' 
+                : 'bg-slate-900 border-slate-700 text-indigo-300'
+            }">${v}</span>`;
+          }).join('<span class="text-slate-600 font-normal">&rarr;</span>');
+        }
+
+        rowDiv.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0">
+              ${u}
+            </span>
+            <span class="text-slate-400 font-sans text-[11px]">&rarr;</span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            ${neighborsHTML}
+          </div>
+        `;
+        container.appendChild(rowDiv);
+      }
+    }
+
+    // --- SVG GRAPH RENDERING ---
+    function renderGraphSVG(activeNodeId = null, visitedNodes = [], structureNodes = [], activeEdge = null) {
+      const svg = document.getElementById('graphSvg');
+      const edgesGroup = document.getElementById('edgesGroup');
+      const nodesGroup = document.getElementById('nodesGroup');
+
+      edgesGroup.innerHTML = '';
+      nodesGroup.innerHTML = '';
+
+      // Render Edges
+      edges.forEach(e => {
+        const uNode = nodes.find(n => n.id === e.u);
+        const vNode = nodes.find(n => n.id === e.v);
+        if (!uNode || !vNode) return;
+
+        const isEdgeActive = activeEdge && (
+          (activeEdge.u === e.u && activeEdge.v === e.v) ||
+          (!isDirected && activeEdge.u === e.v && activeEdge.v === e.u)
+        );
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', uNode.x);
+        line.setAttribute('y1', uNode.y);
+        line.setAttribute('x2', vNode.x);
+        line.setAttribute('y2', vNode.y);
+
+        if (isEdgeActive) {
+          line.setAttribute('class', 'edge-active');
+          if (isDirected) line.setAttribute('marker-end', 'url(#arrowhead-active)');
+        } else {
+          line.setAttribute('stroke', '#475569');
+          line.setAttribute('stroke-width', '2.5');
+          if (isDirected) line.setAttribute('marker-end', 'url(#arrowhead)');
+        }
+
+        edgesGroup.appendChild(line);
+      });
+
+      // Render Nodes
+      nodes.forEach(n => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', `translate(${n.x}, ${n.y})`);
+        g.setAttribute('class', 'cursor-grab active:cursor-grabbing');
+        g.dataset.id = n.id;
+
+        const isActive = activeNodeId === n.id;
+        const isVisited = visitedNodes.includes(n.id);
+        const isInStructure = structureNodes.includes(n.id);
+
+        let fillColor = '#0f172a'; // slate-900
+        let strokeColor = '#64748b'; // slate-500
+        let textColor = '#f8fafc';
+        let glowClass = '';
+
+        if (isActive) {
+          fillColor = '#f59e0b'; // amber-500
+          strokeColor = '#fef08a';
+          textColor = '#0f172a';
+          glowClass = 'glow-active';
+        } else if (isVisited) {
+          fillColor = '#10b981'; // emerald-500
+          strokeColor = '#a7f3d0';
+          textColor = '#0f172a';
+          glowClass = 'glow-visited';
+        } else if (isInStructure) {
+          fillColor = '#a855f7'; // purple-500
+          strokeColor = '#e9d5ff';
+          textColor = '#ffffff';
+          glowClass = 'glow-queued';
+        }
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', '20');
+        circle.setAttribute('fill', fillColor);
+        circle.setAttribute('stroke', strokeColor);
+        circle.setAttribute('stroke-width', '3');
+        if (glowClass) circle.setAttribute('class', glowClass);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dy', '0.35em');
+        text.setAttribute('fill', textColor);
+        text.setAttribute('font-weight', 'bold');
+        text.setAttribute('font-size', '14');
+        text.setAttribute('font-family', 'Fira Code, monospace');
+        text.textContent = n.id;
+
+        g.appendChild(circle);
+        g.appendChild(text);
+
+        // Bind drag listener
+        g.addEventListener('mousedown', (evt) => startDragNode(evt, n));
+
+        nodesGroup.appendChild(g);
+      });
+    }
+
+    // Drag-and-Drop Node Logic
+    function setupSvgEvents() {
+      const svg = document.getElementById('graphSvg');
+      svg.addEventListener('mousemove', dragNode);
+      svg.addEventListener('mouseup', endDragNode);
+      svg.addEventListener('mouseleave', endDragNode);
+    }
+
+    function startDragNode(evt, node) {
+      draggedNode = node;
+      const svg = document.getElementById('graphSvg');
+      const rect = svg.getBoundingClientRect();
+      dragOffset.x = evt.clientX - rect.left - node.x;
+      dragOffset.y = evt.clientY - rect.top - node.y;
+    }
+
+    function dragNode(evt) {
+      if (!draggedNode) return;
+      const svg = document.getElementById('graphSvg');
+      const rect = svg.getBoundingClientRect();
+      draggedNode.x = Math.max(25, Math.min(rect.width - 25, evt.clientX - rect.left - dragOffset.x));
+      draggedNode.y = Math.max(25, Math.min(rect.height - 25, evt.clientY - rect.top - dragOffset.y));
+      renderGraphSVG();
+    }
+
+    function endDragNode() {
+      draggedNode = null;
+    }
+
+    // --- ALGORITHM STEP GENERATOR (DFS & BFS) ---
+
+    // Build Step Queue for Depth-First Search (DFS)
+    function buildDFSSteps(startNode) {
+      const steps = [];
+      const adjMap = getAdjacencyMap();
+      const visited = new Set();
+      const stack = [];
+
+      // Step 1: Initialize DFS
+      steps.push({
+        type: 'INIT',
+        activeNode: null,
+        stack: [],
+        visited: [],
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 1,
+        explanation: `Starting <b>Depth-First Search (DFS)</b> from root vertex <b>${startNode}</b>.`
+      });
+
+      // Push start to stack
+      stack.push(startNode);
+      steps.push({
+        type: 'PUSH_START',
+        activeNode: startNode,
+        stack: [...stack],
+        visited: [],
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 2,
+        explanation: `Pushed start node <b>${startNode}</b> onto Call Stack.`
+      });
+
+      while (stack.length > 0) {
+        const u = stack[stack.length - 1]; // Peek top
+
+        if (!visited.has(u)) {
+          visited.add(u);
+          steps.push({
+            type: 'VISIT_NODE',
+            activeNode: u,
+            stack: [...stack],
+            visited: Array.from(visited),
+            activeRow: u,
+            activeNeighbor: null,
+            activeEdge: null,
+            lineNum: 2,
+            explanation: `Popped <b>${u}</b> from Stack. Marked <b>${u}</b> as Visited & Processed!`
+          });
+
+          // Fetch neighbors
+          const neighbors = adjMap[u] || [];
+          steps.push({
+            type: 'FETCH_NEIGHBORS',
+            activeNode: u,
+            stack: [...stack],
+            visited: Array.from(visited),
+            activeRow: u,
+            activeNeighbor: null,
+            activeEdge: null,
+            lineNum: 4,
+            explanation: `Fetching neighbors for node <b>${u}</b> from Adjacency List: [${neighbors.join(', ')}].`
+          });
+
+          // Iterate neighbors (push unvisited onto stack in reverse for left-to-right processing)
+          for (let i = neighbors.length - 1; i >= 0; i--) {
+            const v = neighbors[i];
+            const isUnvisited = !visited.has(v);
+
+            steps.push({
+              type: 'CHECK_NEIGHBOR',
+              activeNode: u,
+              stack: [...stack],
+              visited: Array.from(visited),
+              activeRow: u,
+              activeNeighbor: v,
+              activeEdge: { u, v },
+              lineNum: 5,
+              explanation: `Checking neighbor <b>${v}</b>: ${isUnvisited ? 'Unvisited! Pushing to Stack.' : 'Already visited. Skipping.'}`
+            });
+
+            if (isUnvisited) {
+              stack.push(v);
+              steps.push({
+                type: 'PUSH_NEIGHBOR',
+                activeNode: u,
+                stack: [...stack],
+                visited: Array.from(visited),
+                activeRow: u,
+                activeNeighbor: v,
+                activeEdge: { u, v },
+                lineNum: 6,
+                explanation: `Pushed neighbor <b>${v}</b> onto Call Stack for deep traversal.`
+              });
+            }
+          }
+        } else {
+          // Already visited top item
+          stack.pop();
+        }
+      }
+
+      steps.push({
+        type: 'COMPLETE',
+        activeNode: null,
+        stack: [],
+        visited: Array.from(visited),
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 9,
+        explanation: `<b>DFS Traversal Completed!</b> Visited all reachable nodes in depth-first order.`
+      });
+
+      return steps;
+    }
+
+    // Build Step Queue for Breadth-First Search (BFS)
+    function buildBFSSteps(startNode) {
+      const steps = [];
+      const adjMap = getAdjacencyMap();
+      const visited = new Set();
+      const queue = [];
+
+      // Step 1: Initialize BFS
+      steps.push({
+        type: 'INIT',
+        activeNode: null,
+        queue: [],
+        visited: [],
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 1,
+        explanation: `Starting <b>Breadth-First Search (BFS)</b> from root vertex <b>${startNode}</b>.`
+      });
+
+      visited.add(startNode);
+      queue.push(startNode);
+
+      steps.push({
+        type: 'ENQUEUE_START',
+        activeNode: startNode,
+        queue: [...queue],
+        visited: Array.from(visited),
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 4,
+        explanation: `Marked start node <b>${startNode}</b> as Visited and enqueued to Queue.`
+      });
+
+      while (queue.length > 0) {
+        steps.push({
+          type: 'CHECK_QUEUE',
+          activeNode: null,
+          queue: [...queue],
+          visited: Array.from(visited),
+          activeRow: null,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 5,
+          explanation: `Checking Queue front (Queue size: ${queue.length}).`
+        });
+
+        const u = queue.shift(); // Dequeue front
+
+        steps.push({
+          type: 'DEQUEUE_NODE',
+          activeNode: u,
+          queue: [...queue],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 6,
+          explanation: `Dequeued <b>${u}</b> from Queue front. Processing node <b>${u}</b>.`
+        });
+
+        const neighbors = adjMap[u] || [];
+        steps.push({
+          type: 'FETCH_NEIGHBORS',
+          activeNode: u,
+          queue: [...queue],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 8,
+          explanation: `Fetching level neighbors for node <b>${u}</b>: [${neighbors.join(', ')}].`
+        });
+
+        for (let v of neighbors) {
+          const isUnvisited = !visited.has(v);
+
+          steps.push({
+            type: 'CHECK_NEIGHBOR',
+            activeNode: u,
+            queue: [...queue],
+            visited: Array.from(visited),
+            activeRow: u,
+            activeNeighbor: v,
+            activeEdge: { u, v },
+            lineNum: 9,
+            explanation: `Checking neighbor <b>${v}</b>: ${isUnvisited ? 'Unvisited! Marking visited & enqueuing.' : 'Already visited. Skipping.'}`
+          });
+
+          if (isUnvisited) {
+            visited.add(v);
+            queue.push(v);
+
+            steps.push({
+              type: 'ENQUEUE_NEIGHBOR',
+              activeNode: u,
+              queue: [...queue],
+              visited: Array.from(visited),
+              activeRow: u,
+              activeNeighbor: v,
+              activeEdge: { u, v },
+              lineNum: 11,
+              explanation: `Marked <b>${v}</b> as visited and enqueued to back of Queue.`
+            });
+          }
+        }
+      }
+
+      steps.push({
+        type: 'COMPLETE',
+        activeNode: null,
+        queue: [],
+        visited: Array.from(visited),
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 15,
+        explanation: `<b>BFS Traversal Completed!</b> Explored graph level-by-level.`
+      });
+
+      return steps;
+    }
+
+    // --- STEP CONTROLLER EXECUTION ---
+    function setAlgorithm(algo) {
+      selectedAlgorithm = algo;
+      stopPlay();
+
+      const btnDFS = document.getElementById('tabDFS');
+      const btnBFS = document.getElementById('tabBFS');
+      const btnText = document.getElementById('btnStartText');
+      const algoModeBadge = document.getElementById('algoModeBadge');
+      const dsTitle = document.getElementById('dsMonitorTitle');
+      const dsBadge = document.getElementById('dsPointerBadge');
+
+      if (algo === 'DFS') {
+        btnDFS.className = "flex-1 py-1.5 font-medium rounded-lg bg-indigo-600 text-white shadow";
+        btnBFS.className = "flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200";
+        btnText.innerText = "Start DFS Traversal";
+        algoModeBadge.innerText = "DFS Method";
+        dsTitle.innerHTML = `<i class="fa-solid fa-layer-group text-indigo-400 mr-2"></i>Call Stack Monitor (DFS)`;
+        dsBadge.innerText = "LIFO Order";
+      } else {
+        btnBFS.className = "flex-1 py-1.5 font-medium rounded-lg bg-indigo-600 text-white shadow";
+        btnDFS.className = "flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200";
+        btnText.innerText = "Start BFS Traversal";
+        algoModeBadge.innerText = "BFS Method";
+        dsTitle.innerHTML = `<i class="fa-solid fa-bars-staggered text-purple-400 mr-2"></i>Queue Monitor (BFS)`;
+        dsBadge.innerText = "FIFO Order (FRONT &rarr; REAR)";
+      }
+
+      renderTracerCode();
+      resetStepState();
+    }
+
+    function startTraversal() {
+      stopPlay();
+      const startNode = document.getElementById('selectStartNode').value;
+      if (!startNode) {
+        showToast("Please select a start vertex!", "warning");
+        return;
+      }
+
+      if (selectedAlgorithm === 'DFS') {
+        stepsQueue = buildDFSSteps(startNode);
+      } else {
+        stepsQueue = buildBFSSteps(startNode);
+      }
+
+      currentStepIdx = 0;
+      updateStepControls();
+      applyStep(stepsQueue[0]);
+    }
+
+    function applyStep(step) {
+      if (!step) return;
+
+      // Update Explanation Text
+      document.getElementById('stepText').innerHTML = step.explanation;
+      document.getElementById('stepCounter').innerText = `Step ${currentStepIdx + 1} / ${stepsQueue.length}`;
+
+      // Highlight Code Tracer Line
+      highlightTracerLine(step.lineNum);
+
+      // Render Graph SVG with Active/Visited States
+      const structureList = selectedAlgorithm === 'DFS' ? (step.stack || []) : (step.queue || []);
+      renderGraphSVG(step.activeNode, step.visited, structureList, step.activeEdge);
+
+      // Render Adjacency List Highlight
+      renderAdjacencyListUI(step.activeRow, step.activeNeighbor);
+
+      // Render Data Structure Visual Monitor (Stack/Queue)
+      renderDSMonitor(structureList);
+
+      // Update Visited Set and Traversal Log
+      renderVisitedAndLog(step.visited);
+    }
+
+    function renderDSMonitor(list) {
+      const container = document.getElementById('dsVisualContainer');
+      container.innerHTML = '';
+
+      if (!list || list.length === 0) {
+        container.innerHTML = `<span class="text-xs text-slate-600 font-mono italic">Structure Empty</span>`;
+        return;
+      }
+
+      if (selectedAlgorithm === 'DFS') {
+        // Render Call Stack (LIFO: Top on right/end)
+        list.forEach((item, idx) => {
+          const isTop = idx === list.length - 1;
+          const block = document.createElement('div');
+          block.className = `px-3 py-1.5 rounded-lg border font-mono text-xs font-bold transition-all flex items-center gap-1.5 ${
+            isTop 
+              ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-500/30 glow-queued' 
+              : 'bg-slate-900 text-purple-300 border-slate-700'
+          }`;
+          block.innerHTML = `${item} ${isTop ? '<span class="text-[9px] text-amber-300 font-sans font-normal">&larr; TOP</span>' : ''}`;
+          container.appendChild(block);
+        });
+      } else {
+        // Render Queue (FIFO: FRONT on left, REAR on right)
+        list.forEach((item, idx) => {
+          const isFront = idx === 0;
+          const isRear = idx === list.length - 1;
+          const block = document.createElement('div');
+          block.className = `px-3 py-1.5 rounded-lg border font-mono text-xs font-bold transition-all flex items-center gap-1.5 ${
+            isFront 
+              ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-500/30' 
+              : 'bg-slate-900 text-indigo-300 border-slate-700'
+          }`;
+
+          let tag = '';
+          if (isFront && isRear) tag = '<span class="text-[9px] text-amber-300 font-sans font-normal">(FRONT/REAR)</span>';
+          else if (isFront) tag = '<span class="text-[9px] text-amber-300 font-sans font-normal">&larr; FRONT</span>';
+          else if (isRear) tag = '<span class="text-[9px] text-purple-300 font-sans font-normal">&larr; REAR</span>';
+
+          block.innerHTML = `${item} ${tag}`;
+          container.appendChild(block);
+        });
+      }
+    }
+
+    function renderVisitedAndLog(visitedList) {
+      const visitedContainer = document.getElementById('visitedSetContainer');
+      const logContainer = document.getElementById('traversalLogContainer');
+
+      if (!visitedList || visitedList.length === 0) {
+        visitedContainer.innerHTML = `<span class="text-slate-600 italic">{ }</span>`;
+        logContainer.innerHTML = `<span class="text-slate-600 font-normal italic">--</span>`;
+        return;
+      }
+
+      visitedContainer.innerHTML = `{ ${visitedList.map(v => `<span class="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-300 font-bold">${v}</span>`).join(', ')} }`;
+      logContainer.innerHTML = visitedList.join(' <span class="text-slate-500 font-sans">&rarr;</span> ');
+    }
+
+    // Live Code Tracer Highlight
+    function renderTracerCode() {
+      const container = document.getElementById('codeTracerContainer');
+      container.innerHTML = '';
+      const lines = selectedAlgorithm === 'DFS' ? DFS_JAVA_TRACER_LINES : BFS_JAVA_TRACER_LINES;
+
+      lines.forEach(l => {
+        const div = document.createElement('div');
+        div.id = `code-line-${l.num}`;
+        div.className = "px-2 py-0.5 rounded transition-all flex items-center gap-2";
+        div.innerHTML = `
+          <span class="w-5 text-right text-slate-600 select-none text-[10px]">${l.num}</span>
+          <span class="whitespace-pre">${escapeHtml(l.code)}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function highlightTracerLine(lineNum) {
+      const lines = selectedAlgorithm === 'DFS' ? DFS_JAVA_TRACER_LINES : BFS_JAVA_TRACER_LINES;
+      lines.forEach(l => {
+        const lineEl = document.getElementById(`code-line-${l.num}`);
+        if (lineEl) {
+          if (l.num === lineNum) lineEl.className = "px-2 py-0.5 rounded transition-all flex items-center gap-2 code-line-active";
+          else lineEl.className = "px-2 py-0.5 rounded transition-all flex items-center gap-2 text-slate-400";
+        }
+      });
+    }
+
+    // Step Navigation Controls
+    function nextStep() {
+      if (currentStepIdx < stepsQueue.length - 1) {
+        currentStepIdx++;
+        applyStep(stepsQueue[currentStepIdx]);
+      } else {
+        stopPlay();
+      }
+      updateStepControls();
+    }
+
+    function prevStep() {
+      if (currentStepIdx > 0) {
+        currentStepIdx--;
+        applyStep(stepsQueue[currentStepIdx]);
+      }
+      updateStepControls();
+    }
+
+    function togglePlayPause() {
+      if (isPlaying) stopPlay();
+      else startPlay();
+    }
+
+    function startPlay() {
+      if (currentStepIdx >= stepsQueue.length - 1) {
+        currentStepIdx = 0;
+      }
+      isPlaying = true;
+      document.getElementById('playIcon').className = "fa-solid fa-pause";
+      document.getElementById('playText').innerText = "Pause";
+
+      const speed = parseInt(document.getElementById('speedSlider').value, 10);
+      playTimer = setInterval(() => {
+        if (currentStepIdx < stepsQueue.length - 1) {
+          nextStep();
+        } else {
+          stopPlay();
+        }
+      }, speed);
+    }
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearInterval(playTimer);
+      document.getElementById('playIcon').className = "fa-solid fa-play";
+      document.getElementById('playText').innerText = "Play";
+    }
+
+    function updateStepControls() {
+      const prevBtn = document.getElementById('btnPrevStep');
+      const nextBtn = document.getElementById('btnNextStep');
+      const playBtn = document.getElementById('btnPlayPause');
+
+      const hasSteps = stepsQueue.length > 0;
+      prevBtn.disabled = !hasSteps || currentStepIdx === 0;
+      nextBtn.disabled = !hasSteps || currentStepIdx === stepsQueue.length - 1;
+      playBtn.disabled = !hasSteps;
+    }
+
+    function resetStepState() {
+      stopPlay();
+      stepsQueue = [];
+      currentStepIdx = 0;
+      updateStepControls();
+      renderGraphSVG();
+      renderAdjacencyListUI();
+      renderDSMonitor([]);
+      renderVisitedAndLog([]);
+      highlightTracerLine(0);
+      document.getElementById('stepText').innerHTML = "Select a start vertex and click 'Start Traversal' to watch step-by-step!";
+      document.getElementById('stepCounter').innerText = "Step 0 / 0";
+    }
+
+    // Custom Builder Tools
+    function addCustomNode() {
+      const input = document.getElementById('inputNodeName');
+      const name = input.value.trim().toUpperCase();
+      if (!name) {
+        showToast("Please enter a node name!", "warning");
+        return;
+      }
+      if (nodes.some(n => n.id === name)) {
+        showToast(`Node "${name}" already exists!`, "warning");
+        return;
+      }
+
+      // Random position inside canvas
+      const x = Math.floor(Math.random() * 260 + 60);
+      const y = Math.floor(Math.random() * 200 + 60);
+      nodes.push({ id: name, x, y });
+
+      input.value = '';
+      populateStartNodeSelect();
+      renderGraphSVG();
+      renderAdjacencyListUI();
+      resetStepState();
+      showToast(`Added node "${name}".`, "success");
+    }
+
+    function addCustomEdge() {
+      const inputU = document.getElementById('inputEdgeU');
+      const inputV = document.getElementById('inputEdgeV');
+      const u = inputU.value.trim().toUpperCase();
+      const v = inputV.value.trim().toUpperCase();
+
+      if (!u || !v) {
+        showToast("Please enter both From (u) and To (v) vertices!", "warning");
+        return;
+      }
+      if (!nodes.some(n => n.id === u) || !nodes.some(n => n.id === v)) {
+        showToast("Both vertices must exist in the graph first!", "warning");
+        return;
+      }
+      if (u === v) {
+        showToast("Self-loops are not allowed!", "warning");
+        return;
+      }
+
+      const exists = edges.some(e => (e.u === u && e.v === v) || (!isDirected && e.u === v && e.v === u));
+      if (exists) {
+        showToast(`Edge ${u}-${v} already exists!`, "warning");
+        return;
+      }
+
+      edges.push({ u, v });
+      inputU.value = '';
+      inputV.value = '';
+      renderGraphSVG();
+      renderAdjacencyListUI();
+      resetStepState();
+      showToast(`Added edge ${u} &rarr; ${v}.`, "success");
+    }
+
+    // Modal Handlers
+    function openJavaModal() {
+      const modal = document.getElementById('javaModal');
+      const card = document.getElementById('javaModalCard');
+      if (!modal || !card) return;
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+      switchModalTab('ADJ');
+    }
+
+    function closeJavaModal() {
+      const modal = document.getElementById('javaModal');
+      const card = document.getElementById('javaModalCard');
+      if (!modal || !card) return;
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
+    function switchModalTab(tab) {
+      const tabAdj = document.getElementById('modalTabAdj');
+      const tabDFS = document.getElementById('modalTabDFS');
+      const tabBFS = document.getElementById('modalTabBFS');
+      const snippet = document.getElementById('modalCodeSnippet');
+
+      [tabAdj, tabDFS, tabBFS].forEach(t => t.className = "py-1.5 px-3 font-medium text-slate-400 hover:text-slate-200");
+
+      if (tab === 'ADJ') {
+        tabAdj.className = "py-1.5 px-3 font-semibold text-amber-400 border-b-2 border-amber-400";
+        snippet.innerText = FULL_JAVA_SNIPPETS.ADJ;
+      } else if (tab === 'DFS') {
+        tabDFS.className = "py-1.5 px-3 font-semibold text-amber-400 border-b-2 border-amber-400";
+        snippet.innerText = FULL_JAVA_SNIPPETS.DFS;
+      } else if (tab === 'BFS') {
+        tabBFS.className = "py-1.5 px-3 font-semibold text-amber-400 border-b-2 border-amber-400";
+        snippet.innerText = FULL_JAVA_SNIPPETS.BFS;
+      }
+    }
+
+    function copyModalCode() {
+      const codeText = document.getElementById('modalCodeSnippet').innerText;
+      const textarea = document.createElement('textarea');
+      textarea.value = codeText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast("Java code snippet copied to clipboard!", "success");
+    }
+
+    // Utility Toast notifications
+    function showToast(message, type = "info") {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      let bgColor = "bg-slate-800 border-slate-700 text-slate-100";
+      if (type === "warning") bgColor = "bg-amber-950 border-amber-800 text-amber-200";
+      if (type === "success") bgColor = "bg-emerald-950 border-emerald-800 text-emerald-200";
+      if (type === "info") bgColor = "bg-indigo-950 border-indigo-800 text-indigo-200";
+
+      toast.className = `p-3 rounded-xl border shadow-xl text-xs flex items-center gap-2 transition-all duration-300 transform translate-y-2 pointer-events-auto ${bgColor}`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info text-base"></i> <span>${message}</span>`;
+
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.remove('translate-y-2'), 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
