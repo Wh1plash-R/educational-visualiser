@@ -60,7 +60,7 @@
 
     /* Active code line highlight */
     .code-line-active {
-      background-color: rgba(245, 158, 11, 0.15);
+      background-color: rgba(245, 158, 11, 0.18);
       border-left: 3px solid #f59e0b;
       color: #fef08a;
       font-weight: 600;
@@ -80,7 +80,7 @@
           <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
             Graph & Traversal Visualizer
           </h1>
-          <p class="text-xs text-slate-400">Adjacency List &bull; DFS &bull; BFS &bull;   Handout 6</p>
+          <p class="text-xs text-slate-400">Adjacency List &bull; Recursive DFS &bull; Queue BFS</p>
         </div>
       </div>
 
@@ -121,7 +121,7 @@
         <!-- Algorithm Tabs (DFS vs BFS) -->
         <div class="flex gap-1 bg-slate-950 p-1 rounded-xl mb-3 border border-slate-800 text-xs">
           <button id="tabDFS" onclick="setAlgorithm('DFS')" class="flex-1 py-1.5 font-medium rounded-lg bg-indigo-600 text-white shadow">
-            <i class="fa-solid fa-layer-group mr-1"></i> DFS (Stack)
+            <i class="fa-solid fa-layer-group mr-1"></i> DFS (Recursive Stack)
           </button>
           <button id="tabBFS" onclick="setAlgorithm('BFS')" class="flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200">
             <i class="fa-solid fa-bars-staggered mr-1"></i> BFS (Queue)
@@ -179,7 +179,7 @@
         </div>
 
         <!-- Step Explanation -->
-        <div id="stepExplanation" class="mt-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 min-h-[54px] flex items-center gap-2">
+        <div id="stepExplanation" class="mt-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 min-h-[58px] flex items-center gap-2">
           <i class="fa-solid fa-circle-info text-indigo-400 text-base shrink-0"></i>
           <span id="stepText">Select a start vertex and click 'Start Traversal' to watch step-by-step!</span>
         </div>
@@ -242,7 +242,7 @@
           <div class="flex items-center gap-3 text-[11px] text-slate-400">
             <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span> Unvisited</span>
             <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Stack/Queue</span>
-            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Active</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Active Node</span>
             <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Visited</span>
           </div>
         </div>
@@ -250,7 +250,6 @@
         <!-- Canvas Container -->
         <div class="flex-1 w-full h-full bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden">
           <svg id="graphSvg" class="w-full h-full min-h-[320px] select-none cursor-crosshair">
-            <!-- SVG Marker definition for directed arrows -->
             <defs>
               <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="22" refY="3.5" orient="auto">
                 <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
@@ -260,7 +259,6 @@
               </marker>
             </defs>
 
-            <!-- Lines and Nodes rendered here -->
             <g id="edgesGroup"></g>
             <g id="nodesGroup"></g>
           </svg>
@@ -282,12 +280,12 @@
           </div>
         </div>
 
-        <!-- Stack / Queue & Visited Monitor -->
+        <!-- Call Stack / Queue & Visited Monitor -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col justify-between">
           <div>
             <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
               <span id="dsMonitorTitle"><i class="fa-solid fa-layer-group text-indigo-400 mr-2"></i>Call Stack Monitor (DFS)</span>
-              <span id="dsPointerBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300">LIFO Order</span>
+              <span id="dsPointerBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300">Call Frames (Top at Right)</span>
             </h3>
 
             <!-- Dynamic Container for Stack / Queue visual blocks -->
@@ -330,7 +328,7 @@
           </div>
           <div>
             <h3 class="font-bold text-slate-100 text-sm">Java Graph Data Structure Reference</h3>
-            <p class="text-[11px] text-slate-400">Exact code implementations from   Handout 6</p>
+            <p class="text-[11px] text-slate-400">Exact code implementations</p>
           </div>
         </div>
         <button onclick="closeJavaModal()" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition">
@@ -363,7 +361,7 @@
 
       <!-- Modal Footer -->
       <div class="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-[11px]">
-        <span class="text-slate-500"> Handout 6 &bull; Graph Data Structure</span>
+        <span class="text-slate-500">Graph Data Structure & Traversal</span>
         <button onclick="closeJavaModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium transition border border-slate-700">
           Close
         </button>
@@ -376,8 +374,8 @@
 
   <script>
     // --- GRAPH MODEL STATE ---
-    let nodes = []; // [{ id: "A", x: 100, y: 150 }]
-    let edges = []; // [{ u: "A", v: "B" }]
+    let nodes = []; 
+    let edges = []; 
     let isDirected = false;
     let selectedAlgorithm = 'DFS'; // 'DFS' or 'BFS'
 
@@ -391,14 +389,14 @@
     let draggedNode = null;
     let dragOffset = { x: 0, y: 0 };
 
-    // --- HANDOUT 6 JAVA CODE SNIPPETS FOR TRACER ---
+    // --- JAVA CODE SNIPPETS FOR TRACER ---
     const DFS_JAVA_TRACER_LINES = [
       { num: 1, code: "void dfs(String u, Set<String> visited) {" },
       { num: 2, code: "    visited.add(u);              // Mark node as visited" },
       { num: 3, code: "    System.out.print(u + \" \");   // Process/Print node" },
       { num: 4, code: "    for (String v : adj.getOrDefault(u, List.of())) {" },
       { num: 5, code: "        if (!visited.contains(v)) {" },
-      { num: 6, code: "            dfs(v, visited);      // Visit neighbor" },
+      { num: 6, code: "            dfs(v, visited);      // Recursive call to neighbor" },
       { num: 7, code: "        }" },
       { num: 8, code: "    }" },
       { num: 9, code: "}" }
@@ -451,12 +449,12 @@ public class GraphExample {
         }
     }
 }`,
-      DFS: `// Depth-First Search (DFS) Implementation -   Handout 6
+      DFS: `// Depth-First Search (DFS) Implementation - Recursive Call Stack
 void dfs(String u, Set<String> visited) {
     visited.add(u);              // 1. Mark current node as visited
     System.out.print(u + " ");   // 2. Process (print) the node
 
-    // 3. Visit all unvisited neighbors recursively
+    // 3. Loop through neighbors; immediately call dfs on the FIRST unvisited neighbor!
     for (String v : adj.getOrDefault(u, List.of())) {
         if (!visited.contains(v)) {
             dfs(v, visited);     // Recursive call
@@ -466,7 +464,7 @@ void dfs(String u, Set<String> visited) {
 
 // Main call:
 // g.dfs("A", new HashSet<>());`,
-      BFS: `// Breadth-First Search (BFS) Implementation -   Handout 6
+      BFS: `// Breadth-First Search (BFS) Implementation - FIFO Queue
 void bfs(String s) {
     Set<String> visited = new HashSet<>(); // Track visited nodes
     Queue<String> q = new ArrayDeque<>();  // Queue for BFS level-by-level
@@ -505,11 +503,10 @@ void bfs(String s) {
       });
     };
 
-    // Load Presets from Handout 6
+    // Load Presets
     function loadPreset(presetName) {
       stopPlay();
       if (presetName === 'handout_4node') {
-        // Handout Page 5 & 7 (A, B, C, D)
         isDirected = false;
         nodes = [
           { id: "A", x: 120, y: 100 },
@@ -523,10 +520,9 @@ void bfs(String s) {
           { u: "B", v: "D" },
           { u: "C", v: "D" }
         ];
-        showToast("Loaded Preset: Handout 4-Node Graph (A, B, C, D)", "info");
+        showToast("Loaded Preset: 4-Node Graph (A, B, C, D)", "info");
 
       } else if (presetName === 'handout_5node') {
-        // Handout Page 6 & 8 (0, 1, 2, 3, 4)
         isDirected = false;
         nodes = [
           { id: "0", x: 100, y: 100 },
@@ -542,7 +538,7 @@ void bfs(String s) {
           { u: "1", v: "2" },
           { u: "2", v: "4" }
         ];
-        showToast("Loaded Preset: Handout 5-Node Graph (0, 1, 2, 3, 4)", "info");
+        showToast("Loaded Preset: 5-Node Graph (0, 1, 2, 3, 4)", "info");
       }
 
       updateDirectionUI();
@@ -614,7 +610,7 @@ void bfs(String s) {
         }
       });
 
-      // Sort neighbor lists for deterministic step visualization
+      // Sort neighbor lists deterministically
       for (let k in adj) {
         adj[k].sort();
       }
@@ -681,6 +677,14 @@ void bfs(String s) {
       edgesGroup.innerHTML = '';
       nodesGroup.innerHTML = '';
 
+      // Extract plain node IDs from call stack frames if DFS (e.g. "dfs(A)" -> "A")
+      const cleanStructureNodes = (structureNodes || []).map(item => {
+        if (typeof item === 'string' && item.startsWith('dfs(')) {
+          return item.substring(4, item.length - 1);
+        }
+        return item;
+      });
+
       // Render Edges
       edges.forEach(e => {
         const uNode = nodes.find(n => n.id === e.u);
@@ -719,7 +723,7 @@ void bfs(String s) {
 
         const isActive = activeNodeId === n.id;
         const isVisited = visitedNodes.includes(n.id);
-        const isInStructure = structureNodes.includes(n.id);
+        const isInStructure = cleanStructureNodes.includes(n.id);
 
         let fillColor = '#0f172a'; // slate-900
         let strokeColor = '#64748b'; // slate-500
@@ -798,16 +802,13 @@ void bfs(String s) {
       draggedNode = null;
     }
 
-    // --- ALGORITHM STEP GENERATOR (DFS & BFS) ---
-
-    // Build Step Queue for Depth-First Search (DFS)
+    // --- ACCURATE RECURSIVE DFS STEP GENERATOR ---
     function buildDFSSteps(startNode) {
       const steps = [];
       const adjMap = getAdjacencyMap();
       const visited = new Set();
-      const stack = [];
+      const callStack = []; // Contains frame names e.g. ["dfs(A)", "dfs(B)"]
 
-      // Step 1: Initialize DFS
       steps.push({
         type: 'INIT',
         activeNode: null,
@@ -820,88 +821,128 @@ void bfs(String s) {
         explanation: `Starting <b>Depth-First Search (DFS)</b> from root vertex <b>${startNode}</b>.`
       });
 
-      // Push start to stack
-      stack.push(startNode);
-      steps.push({
-        type: 'PUSH_START',
-        activeNode: startNode,
-        stack: [...stack],
-        visited: [],
-        activeRow: null,
-        activeNeighbor: null,
-        activeEdge: null,
-        lineNum: 2,
-        explanation: `Pushed start node <b>${startNode}</b> onto Call Stack.`
-      });
+      function dfsRecursive(u) {
+        callStack.push(`dfs(${u})`);
 
-      while (stack.length > 0) {
-        const u = stack[stack.length - 1]; // Peek top
+        // Line 1: Function entry
+        steps.push({
+          type: 'ENTER_DFS',
+          activeNode: u,
+          stack: [...callStack],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 1,
+          explanation: `Line 1: Entered <code>dfs("${u}", visited)</code> call frame [Stack Depth: ${callStack.length}].`
+        });
 
-        if (!visited.has(u)) {
-          visited.add(u);
+        // Line 2: visited.add(u)
+        visited.add(u);
+        steps.push({
+          type: 'MARK_VISITED',
+          activeNode: u,
+          stack: [...callStack],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 2,
+          explanation: `Line 2: <code>visited.add("${u}")</code> &rarr; Marked vertex <b>${u}</b> as Visited.`
+        });
+
+        // Line 3: System.out.print(u + " ")
+        steps.push({
+          type: 'PRINT_NODE',
+          activeNode: u,
+          stack: [...callStack],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 3,
+          explanation: `Line 3: Printed vertex <b>${u}</b> into output stream.`
+        });
+
+        // Line 4: for (String v : adj.getOrDefault(u, List.of()))
+        const neighbors = adjMap[u] || [];
+        steps.push({
+          type: 'FETCH_NEIGHBORS',
+          activeNode: u,
+          stack: [...callStack],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 4,
+          explanation: `Line 4: Iterating neighbor loop for node <b>${u}</b>: [${neighbors.join(', ')}].`
+        });
+
+        for (let v of neighbors) {
+          const isUnvisited = !visited.has(v);
+
+          // Line 5: if (!visited.contains(v))
           steps.push({
-            type: 'VISIT_NODE',
+            type: 'CHECK_NEIGHBOR',
             activeNode: u,
-            stack: [...stack],
+            stack: [...callStack],
             visited: Array.from(visited),
             activeRow: u,
-            activeNeighbor: null,
-            activeEdge: null,
-            lineNum: 2,
-            explanation: `Popped <b>${u}</b> from Stack. Marked <b>${u}</b> as Visited & Processed!`
+            activeNeighbor: v,
+            activeEdge: { u, v },
+            lineNum: 5,
+            explanation: `Line 5: Checking neighbor <b>${v}</b> from <b>${u}</b>: ${isUnvisited ? 'Unvisited! Immediately calling DFS.' : 'Already visited. Skipping.'}`
           });
 
-          // Fetch neighbors
-          const neighbors = adjMap[u] || [];
-          steps.push({
-            type: 'FETCH_NEIGHBORS',
-            activeNode: u,
-            stack: [...stack],
-            visited: Array.from(visited),
-            activeRow: u,
-            activeNeighbor: null,
-            activeEdge: null,
-            lineNum: 4,
-            explanation: `Fetching neighbors for node <b>${u}</b> from Adjacency List: [${neighbors.join(', ')}].`
-          });
-
-          // Iterate neighbors (push unvisited onto stack in reverse for left-to-right processing)
-          for (let i = neighbors.length - 1; i >= 0; i--) {
-            const v = neighbors[i];
-            const isUnvisited = !visited.has(v);
-
+          if (isUnvisited) {
+            // Line 6: Recursive call dfs(v, visited)
             steps.push({
-              type: 'CHECK_NEIGHBOR',
+              type: 'RECURSIVE_CALL',
               activeNode: u,
-              stack: [...stack],
+              stack: [...callStack],
               visited: Array.from(visited),
               activeRow: u,
               activeNeighbor: v,
               activeEdge: { u, v },
-              lineNum: 5,
-              explanation: `Checking neighbor <b>${v}</b>: ${isUnvisited ? 'Unvisited! Pushing to Stack.' : 'Already visited. Skipping.'}`
+              lineNum: 6,
+              explanation: `Line 6: <code>dfs("${v}", visited)</code> invoked! Pausing <code>dfs("${u}")</code> and diving deeper.`
             });
 
-            if (isUnvisited) {
-              stack.push(v);
-              steps.push({
-                type: 'PUSH_NEIGHBOR',
-                activeNode: u,
-                stack: [...stack],
-                visited: Array.from(visited),
-                activeRow: u,
-                activeNeighbor: v,
-                activeEdge: { u, v },
-                lineNum: 6,
-                explanation: `Pushed neighbor <b>${v}</b> onto Call Stack for deep traversal.`
-              });
-            }
+            // RECURSE INTO NEIGHBOR IMMEDIATELY
+            dfsRecursive(v);
+
+            // Resuming after return
+            steps.push({
+              type: 'RESUME_DFS',
+              activeNode: u,
+              stack: [...callStack],
+              visited: Array.from(visited),
+              activeRow: u,
+              activeNeighbor: v,
+              activeEdge: null,
+              lineNum: 4,
+              explanation: `Returned back to <code>dfs("${u}")</code> frame. Continuing remaining neighbor loop of <b>${u}</b>.`
+            });
           }
-        } else {
-          // Already visited top item
-          stack.pop();
         }
+
+        // Line 9: Exiting method frame
+        steps.push({
+          type: 'EXIT_DFS',
+          activeNode: u,
+          stack: [...callStack],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 9,
+          explanation: `Finished all neighbors for node <b>${u}</b>. Popping <code>dfs("${u}")</code> off Call Stack.`
+        });
+
+        callStack.pop();
       }
+
+      dfsRecursive(startNode);
 
       steps.push({
         type: 'COMPLETE',
@@ -912,13 +953,13 @@ void bfs(String s) {
         activeNeighbor: null,
         activeEdge: null,
         lineNum: 9,
-        explanation: `<b>DFS Traversal Completed!</b> Visited all reachable nodes in depth-first order.`
+        explanation: `<b>DFS Traversal Completed!</b> Traversed graph in exact recursive depth-first order.`
       });
 
       return steps;
     }
 
-    // Build Step Queue for Breadth-First Search (BFS)
+    // --- ACCURATE BFS STEP GENERATOR ---
     function buildBFSSteps(startNode) {
       const steps = [];
       const adjMap = getAdjacencyMap();
@@ -938,6 +979,18 @@ void bfs(String s) {
         explanation: `Starting <b>Breadth-First Search (BFS)</b> from root vertex <b>${startNode}</b>.`
       });
 
+      steps.push({
+        type: 'INIT_DS',
+        activeNode: null,
+        queue: [],
+        visited: [],
+        activeRow: null,
+        activeNeighbor: null,
+        activeEdge: null,
+        lineNum: 2,
+        explanation: `Lines 2-3: Initialized <code>visited</code> Set and FIFO <code>q</code> Queue.`
+      });
+
       visited.add(startNode);
       queue.push(startNode);
 
@@ -950,7 +1003,7 @@ void bfs(String s) {
         activeNeighbor: null,
         activeEdge: null,
         lineNum: 4,
-        explanation: `Marked start node <b>${startNode}</b> as Visited and enqueued to Queue.`
+        explanation: `Line 4: Marked start node <b>${startNode}</b> as Visited and enqueued into Queue.`
       });
 
       while (queue.length > 0) {
@@ -963,7 +1016,7 @@ void bfs(String s) {
           activeNeighbor: null,
           activeEdge: null,
           lineNum: 5,
-          explanation: `Checking Queue front (Queue size: ${queue.length}).`
+          explanation: `Line 5: <code>while (!q.isEmpty())</code> &rarr; Queue size is ${queue.length}.`
         });
 
         const u = queue.shift(); // Dequeue front
@@ -977,7 +1030,19 @@ void bfs(String s) {
           activeNeighbor: null,
           activeEdge: null,
           lineNum: 6,
-          explanation: `Dequeued <b>${u}</b> from Queue front. Processing node <b>${u}</b>.`
+          explanation: `Line 6: <code>String u = q.poll();</code> &rarr; Dequeued <b>${u}</b> from Queue front.`
+        });
+
+        steps.push({
+          type: 'PRINT_NODE',
+          activeNode: u,
+          queue: [...queue],
+          visited: Array.from(visited),
+          activeRow: u,
+          activeNeighbor: null,
+          activeEdge: null,
+          lineNum: 7,
+          explanation: `Line 7: Printed node <b>${u}</b> into output stream.`
         });
 
         const neighbors = adjMap[u] || [];
@@ -990,7 +1055,7 @@ void bfs(String s) {
           activeNeighbor: null,
           activeEdge: null,
           lineNum: 8,
-          explanation: `Fetching level neighbors for node <b>${u}</b>: [${neighbors.join(', ')}].`
+          explanation: `Line 8: Fetching level neighbors for node <b>${u}</b>: [${neighbors.join(', ')}].`
         });
 
         for (let v of neighbors) {
@@ -1005,13 +1070,24 @@ void bfs(String s) {
             activeNeighbor: v,
             activeEdge: { u, v },
             lineNum: 9,
-            explanation: `Checking neighbor <b>${v}</b>: ${isUnvisited ? 'Unvisited! Marking visited & enqueuing.' : 'Already visited. Skipping.'}`
+            explanation: `Line 9: Checking neighbor <b>${v}</b>: ${isUnvisited ? 'Unvisited! Marking visited & enqueuing.' : 'Already visited. Skipping.'}`
           });
 
           if (isUnvisited) {
             visited.add(v);
-            queue.push(v);
+            steps.push({
+              type: 'MARK_NEIGHBOR_VISITED',
+              activeNode: u,
+              queue: [...queue],
+              visited: Array.from(visited),
+              activeRow: u,
+              activeNeighbor: v,
+              activeEdge: { u, v },
+              lineNum: 10,
+              explanation: `Line 10: <code>visited.add("${v}")</code> &rarr; Marked <b>${v}</b> as visited.`
+            });
 
+            queue.push(v);
             steps.push({
               type: 'ENQUEUE_NEIGHBOR',
               activeNode: u,
@@ -1021,7 +1097,7 @@ void bfs(String s) {
               activeNeighbor: v,
               activeEdge: { u, v },
               lineNum: 11,
-              explanation: `Marked <b>${v}</b> as visited and enqueued to back of Queue.`
+              explanation: `Line 11: <code>q.add("${v}")</code> &rarr; Enqueued <b>${v}</b> to back of Queue.`
             });
           }
         }
@@ -1060,7 +1136,7 @@ void bfs(String s) {
         btnText.innerText = "Start DFS Traversal";
         algoModeBadge.innerText = "DFS Method";
         dsTitle.innerHTML = `<i class="fa-solid fa-layer-group text-indigo-400 mr-2"></i>Call Stack Monitor (DFS)`;
-        dsBadge.innerText = "LIFO Order";
+        dsBadge.innerText = "Call Frames (Top at Right)";
       } else {
         btnBFS.className = "flex-1 py-1.5 font-medium rounded-lg bg-indigo-600 text-white shadow";
         btnDFS.className = "flex-1 py-1.5 font-medium rounded-lg text-slate-400 hover:text-slate-200";
@@ -1096,24 +1172,18 @@ void bfs(String s) {
     function applyStep(step) {
       if (!step) return;
 
-      // Update Explanation Text
       document.getElementById('stepText').innerHTML = step.explanation;
       document.getElementById('stepCounter').innerText = `Step ${currentStepIdx + 1} / ${stepsQueue.length}`;
 
-      // Highlight Code Tracer Line
       highlightTracerLine(step.lineNum);
 
-      // Render Graph SVG with Active/Visited States
       const structureList = selectedAlgorithm === 'DFS' ? (step.stack || []) : (step.queue || []);
       renderGraphSVG(step.activeNode, step.visited, structureList, step.activeEdge);
 
-      // Render Adjacency List Highlight
       renderAdjacencyListUI(step.activeRow, step.activeNeighbor);
 
-      // Render Data Structure Visual Monitor (Stack/Queue)
       renderDSMonitor(structureList);
 
-      // Update Visited Set and Traversal Log
       renderVisitedAndLog(step.visited);
     }
 
@@ -1127,7 +1197,7 @@ void bfs(String s) {
       }
 
       if (selectedAlgorithm === 'DFS') {
-        // Render Call Stack (LIFO: Top on right/end)
+        // Render Recursive Call Stack
         list.forEach((item, idx) => {
           const isTop = idx === list.length - 1;
           const block = document.createElement('div');
@@ -1136,11 +1206,11 @@ void bfs(String s) {
               ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-500/30 glow-queued' 
               : 'bg-slate-900 text-purple-300 border-slate-700'
           }`;
-          block.innerHTML = `${item} ${isTop ? '<span class="text-[9px] text-amber-300 font-sans font-normal">&larr; TOP</span>' : ''}`;
+          block.innerHTML = `${item} ${isTop ? '<span class="text-[9px] text-amber-300 font-sans font-normal">&larr; TOP FRAME</span>' : ''}`;
           container.appendChild(block);
         });
       } else {
-        // Render Queue (FIFO: FRONT on left, REAR on right)
+        // Render FIFO Queue
         list.forEach((item, idx) => {
           const isFront = idx === 0;
           const isRear = idx === list.length - 1;
@@ -1292,7 +1362,6 @@ void bfs(String s) {
         return;
       }
 
-      // Random position inside canvas
       const x = Math.floor(Math.random() * 260 + 60);
       const y = Math.floor(Math.random() * 200 + 60);
       nodes.push({ id: name, x, y });
@@ -1390,7 +1459,6 @@ void bfs(String s) {
       showToast("Java code snippet copied to clipboard!", "success");
     }
 
-    // Utility Toast notifications
     function showToast(message, type = "info") {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
