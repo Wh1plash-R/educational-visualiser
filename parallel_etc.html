@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT2503 Interactive Visualizer: Parallelism, Multithreading &amp; Time Complexity</title>
+  <!-- Load Tailwind CSS for responsive utility-first styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load Inter and JetBrains Mono fonts for clean readability and code/notation clarity -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* Custom subtle animations and scrollbar styling for smooth educational interactions */
+    html {
+      scroll-behavior: smooth;
+    }
+    .pulse-packet {
+      animation: packetMove 1.1s ease-in-out forwards;
+    }
+    @keyframes packetMove {
+      0% { transform: scale(0.85); opacity: 0.3; }
+      50% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .tab-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+    .tab-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 gap-3">
+        <!-- Brand & Course Tag -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">IT2503 Handout 1</span>
+                <span class="text-xs text-slate-500 hidden sm:inline">Interactive Concept Studio</span>
+              </div>
+              <h1 class="text-base sm:text-lg font-extrabold text-slate-900 leading-tight">Parallel Algorithms, Multithreading &amp; Time Complexity</h1>
+            </div>
+          </div>
+          <!-- Analogy Mode Badge -->
+          <button onclick="toggleGlossaryModal()" class="md:hidden px-3 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold hover:bg-amber-100 transition">
+            Analogy Guide
+          </button>
+        </div>
+
+        <!-- Module Navigation Tabs -->
+        <nav class="flex items-center gap-1.5 overflow-x-auto tab-scroll pb-1 md:pb-0" aria-label="Course Modules">
+          <button onclick="switchModule('mod1')" id="nav-mod1" class="nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-indigo-600 text-white shadow-sm">
+            1. Parallel Basics &amp; Granularity
+          </button>
+          <button onclick="switchModule('mod2')" id="nav-mod2" class="nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 text-slate-700 hover:bg-slate-200">
+            2. Six Parallel Models
+          </button>
+          <button onclick="switchModule('mod3')" id="nav-mod3" class="nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 text-slate-700 hover:bg-slate-200">
+            3. Multithreading &amp; Safe Data
+          </button>
+          <button onclick="switchModule('mod4')" id="nav-mod4" class="nav-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 text-slate-700 hover:bg-slate-200">
+            4. Time Complexities (Big O)
+          </button>
+          <button onclick="toggleGlossaryModal()" class="hidden md:inline-flex items-center gap-1.5 ml-2 px-3 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold hover:bg-amber-100 transition">
+            <span>Analogy Cheat Sheet</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 1: PARALLEL ALGORITHM MODEL & CORE TERMINOLOGIES               -->
+    <!-- ===================================================================== -->
+    <section id="mod1" class="module-section space-y-6">
+      <!-- Intro & Real-World Analogy Banner -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="space-y-3 max-w-3xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+              Module 1 &bull; Foundations
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">What is a Parallel Algorithm Model?</h2>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+              Normally, a <strong class="text-slate-800">sequential algorithm</strong> solves a problem one step at a time using a single processor—like one person doing all the chores alone. A <strong class="text-indigo-700">Parallel Algorithm Model</strong> defines how we split a big computation into smaller pieces, assign them to multiple processors (or CPU cores) to run <em>at the exact same time</em> (<strong class="text-slate-800">concurrently</strong>), and coordinate them so the final answer is accurate and much faster.
+            </p>
+          </div>
+          <!-- Real-World Analogy Card -->
+          <div class="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 sm:p-5 lg:w-96 shrink-0">
+            <div class="flex items-center gap-2 text-amber-900 font-bold text-sm mb-1.5">
+              <span class="text-lg">🍳</span>
+              <span>Real-World Analogy: Preparing a 500-Guest Banquet</span>
+            </div>
+            <p class="text-xs sm:text-sm text-amber-900/90 leading-relaxed">
+              One solo chef cooking 500 meals takes all day. Hiring <strong>4 chefs (Processors)</strong> lets them chop, grill, and plate simultaneously! However, the head chef must give instructions, chefs must share ingredients from the pantry (<strong>Memory Unit</strong>), and they must coordinate so the steak and sauce finish together (<strong>Synchronization</strong>).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Hardware/Model Architecture Diagram (Page 1 Diagram Brought to Life) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 class="text-lg font-bold text-slate-900">Interactive Architecture: How Processors Work Together</h3>
+                <p class="text-xs text-slate-500">Click "Run Parallel Cycle" to watch instructions and data streams move.</p>
+              </div>
+              <button onclick="runArchitectureSim()" id="arch-sim-btn" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
+                ▶ Run Parallel Cycle
+              </button>
+            </div>
+
+            <!-- Visual Architecture Diagram matching Handout Page 1 -->
+            <div class="bg-slate-900 text-white rounded-2xl p-4 sm:p-6 space-y-5 relative overflow-hidden">
+              <!-- Control Unit -->
+              <div class="flex flex-col items-center">
+                <div id="arch-cu" class="px-6 py-3 rounded-xl bg-slate-800 border-2 border-slate-600 font-bold text-sm sm:text-base transition-all duration-300">
+                  Control Unit (The Head Chef)
+                </div>
+                <div class="flex flex-col items-center my-1">
+                  <span id="arch-inst-label" class="text-[11px] font-mono text-indigo-300 bg-indigo-950/80 px-2.5 py-0.5 rounded border border-indigo-700/60 transition-all">
+                    Instruction Stream (Recipe Commands)
+                  </span>
+                  <div class="w-0.5 h-4 bg-slate-600"></div>
+                  <div class="w-3/4 h-0.5 bg-slate-600"></div>
+                </div>
+              </div>
+
+              <!-- Processors Row -->
+              <div class="grid grid-cols-3 gap-3 sm:gap-4">
+                <div id="arch-p1" class="arch-proc bg-slate-800 border-2 border-slate-600 rounded-xl p-3 text-center transition-all duration-300">
+                  <div class="text-xs text-slate-400 font-mono">Core 1</div>
+                  <div class="font-bold text-xs sm:text-sm mt-0.5">Processor 1</div>
+                  <div id="arch-p1-status" class="mt-2 text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">Idle</div>
+                </div>
+                <div id="arch-p2" class="arch-proc bg-slate-800 border-2 border-slate-600 rounded-xl p-3 text-center transition-all duration-300">
+                  <div class="text-xs text-slate-400 font-mono">Core 2</div>
+                  <div class="font-bold text-xs sm:text-sm mt-0.5">Processor 2</div>
+                  <div id="arch-p2-status" class="mt-2 text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">Idle</div>
+                </div>
+                <div id="arch-pn" class="arch-proc bg-slate-800 border-2 border-slate-600 rounded-xl p-3 text-center transition-all duration-300">
+                  <div class="text-xs text-slate-400 font-mono">Core N</div>
+                  <div class="font-bold text-xs sm:text-sm mt-0.5">Processor n</div>
+                  <div id="arch-pn-status" class="mt-2 text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-300">Idle</div>
+                </div>
+              </div>
+
+              <!-- Data Streams -->
+              <div class="grid grid-cols-3 gap-3 sm:gap-4 text-center">
+                <div class="flex flex-col items-center">
+                  <div class="w-0.5 h-3 bg-slate-600"></div>
+                  <span id="arch-ds1" class="text-[10px] sm:text-xs font-mono text-emerald-300 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">Data Stream 1</span>
+                  <div class="w-0.5 h-3 bg-slate-600"></div>
+                </div>
+                <div class="flex flex-col items-center">
+                  <div class="w-0.5 h-3 bg-slate-600"></div>
+                  <span id="arch-ds2" class="text-[10px] sm:text-xs font-mono text-emerald-300 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">Data Stream 2</span>
+                  <div class="w-0.5 h-3 bg-slate-600"></div>
+                </div>
+                <div class="flex flex-col items-center">
+                  <div class="w-0.5 h-3 bg-slate-600"></div>
+                  <span id="arch-dsn" class="text-[10px] sm:text-xs font-mono text-emerald-300 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">Data Stream n</span>
+                  <div class="w-0.5 h-3 bg-slate-600"></div>
+                </div>
+              </div>
+
+              <!-- Memory Unit -->
+              <div id="arch-mem" class="w-full py-3.5 px-4 rounded-xl bg-slate-800 border-2 border-slate-600 text-center font-bold text-sm sm:text-base transition-all duration-300">
+                Shared Memory Unit (The Kitchen Pantry &amp; Serving Counter)
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Step Narrator -->
+          <div id="arch-narrator" class="mt-4 p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs sm:text-sm text-indigo-950 font-medium">
+            Status: Ready. Press <strong>Run Parallel Cycle</strong> to observe how the Control Unit broadcasts tasks and processors read/write to the Memory Unit.
+          </div>
+        </div>
+
+        <!-- 5 Essential Terminologies Interactive Cards -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-3">
+          <h3 class="text-lg font-bold text-slate-900">5 Must-Know Parallel Terminologies</h3>
+          <p class="text-xs text-slate-500">Click any term below to see its technical definition + simple everyday meaning.</p>
+
+          <div class="space-y-2.5" id="terminology-accordion">
+            <!-- Term 1: Task -->
+            <div class="border border-slate-200 rounded-xl p-3.5 hover:border-indigo-300 transition bg-slate-50/60">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sm text-indigo-700">1. Task</span>
+                <span class="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">Unit of Work</span>
+              </div>
+              <p class="text-xs text-slate-700 mt-1.5"><strong>Technical:</strong> A distinct unit of computation that can be executed independently or with limited dependencies.</p>
+              <p class="text-xs text-amber-800 mt-1"><strong>Plain English:</strong> One specific chore on the to-do list, like "chop 50 onions" or "calculate the sum of row 1."</p>
+            </div>
+
+            <!-- Term 2: Processor -->
+            <div class="border border-slate-200 rounded-xl p-3.5 hover:border-indigo-300 transition bg-slate-50/60">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sm text-indigo-700">2. Processor</span>
+                <span class="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">Worker Core</span>
+              </div>
+              <p class="text-xs text-slate-700 mt-1.5"><strong>Technical:</strong> A logical or physical computational unit (such as a CPU core or GPU shader) executing assigned tasks.</p>
+              <p class="text-xs text-amber-800 mt-1"><strong>Plain English:</strong> The actual worker (chef) doing the work. More processors = more workers acting simultaneously.</p>
+            </div>
+
+            <!-- Term 3: Communication -->
+            <div class="border border-slate-200 rounded-xl p-3.5 hover:border-indigo-300 transition bg-slate-50/60">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sm text-indigo-700">3. Communication</span>
+                <span class="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">Data Exchange</span>
+              </div>
+              <p class="text-xs text-slate-700 mt-1.5"><strong>Technical:</strong> The exchange of intermediate data or messages among processors via shared memory or networks.</p>
+              <p class="text-xs text-amber-800 mt-1"><strong>Plain English:</strong> Chefs passing bowls of chopped ingredients to each other. Too much talking/passing slows down cooking!</p>
+            </div>
+
+            <!-- Term 4: Synchronization -->
+            <div class="border border-slate-200 rounded-xl p-3.5 hover:border-indigo-300 transition bg-slate-50/60">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sm text-indigo-700">4. Synchronization</span>
+                <span class="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">Order &amp; Timing</span>
+              </div>
+              <p class="text-xs text-slate-700 mt-1.5"><strong>Technical:</strong> Coordination of execution order across processors to respect task dependencies and prevent conflicts.</p>
+              <p class="text-xs text-amber-800 mt-1"><strong>Plain English:</strong> Making sure the baker finishes baking the cake <em>before</em> the decorator starts putting frosting on it.</p>
+            </div>
+
+            <!-- Term 5: Granularity -->
+            <div class="border border-slate-200 rounded-xl p-3.5 hover:border-indigo-300 transition bg-slate-50/60">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-sm text-indigo-700">5. Granularity</span>
+                <span class="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">Work vs. Chat Ratio</span>
+              </div>
+              <p class="text-xs text-slate-700 mt-1.5"><strong>Technical:</strong> The ratio of computation time to communication time. <em>Coarse-grained</em> = large independent chunks; <em>Fine-grained</em> = small chunks with frequent interaction.</p>
+              <p class="text-xs text-amber-800 mt-1"><strong>Plain English:</strong> Slicing work into giant bricks (fewer trips to talk) vs. tiny sand grains (constant check-ins).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Granularity Simulator -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Interactive Lab: Coarse-Grained vs. Fine-Grained Granularity</h3>
+            <p class="text-xs sm:text-sm text-slate-600">Drag the slider to change how finely we chop a 100-unit workload across 4 processors. Notice how splitting tasks too small increases <strong>communication &amp; synchronization overhead</strong>!</p>
+          </div>
+          <div class="flex items-center gap-3 bg-slate-100 px-4 py-2.5 rounded-xl">
+            <span class="text-xs font-bold text-rose-700">Fine-Grained</span>
+            <input type="range" id="granularity-slider" min="1" max="10" value="7" oninput="updateGranularitySim(this.value)" class="w-36 sm:w-48 accent-indigo-600 cursor-pointer" />
+            <span class="text-xs font-bold text-emerald-700">Coarse-Grained</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
+          <!-- Visual Chunk Representation -->
+          <div class="md:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs font-semibold">
+              <span id="gran-type-label" class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800">Coarse-Grained (Large Independent Chunks)</span>
+              <span id="gran-chunks-label" class="font-mono text-slate-600">4 Large Tasks &bull; Low Sync Overhead</span>
+            </div>
+            <!-- Task Bars Visual -->
+            <div id="gran-visual-bars" class="space-y-2 py-2"></div>
+            <p id="gran-explanation" class="text-xs text-slate-600 leading-relaxed"></p>
+          </div>
+
+          <!-- Metrics Readout -->
+          <div class="bg-slate-900 text-white rounded-xl p-4 space-y-3">
+            <div class="text-xs uppercase tracking-wider text-slate-400 font-bold">Simulated Execution Breakdown</div>
+            <div class="space-y-2 text-xs sm:text-sm">
+              <div class="flex justify-between">
+                <span class="text-slate-300">Pure Computation:</span>
+                <span id="gran-comp-time" class="font-mono font-bold text-emerald-400">25 ms</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-300">Comm &amp; Sync Overhead:</span>
+                <span id="gran-comm-time" class="font-mono font-bold text-amber-400">4 ms</span>
+              </div>
+              <div class="border-t border-slate-700 pt-2 flex justify-between text-base">
+                <span class="font-bold">Total Parallel Time:</span>
+                <span id="gran-total-time" class="font-mono font-extrabold text-indigo-300">29 ms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 2: SIX PARALLEL ALGORITHM MODELS                               -->
+    <!-- ===================================================================== -->
+    <section id="mod2" class="module-section hidden space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-sm">
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+          Module 2 &bull; Parallel Architectures
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">The 6 Types of Parallel Algorithm Models</h2>
+        <p class="text-slate-600 text-sm sm:text-base mt-2 max-w-4xl">
+          Different problems need different teamwork strategies. Choose any of the <strong>6 Parallel Models</strong> below to explore its real-world analogy, step-by-step mechanics, and an interactive visual simulation based directly on your handout examples.
+        </p>
+
+        <!-- 6 Model Selector Pills -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mt-5">
+          <button onclick="selectParallelModel('data')" id="pm-btn-data" class="pm-btn p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-900 text-left transition">
+            <div class="text-[11px] font-mono font-bold text-indigo-600">Model 1</div>
+            <div class="font-bold text-xs sm:text-sm mt-0.5">Data-Parallel</div>
+          </button>
+          <button onclick="selectParallelModel('taskgraph')" id="pm-btn-taskgraph" class="pm-btn p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-left transition">
+            <div class="text-[11px] font-mono font-bold text-slate-400">Model 2</div>
+            <div class="font-bold text-xs sm:text-sm mt-0.5">Task Graph (DAG)</div>
+          </button>
+          <button onclick="selectParallelModel('workpool')" id="pm-btn-workpool" class="pm-btn p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-left transition">
+            <div class="text-[11px] font-mono font-bold text-slate-400">Model 3</div>
+            <div class="font-bold text-xs sm:text-sm mt-0.5">Work Pool</div>
+          </button>
+          <button onclick="selectParallelModel('masterworker')" id="pm-btn-masterworker" class="pm-btn p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-left transition">
+            <div class="text-[11px] font-mono font-bold text-slate-400">Model 4</div>
+            <div class="font-bold text-xs sm:text-sm mt-0.5">Master-Worker</div>
+          </button>
+          <button onclick="selectParallelModel('pipeline')" id="pm-btn-pipeline" class="pm-btn p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-left transition">
+            <div class="text-[11px] font-mono font-bold text-slate-400">Model 5</div>
+            <div class="font-bold text-xs sm:text-sm mt-0.5">Pipeline</div>
+          </button>
+          <button onclick="selectParallelModel('hybrid')" id="pm-btn-hybrid" class="pm-btn p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-left transition">
+            <div class="text-[11px] font-mono font-bold text-slate-400">Model 6</div>
+            <div class="font-bold text-xs sm:text-sm mt-0.5">Hybrid Model</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dynamic Model Explanation + Interactive Simulation Stage -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Concept, Analogy & Mechanics -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+          <div>
+            <span id="pm-badge" class="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-indigo-100 text-indigo-800">SIMD &bull; GPU Computing</span>
+            <h3 id="pm-title" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">Data-Parallel Model</h3>
+            <p id="pm-desc" class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed"></p>
+          </div>
+
+          <!-- Analogy Box -->
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div class="font-bold text-xs sm:text-sm text-amber-900 mb-1">💡 Real-World Intuitive Analogy</div>
+            <p id="pm-analogy" class="text-xs sm:text-sm text-amber-900/90 leading-relaxed"></p>
+          </div>
+
+          <!-- Handout Mechanics List -->
+          <div class="space-y-2">
+            <div class="font-bold text-xs uppercase tracking-wider text-slate-500">Step-by-Step Mechanics</div>
+            <ol id="pm-mechanics" class="list-decimal list-inside space-y-1.5 text-xs sm:text-sm text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200"></ol>
+          </div>
+
+          <!-- Handout Example Reference -->
+          <div class="text-xs bg-slate-100 text-slate-700 px-3.5 py-2.5 rounded-xl border border-slate-200">
+            <strong>Handout Example:</strong> <span id="pm-example-text"></span>
+          </div>
+        </div>
+
+        <!-- Right: Interactive Visualizer Canvas/Stage -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h4 class="font-bold text-base sm:text-lg text-slate-900" id="pm-sim-heading">Interactive Simulation</h4>
+                <p class="text-xs text-slate-500">Step through the execution phases to see how tasks and data flow.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="stepParallelModelSim()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold shadow-sm transition">
+                  Next Step &rarr;
+                </button>
+                <button onclick="resetParallelModelSim()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Dynamic Simulation Viewport -->
+            <div id="pm-sim-stage" class="bg-slate-900 text-white rounded-2xl p-4 sm:p-6 min-h-[310px] flex flex-col justify-center">
+              <!-- Populated dynamically by JS -->
+            </div>
+          </div>
+
+          <!-- Live Step Status Bar -->
+          <div id="pm-sim-status" class="mt-4 p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs sm:text-sm text-indigo-950 font-medium">
+            Click <strong>Next Step &rarr;</strong> to begin the simulation.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 3: MULTITHREADING & THREAD-SAFE DATA STRUCTURES                -->
+    <!-- ===================================================================== -->
+    <section id="mod3" class="module-section hidden space-y-6">
+      <!-- Intro Banner -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="space-y-2.5 max-w-3xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+              Module 3 &bull; Concurrency &amp; Thread Safety
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Multithreading &amp; Thread-Safe Data Structures</h2>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+              <strong class="text-slate-800">Multithreading</strong> is a concurrency technique where a single running program (<strong class="text-slate-800">Process</strong>) launches multiple <strong class="text-indigo-700">Threads</strong> (independent sequences of instructions) that all share the exact same memory (<strong class="text-slate-800">Address Space</strong>). On a multi-core CPU, threads run truly in parallel; on a single core, they rapidly take turns (<strong class="text-slate-800">interleave</strong>).
+            </p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 lg:w-96 shrink-0">
+            <div class="flex items-center gap-2 text-amber-900 font-bold text-sm mb-1.5">
+              <span class="text-lg">🏠</span>
+              <span>Real-World Analogy: Roommates Sharing One Kitchen</span>
+            </div>
+            <p class="text-xs sm:text-sm text-amber-900/90 leading-relaxed">
+              The <strong>House</strong> is the <em>Process</em> (shared address space). The <strong>Roommates</strong> are <em>Threads</em>. Because they share the same fridge and shopping list, if two roommates edit the grocery list at the exact same second without coordination, data gets corrupted (<strong class="text-rose-700">Race Condition</strong>)!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Lab A: Race Condition vs Thread Safety + Interactive Lab B: BlockingQueue -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left (5 cols): Shared Address Space & Race Condition Sandbox -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-lg font-bold text-slate-900">1. Why Thread Safety Matters</h3>
+              <span class="text-xs font-mono bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded">Shared Memory</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Two threads both try to add <strong>+50</strong> to a shared account balance starting at <strong>100</strong> (expected final balance = <strong>200</strong>). Test what happens without vs. with synchronization!
+            </p>
+
+            <!-- Toggle Mode -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+              <button onclick="setRaceMode(false)" id="race-unsafe-btn" class="py-2 px-3 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-sm transition">
+                ⚠️ Unsafe (Race Condition)
+              </button>
+              <button onclick="setRaceMode(true)" id="race-safe-btn" class="py-2 px-3 rounded-lg text-xs font-bold text-slate-700 hover:bg-white/60 transition">
+                🛡️ Thread-Safe (Synchronized)
+              </button>
+            </div>
+
+            <!-- Visual Address Space Box -->
+            <div class="bg-slate-900 text-white rounded-2xl p-4 space-y-4">
+              <div class="text-center border border-dashed border-slate-600 rounded-xl p-3 bg-slate-800/80">
+                <div class="text-[11px] uppercase tracking-wider text-slate-400">Process Shared Address Space</div>
+                <div class="text-2xl font-mono font-extrabold text-emerald-400 mt-1">
+                  sharedBalance = <span id="shared-balance-val">100</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div id="thread-a-box" class="bg-slate-800 border border-slate-700 rounded-xl p-3">
+                  <div class="font-bold text-indigo-300">Thread A (+50)</div>
+                  <div id="thread-a-log" class="text-[11px] text-slate-300 mt-1 font-mono">Waiting to start...</div>
+                </div>
+                <div id="thread-b-box" class="bg-slate-800 border border-slate-700 rounded-xl p-3">
+                  <div class="font-bold text-sky-300">Thread B (+50)</div>
+                  <div id="thread-b-log" class="text-[11px] text-slate-300 mt-1 font-mono">Waiting to start...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <button onclick="runRaceSimulation()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs sm:text-sm font-semibold shadow-sm transition">
+              ▶ Simulate Concurrent Update
+            </button>
+            <div id="race-verdict" class="p-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
+              Click <strong>Simulate Concurrent Update</strong> to observe how threads interact with shared memory.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right (7 cols): Interactive Producer-Consumer BlockingQueue Simulator (Pages 5-8) -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="text-lg font-bold text-slate-900">2. Interactive BlockingQueue Simulator</h3>
+                <p class="text-xs text-slate-500">Models Java's <code class="font-mono bg-slate-100 px-1 rounded">ArrayBlockingQueue&lt;String&gt;(3)</code> from Handout Page 7–8.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="producerPut()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold shadow-sm transition">
+                  + Producer put()
+                </button>
+                <button onclick="consumerTake()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold shadow-sm transition">
+                  - Consumer take()
+                </button>
+                <button onclick="resetBlockingQueue()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition">
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Visual Producer -> Bounded Queue (Capacity 3) -> Consumer -->
+            <div class="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+                <!-- Producer Thread -->
+                <div id="bq-producer-card" class="bg-slate-800 border-2 border-emerald-500/60 rounded-xl p-3 text-center transition">
+                  <div class="text-xs font-bold text-emerald-400">Producer Thread</div>
+                  <div id="bq-producer-state" class="text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-emerald-950 text-emerald-200">
+                    Ready (Next: Task-1)
+                  </div>
+                </div>
+
+                <!-- Bounded Queue (Capacity = 3) -->
+                <div class="bg-slate-800 border-2 border-indigo-500 rounded-xl p-3 text-center">
+                  <div class="text-[11px] font-mono text-indigo-300 mb-2">BlockingQueue (Capacity: 3)</div>
+                  <div id="bq-slots" class="grid grid-cols-3 gap-1.5">
+                    <div class="h-10 rounded-lg border border-dashed border-slate-600 flex items-center justify-center text-[11px] text-slate-500">Empty</div>
+                    <div class="h-10 rounded-lg border border-dashed border-slate-600 flex items-center justify-center text-[11px] text-slate-500">Empty</div>
+                    <div class="h-10 rounded-lg border border-dashed border-slate-600 flex items-center justify-center text-[11px] text-slate-500">Empty</div>
+                  </div>
+                </div>
+
+                <!-- Consumer Thread -->
+                <div id="bq-consumer-card" class="bg-slate-800 border-2 border-sky-500/60 rounded-xl p-3 text-center transition">
+                  <div class="text-xs font-bold text-sky-400">Consumer Thread</div>
+                  <div id="bq-consumer-state" class="text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-sky-950 text-sky-200">
+                    Ready to take()
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Console Output mirroring Handout Page 8 -->
+              <div>
+                <div class="text-[11px] font-mono text-slate-400 mb-1">Console Output Log:</div>
+                <div id="bq-console" class="bg-black/60 border border-slate-700 rounded-xl p-3 h-28 overflow-y-auto font-mono text-xs space-y-1 text-slate-200">
+                  <div class="text-slate-400">// Queue initialized with capacity = 3. Try adding 4 items in a row!</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+            <strong>Try this experiment:</strong> Click <strong>+ Producer put()</strong> 4 times without consuming! On the 4th click, the queue is full (3/3), so the Producer automatically <strong>BLOCKS (pauses)</strong> until you click <strong>- Consumer take()</strong> to free up space.
+          </div>
+        </div>
+      </div>
+
+      <!-- All 8 Thread-Safe Data Structures Explorer (Pages 5-9) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-lg sm:text-xl font-bold text-slate-900">All 8 Thread-Safe Data Structures (Handout Reference)</h3>
+          <p class="text-xs sm:text-sm text-slate-600">How Java and modern systems prevent race conditions, deadlocks, and data corruption across threads.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- 1. Concurrent Queues -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">1. Concurrent Queues</span>
+            <h4 class="font-bold text-sm text-slate-900">Safe FIFO Message Passing</h4>
+            <p class="text-xs text-slate-600">Allows multiple threads to safely enqueue and dequeue items without manual locks.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> A ticket dispenser where multiple customers take numbers without tearing the roll.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Thread pool task scheduling, message buffering.</p>
+          </div>
+
+          <!-- 2. Thread-Safe Collections -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">2. Thread-Safe Collections</span>
+            <h4 class="font-bold text-sm text-slate-900">Built-In Internal Safety</h4>
+            <p class="text-xs text-slate-600">Handles concurrent access internally (e.g., <code class="font-mono">ConcurrentLinkedQueue</code> using <code class="font-mono">poll()</code>) so data never corrupts.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> A self-organizing library shelf that prevents two people from grabbing the same folder.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Shared caches, lookup tables, web server active sessions.</p>
+          </div>
+
+          <!-- 3. Blocking Queues -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">3. Blocking Queues</span>
+            <h4 class="font-bold text-sm text-slate-900">Automatic Flow Control</h4>
+            <p class="text-xs text-slate-600">Pauses (<code class="font-mono">put</code>) producers when full and pauses (<code class="font-mono">take</code>) consumers when empty.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> A 3-tray pass-through window between kitchen and waiter—chef waits if all 3 slots are full.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Producer-consumer pipelines, bounded resource buffers.</p>
+          </div>
+
+          <!-- 4. Lock-Free & Wait-Free -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">4. Lock-Free &amp; Wait-Free</span>
+            <h4 class="font-bold text-sm text-slate-900">Atomic Hardware Speed</h4>
+            <p class="text-xs text-slate-600">Avoids slow traditional locks (mutexes) by using hardware <strong>atomic operations</strong> (instant compare-and-swap).</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> Revolving doors instead of a single locked door—nobody gets stuck waiting in line.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Ultra-low latency trading, real-time systems, high contention.</p>
+          </div>
+
+          <!-- 5. Immutable Data Structures -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">5. Immutable Structures</span>
+            <h4 class="font-bold text-sm text-slate-900">Read-Only &amp; Versioned</h4>
+            <p class="text-xs text-slate-600">Cannot be modified after creation. Updating returns a brand-new copy, making it 100% thread-safe.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> Printing a new edition of a textbook instead of erasing words in everyone's copy.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Functional programming, shared app configurations, memoization.</p>
+          </div>
+
+          <!-- 6. Synchronized Stacks & Lists -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">6. Sync Stacks &amp; Lists</span>
+            <h4 class="font-bold text-sm text-slate-900">Locked LIFO / FIFO Order</h4>
+            <p class="text-xs text-slate-600">Wraps standard stacks or linked lists with locks/atomics so only one thread modifies pointers at a time.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> A spring-loaded plate stack with a lid that only opens for one person at a time.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Undo/redo history, browser navigation stacks.</p>
+          </div>
+
+          <!-- 7. Priority Queues -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">7. Priority Queues</span>
+            <h4 class="font-bold text-sm text-slate-900">Urgency Over Arrival Order</h4>
+            <p class="text-xs text-slate-600">Retrieves elements by highest priority rather than insertion order while staying thread-safe.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> Hospital ER triage—urgent emergencies are treated before minor sprains.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Urgent task schedulers, network packet routing.</p>
+          </div>
+
+          <!-- 8. Read-Write Locks -->
+          <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition space-y-2">
+            <span class="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">8. Read-Write Locks</span>
+            <h4 class="font-bold text-sm text-slate-900">Many Readers, One Writer</h4>
+            <p class="text-xs text-slate-600">Allows multiple threads to read simultaneously, but grants exclusive access when a thread writes.</p>
+            <p class="text-xs text-amber-800 bg-amber-50 p-2 rounded-lg"><strong>Analogy:</strong> A museum painting—50 visitors can look at once, but everyone steps out when the restorer paints.</p>
+            <p class="text-[11px] text-slate-500"><strong>Use Cases:</strong> Read-heavy databases, shared routing tables.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 4: ALGORITHMIC COMPLEXITY & COMMON TIME COMPLEXITIES           -->
+    <!-- ===================================================================== -->
+    <section id="mod4" class="module-section hidden space-y-6">
+      <!-- Intro Banner -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="space-y-2.5 max-w-3xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+              Module 4 &bull; Efficiency &amp; Scalability
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Algorithmic Complexity &amp; Big O Time Complexities</h2>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+              <strong class="text-slate-800">Algorithmic Complexity</strong> measures how the number of steps (operations) an algorithm takes grows as the input data size (<strong class="font-mono text-indigo-700">n</strong>) gets larger. Instead of measuring seconds (which depend on how fast your laptop is), computer scientists use <strong class="text-indigo-700">Big O Notation — O(f)</strong> (asymptotic notation) to describe the growth rate of work.
+            </p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 lg:w-96 shrink-0">
+            <div class="flex items-center gap-2 text-amber-900 font-bold text-sm mb-1.5">
+              <span class="text-lg">📚</span>
+              <span>Real-World Analogy: Finding a Name in a Contact Book</span>
+            </div>
+            <p class="text-xs sm:text-sm text-amber-900/90 leading-relaxed">
+              If a contact book grows from <strong>10 names</strong> to <strong>10,000 names</strong> (<code class="font-mono">n</code>), how many pages must you flip? Checking the very first page is always 1 step (<code class="font-mono">O(1)</code>). Splitting the alphabet in half each time takes only ~14 flips (<code class="font-mono">O(log n)</code>). Reading every single page takes 10,000 flips (<code class="font-mono">O(n)</code>)!
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Big O Curve Chart & Live Step Calculator -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left (7 cols): SVG Growth Curve Visualizer -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">Interactive Big O Growth Visualizer</h3>
+              <p class="text-xs text-slate-500">Adjust input size <strong>n</strong> to watch how fast operations explode for steeper curves.</p>
+            </div>
+            <div class="flex items-center gap-3 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl">
+              <label for="bigo-n-slider" class="text-xs font-bold text-indigo-900">Input Size (n):</label>
+              <input type="range" id="bigo-n-slider" min="1" max="16" value="8" oninput="updateBigOVisualizer(this.value)" class="w-28 sm:w-36 accent-indigo-600 cursor-pointer" />
+              <span id="bigo-n-display" class="font-mono font-extrabold text-sm text-indigo-700 w-7 text-right">8</span>
+            </div>
+          </div>
+
+          <!-- Responsive SVG Graph -->
+          <div class="bg-slate-900 rounded-2xl p-3 sm:p-4">
+            <svg id="bigo-svg" viewBox="0 0 600 320" class="w-full h-auto overflow-visible">
+              <!-- Axes & Curves rendered dynamically via JS -->
+            </svg>
+          </div>
+
+          <!-- Curve Toggle Checkboxes -->
+          <div class="flex flex-wrap gap-2" id="bigo-toggles">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Right (5 cols): Live Operations Count Table for Current n -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Operations Count at <span class="font-mono text-indigo-600">n = <span id="table-n-label">8</span></span></h3>
+            <p class="text-xs text-slate-500 mb-3">Exact number of basic steps required for each time complexity class:</p>
+
+            <div class="overflow-hidden border border-slate-200 rounded-xl">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead class="bg-slate-100 text-slate-700 font-bold">
+                  <tr>
+                    <th class="py-2.5 px-3">Notation</th>
+                    <th class="py-2.5 px-3">Name</th>
+                    <th class="py-2.5 px-3 text-right">Steps</th>
+                  </tr>
+                </thead>
+                <tbody id="bigo-steps-tbody" class="divide-y divide-slate-200">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 leading-relaxed">
+            <strong>Notice the Danger Zone:</strong> At <code class="font-mono">n = 16</code>, <code class="font-mono">O(1)</code> takes just <strong>1 step</strong> and <code class="font-mono">O(log n)</code> takes <strong>4 steps</strong>, while <code class="font-mono">O(2ⁿ)</code> explodes to <strong>65,536 steps</strong>!
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Visual Step-by-Step Algorithm Race on a 16-Element Array -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Visual Step Race: How Many Boxes Does Each Complexity Touch? (n = 16)</h3>
+            <p class="text-xs sm:text-sm text-slate-600">Click an algorithm below to watch it highlight the exact elements it inspects on a 16-item sorted array.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="runComplexityDemo('o1')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
+              Run O(1) Index Lookup
+            </button>
+            <button onclick="runComplexityDemo('ologn')" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-sm transition">
+              Run O(log n) Binary Search
+            </button>
+            <button onclick="runComplexityDemo('on')" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition">
+              Run O(n) Linear Search
+            </button>
+            <button onclick="runComplexityDemo('on2')" class="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition">
+              Run O(n²) Pair Check
+            </button>
+          </div>
+        </div>
+
+        <!-- 16 Array Boxes -->
+        <div id="array-race-grid" class="grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-16 gap-2 py-2">
+          <!-- Generated by JS -->
+        </div>
+
+        <div id="array-race-status" class="p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs sm:text-sm text-slate-800 font-medium">
+          Choose one of the 4 buttons above to visually compare step counts on <strong>n = 16</strong> elements!
+        </div>
+      </div>
+
+      <!-- Detailed Reference Cards for All 7 Common Time Complexities (Pages 9-10) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-lg sm:text-xl font-bold text-slate-900">All 7 Common Time Complexities Explained (Handout Reference)</h3>
+          <p class="text-xs sm:text-sm text-slate-600">Ordered from fastest (most scalable) to slowest (least scalable).</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="complexity-cards-grid">
+          <!-- Populated dynamically from clean structured data -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Analogy Cheat Sheet Modal (No alert/confirm used!) -->
+  <div id="glossary-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900">Quick Real-World Analogy Cheat Sheet</h3>
+          <p class="text-xs text-slate-500">Connect every technical term in Handout 1 to everyday life.</p>
+        </div>
+        <button onclick="toggleGlossaryModal()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">
+          ✕ Close
+        </button>
+      </div>
+      <div class="space-y-3 text-xs sm:text-sm">
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Parallel Algorithm Model:</strong> A team of chefs cooking a 500-guest banquet simultaneously instead of one chef working alone.
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Granularity (Coarse vs. Fine):</strong> Giving each chef a whole dish to finish (Coarse = less talking) vs. asking for approval after every carrot slice (Fine = high communication overhead).
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Data-Parallel (SIMD):</strong> 4 teachers grading 1,000 exams using the exact same answer key on 250 papers each.
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Task Graph (DAG):</strong> Building a house—plumbing and wiring can happen in parallel, but both must wait until the walls are framed.
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Work Pool vs. Master-Worker:</strong> Coffee shop baristas pulling tickets from a shared rail whenever free (Work Pool) vs. an orchestra conductor assigning specific sheet music to players (Master-Worker).
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Pipeline Model:</strong> A sandwich assembly line (Bread &rarr; Meat &rarr; Veggies &rarr; Wrap) where 4 sandwiches are worked on at once at different stations.
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Multithreading &amp; BlockingQueue:</strong> Roommates sharing one kitchen (Address Space) and a 3-slot pass-through counter that makes the chef wait if full and the waiter wait if empty.
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <strong class="text-indigo-700">Big O Time Complexity O(f):</strong> Measuring how many extra steps an algorithm takes as the pile of data (<code class="font-mono">n</code>) grows from 10 items to 1,000,000 items.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-xs text-slate-500 border-t border-slate-200 mt-10">
+    IT2503 Application-Specific Algorithms &bull; Interactive Concept Visualizer (Parallel Models, Multithreading &amp; Time Complexities)
+  </footer>
+
+  <script>
+    // =========================================================================
+    // NAVIGATION & MODAL CONTROLS
+    // =========================================================================
+    function switchModule(moduleId) {
+      // Hide all module sections
+      document.querySelectorAll('.module-section').forEach(sec => sec.classList.add('hidden'));
+      // Reset all nav buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-slate-100', 'text-slate-700');
+      });
+      // Show selected section and highlight button
+      document.getElementById(moduleId).classList.remove('hidden');
+      const activeBtn = document.getElementById('nav-' + moduleId);
+      activeBtn.classList.remove('bg-slate-100', 'text-slate-700');
+      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+
+      // Re-render SVG chart if switching to Module 4
+      if (moduleId === 'mod4') {
+        updateBigOVisualizer(document.getElementById('bigo-n-slider').value);
+      }
+    }
+
+    function toggleGlossaryModal() {
+      const modal = document.getElementById('glossary-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    // =========================================================================
+    // MODULE 1: PARALLEL ARCHITECTURE & GRANULARITY SIMULATIONS
+    // =========================================================================
+    let archRunning = false;
+
+    function runArchitectureSim() {
+      if (archRunning) return;
+      archRunning = true;
+      const btn = document.getElementById('arch-sim-btn');
+      const narrator = document.getElementById('arch-narrator');
+      const cu = document.getElementById('arch-cu');
+      const mem = document.getElementById('arch-mem');
+      const procs = [
+        { el: document.getElementById('arch-p1'), st: document.getElementById('arch-p1-status') },
+        { el: document.getElementById('arch-p2'), st: document.getElementById('arch-p2-status') },
+        { el: document.getElementById('arch-pn'), st: document.getElementById('arch-pn-status') }
+      ];
+
+      btn.disabled = true;
+      btn.classList.add('opacity-60');
+
+      // Step 1: Control Unit broadcasts Instruction Stream
+      cu.classList.add('border-indigo-400', 'bg-indigo-950', 'scale-105');
+      narrator.innerHTML = '<strong>Step 1 (Task &amp; Instruction Broadcast):</strong> The <em>Control Unit</em> divides the computation into tasks and sends the <em>Instruction Stream</em> to all processors simultaneously.';
+
+      setTimeout(() => {
+        cu.classList.remove('scale-105');
+        // Step 2: Processors execute concurrently on their Data Streams
+        procs.forEach((p, idx) => {
+          p.el.classList.add('border-emerald-400', 'bg-emerald-950/60', 'pulse-packet');
+          p.st.textContent = `Computing Stream ${idx === 2 ? 'n' : idx + 1}...`;
+          p.st.className = 'mt-2 text-[11px] px-2 py-0.5 rounded bg-emerald-600 text-white font-semibold';
+        });
+        narrator.innerHTML = '<strong>Step 2 (Concurrent Execution):</strong> All processors run their assigned <em>Data Streams</em> in parallel—cutting computation time dramatically!';
+      }, 1300);
+
+      setTimeout(() => {
+        // Step 3: Synchronization & Write back to Memory Unit
+        mem.classList.add('border-amber-400', 'bg-amber-950/60', 'scale-[1.02]');
+        procs.forEach((p, idx) => {
+          p.st.textContent = 'Synced ✓';
+          p.st.className = 'mt-2 text-[11px] px-2 py-0.5 rounded bg-amber-600 text-white font-semibold';
+        });
+        narrator.innerHTML = '<strong>Step 3 (Communication &amp; Synchronization):</strong> Processors coordinate execution order and write their completed results safely into the shared <em>Memory Unit</em>.';
+      }, 2800);
+
+      setTimeout(() => {
+        // Reset visual highlights
+        cu.classList.remove('border-indigo-400', 'bg-indigo-950');
+        mem.classList.remove('border-amber-400', 'bg-amber-950/60', 'scale-[1.02]');
+        procs.forEach(p => {
+          p.el.classList.remove('border-emerald-400', 'bg-emerald-950/60', 'pulse-packet');
+          p.st.textContent = 'Idle';
+          p.st.className = 'mt-2 text-[11px] px-2 py-0.5 rounded bg-slate-700 text-slate-300';
+        });
+        btn.disabled = false;
+        btn.classList.remove('opacity-60');
+        archRunning = false;
+      }, 4500);
+    }
+
+    function updateGranularitySim(val) {
+      const g = parseInt(val, 10); // 1 (very fine) to 10 (very coarse)
+      const numTasks = Math.round(44 - g * 4); // 40 tiny tasks down to 4 large tasks
+      const pureCompute = 25; // 100 units across 4 processors = 25ms
+      const commOverhead = Math.round((11 - g) * 4.5); // Higher overhead when fine-grained
+      const totalTime = pureCompute + commOverhead;
+
+      const typeLabel = document.getElementById('gran-type-label');
+      const chunksLabel = document.getElementById('gran-chunks-label');
+      const barsContainer = document.getElementById('gran-visual-bars');
+      const explanation = document.getElementById('gran-explanation');
+
+      if (g >= 6) {
+        typeLabel.textContent = 'Coarse-Grained (Large Independent Chunks)';
+        typeLabel.className = 'px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800';
+        explanation.textContent = 'Each processor receives a big chunk of work and computes independently for a long stretch before needing to communicate or synchronize. Overhead is very low!';
+      } else {
+        typeLabel.textContent = 'Fine-Grained (Tiny Chunks, Frequent Sync)';
+        typeLabel.className = 'px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800';
+        explanation.textContent = 'Work is chopped into tiny pieces. Processors spend almost as much time communicating and waiting at synchronization checkpoints as they do computing!';
+      }
+
+      chunksLabel.textContent = `${numTasks} Tasks across 4 Cores`;
+      document.getElementById('gran-comp-time').textContent = `${pureCompute} ms`;
+      document.getElementById('gran-comm-time').textContent = `${commOverhead} ms`;
+      document.getElementById('gran-total-time').textContent = `${totalTime} ms`;
+
+      // Render 4 processor rows with blocks + sync pauses
+      const blocksPerProc = Math.max(1, Math.round(numTasks / 4));
+      let html = '';
+      for (let p = 1; p <= 4; p++) {
+        html += `<div class="flex items-center gap-2">
+          <span class="text-[11px] font-mono font-bold text-slate-500 w-12">Core ${p}</span>
+          <div class="flex-1 flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 overflow-hidden">`;
+        for (let b = 0; b < blocksPerProc; b++) {
+          html += `<div class="h-4 flex-1 rounded bg-indigo-500"></div>`;
+          if (b < blocksPerProc - 1) {
+            html += `<div class="h-4 w-1.5 rounded bg-amber-400 shrink-0" title="Communication/Sync Pause"></div>`;
+          }
+        }
+        html += `</div></div>`;
+      }
+      barsContainer.innerHTML = html;
+    }
+
+    // =========================================================================
+    // MODULE 2: SIX PARALLEL ALGORITHM MODELS (DATA + INTERACTIVE SIMS)
+    // =========================================================================
+    const parallelModelsData = {
+      data: {
+        badge: 'SIMD (Single Instruction, Multiple Data) &bull; GPU Computing',
+        title: 'Data-Parallel Model',
+        desc: 'Divides a large dataset (array, list, or matrix) into smaller equal chunks and distributes them across multiple processors. Every processor executes the exact same instruction on its own chunk at the same time.',
+        analogy: 'Imagine 4 teachers grading 1,000 multiple-choice answer sheets. We split the pile into 4 stacks of 250 sheets. Every teacher applies the exact same grading key simultaneously, then we combine all scores at the end.',
+        mechanics: [
+          '<strong>Data Partitioning:</strong> Split the large dataset evenly among available processors.',
+          '<strong>Uniform Operation:</strong> Every processor runs the exact same function (e.g., multiply by 2) on its slice.',
+          '<strong>Synchronization:</strong> Wait for all processors to finish and combine the results.'
+        ],
+        example: 'Dense Matrix Multiplication or doubling every element in an 8-number array across 4 cores.',
+        simHeading: 'SIMD Simulation: Multiply Array [4, 7, 2, 9, 5, 1, 8, 3] by 2'
+      },
+      taskgraph: {
+        badge: 'DAG (Directed Acyclic Graph) &bull; Workflow &amp; Compilers',
+        title: 'Task Graph Model',
+        desc: 'Breaks a problem into distinct tasks that may have data or control dependencies, mapped as a Directed Acyclic Graph (DAG). Independent tasks run simultaneously, while dependent tasks wait for their prerequisites.',
+        analogy: 'Building a house: once the walls are framed, plumbers and electricians can work in parallel at the same time—but the painters must wait until both finish and drywall is up!',
+        mechanics: [
+          '<strong>Task Identification:</strong> Break the problem into smaller subtasks with clear inputs/outputs.',
+          '<strong>Dependency Analysis:</strong> Build a DAG showing which tasks must finish before others can start.',
+          '<strong>Scheduling:</strong> Assign independent tasks to different processors.',
+          '<strong>Execution &amp; Synchronization:</strong> Run independent tasks concurrently; dependent tasks wait for prerequisites.'
+        ],
+        example: 'Finding the minimum number in [23, 12, 9, 30, 37, 27, 8, 17] using a parallel reduction tree (Handout Page 2).',
+        simHeading: 'DAG Simulation: Parallel Minimum Tree (Exact Handout Example)'
+      },
+      workpool: {
+        badge: 'Dynamic Load Balancing &bull; Shared Task Queue',
+        title: 'Work Pool Model',
+        desc: 'All tasks are placed in a shared pool or queue. Processors dynamically "pull" a new task whenever they become idle—so fast processors automatically take more work and no core sits wasted.',
+        analogy: 'A busy coffee shop ticket rail: baristas aren’t pre-assigned 10 drinks each. Whenever a barista finishes a drink, they immediately grab the next ticket from the shared rail until the rail is empty.',
+        mechanics: [
+          '<strong>Shared Queue:</strong> A centralized or distributed pool holds all pending tasks.',
+          '<strong>Dynamic Pull:</strong> Processors fetch a task, execute it, return results, and immediately pull the next task.',
+          '<strong>Shrinking Pool:</strong> The queue shrinks dynamically until zero tasks remain.'
+        ],
+        example: 'Parallel Tree Search where sub-trees of unpredictable sizes are explored by 4 processors (Handout Page 3).',
+        simHeading: 'Dynamic Work Pool Simulation: 3 Processors Pulling Variable Tasks'
+      },
+      masterworker: {
+        badge: 'Master-Slave Architecture &bull; Centralized Control',
+        title: 'Master-Worker (Master-Slave) Model',
+        desc: 'Uses one central controller (the Master Process) that divides and assigns work to multiple Worker (Slave) processes. Workers compute their assigned parts concurrently and send outputs back to the Master.',
+        analogy: 'An orchestra conductor (Master) handing out specific sheet music parts to the violin, cello, and flute players (Workers), and blending their playing into one symphony.',
+        mechanics: [
+          '<strong>Task Distribution:</strong> The Master assigns different sub-problems to Worker processes.',
+          '<strong>Concurrent Execution:</strong> All Workers compute their assigned tasks in parallel.',
+          '<strong>Result Aggregation:</strong> The Master collects outputs from every Worker and assembles the final result.'
+        ],
+        example: 'A Master Process distributing workload chunks across 4 Slave Processes (Handout Page 3).',
+        simHeading: 'Master-Worker Simulation: Central Coordinator & 4 Slave Nodes'
+      },
+      pipeline: {
+        badge: 'Assembly Line Concurrency &bull; Staged Data Flow',
+        title: 'Pipeline Model',
+        desc: 'Splits a computation into ordered sequential stages like a factory assembly line. Each processor handles one stage and passes its output to the next stage. Once full, multiple items are processed at once!',
+        analogy: 'A Subway sandwich line: Person 1 slices bread, Person 2 adds meat/cheese, Person 3 adds veggies, Person 4 wraps it. While Sandwich #1 is being wrapped, Sandwich #2 is getting veggies and #3 is getting meat!',
+        mechanics: [
+          '<strong>Decomposition:</strong> Split the overall computation into ordered sequential stages.',
+          '<strong>Stage Assignment:</strong> Assign each stage to a dedicated processor.',
+          '<strong>Data Flow:</strong> Each stage processes an item and passes it immediately to the next stage.'
+        ],
+        example: 'Parallel LU Factorization where a Producer generates matrix blocks and Consumers process stages (Handout Page 4).',
+        simHeading: 'Pipeline Assembly Line: Processing 4 Matrix Blocks Across 3 Stages'
+      },
+      hybrid: {
+        badge: 'Multi-Phase Heterogeneous Computing &bull; CPU + GPU + Clusters',
+        title: 'Hybrid Model',
+        desc: 'Combines multiple parallel models across different stages of an application to get the best strengths of each—mirroring modern systems that mix multi-core CPUs, GPUs, and distributed clusters.',
+        analogy: 'Making an animated blockbuster movie: Phase 1 uses a Director assigning scenes (Master-Worker), Phase 2 uses a render farm queue for frames (Work Pool), and Phase 3 links shot dependencies (Data/Task Graph).',
+        mechanics: [
+          '<strong>Phase 1 (Master-Worker):</strong> Master distributes raw data transformation tasks to slave nodes.',
+          '<strong>Phase 2 (Work Pool):</strong> Transformed items enter a dynamic queue for balanced data analysis.',
+          '<strong>Phase 3 (Data/Task Graph):</strong> Dependent rendering tasks assemble the final visualization.'
+        ],
+        example: 'Three-phase data pipeline combining Master-Slave -> Work Pool -> Data Graph (Handout Page 4).',
+        simHeading: 'Hybrid Architecture: 3-Phase Multi-Model Workflow'
+      }
+    };
+
+    let currentPM = 'data';
+    let pmStep = 0;
+
+    function selectParallelModel(modelKey) {
+      currentPM = modelKey;
+      pmStep = 0;
+
+      // Update active button styling
+      document.querySelectorAll('.pm-btn').forEach(btn => {
+        btn.className = 'pm-btn p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-left transition';
+        btn.querySelector('div:first-child').className = 'text-[11px] font-mono font-bold text-slate-400';
+      });
+      const activeBtn = document.getElementById('pm-btn-' + modelKey);
+      activeBtn.className = 'pm-btn p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-900 text-left transition shadow-sm';
+      activeBtn.querySelector('div:first-child').className = 'text-[11px] font-mono font-bold text-indigo-600';
+
+      // Populate text info
+      const data = parallelModelsData[modelKey];
+      document.getElementById('pm-badge').innerHTML = data.badge;
+      document.getElementById('pm-title').textContent = data.title;
+      document.getElementById('pm-desc').textContent = data.desc;
+      document.getElementById('pm-analogy').textContent = data.analogy;
+      document.getElementById('pm-example-text').textContent = data.example;
+      document.getElementById('pm-sim-heading').textContent = data.simHeading;
+
+      const mechList = document.getElementById('pm-mechanics');
+      mechList.innerHTML = data.mechanics.map(m => `<li>${m}</li>`).join('');
+
+      renderParallelModelStage();
+    }
+
+    function stepParallelModelSim() {
+      const maxSteps = { data: 3, taskgraph: 3, workpool: 4, masterworker: 3, pipeline: 5, hybrid: 3 };
+      if (pmStep < maxSteps[currentPM]) {
+        pmStep++;
+      } else {
+        pmStep = 0;
+      }
+      renderParallelModelStage();
+    }
+
+    function resetParallelModelSim() {
+      pmStep = 0;
+      renderParallelModelStage();
+    }
+
+    function renderParallelModelStage() {
+      const stage = document.getElementById('pm-sim-stage');
+      const status = document.getElementById('pm-sim-status');
+
+      if (currentPM === 'data') {
+        const arr = [4, 7, 2, 9, 5, 1, 8, 3];
+        const chunks = [[4, 7], [2, 9], [5, 1], [8, 3]];
+        if (pmStep === 0) {
+          stage.innerHTML = `
+            <div class="text-center space-y-4">
+              <div class="text-xs font-mono text-slate-400">Input Dataset (8 Elements)</div>
+              <div class="flex flex-wrap justify-center gap-2">
+                ${arr.map(n => `<span class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-600 flex items-center justify-center font-mono font-bold">${n}</span>`).join('')}
+              </div>
+              <div class="text-xs text-indigo-300">Instruction to broadcast: <code class="bg-indigo-950 px-2 py-0.5 rounded">value * 2</code></div>
+            </div>`;
+          status.innerHTML = '<strong>Ready:</strong> Click <strong>Next Step &rarr;</strong> to partition the 8-element array across 4 processors.';
+        } else if (pmStep === 1) {
+          stage.innerHTML = `
+            <div class="space-y-3">
+              <div class="text-center text-xs font-mono text-indigo-300">Step 1: Data Partitioning (2 elements per Core)</div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                ${chunks.map((c, i) => `
+                  <div class="bg-slate-800 border-2 border-indigo-500 rounded-xl p-3 text-center pulse-packet">
+                    <div class="text-xs font-bold text-indigo-300 mb-2">Processor ${i + 1}</div>
+                    <div class="flex justify-center gap-1.5">
+                      ${c.map(n => `<span class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center font-mono text-sm font-bold">${n}</span>`).join('')}
+                    </div>
+                  </div>`).join('')}
+              </div>
+            </div>`;
+          status.innerHTML = '<strong>Step 1 (Data Partitioning):</strong> The dataset is split evenly into four 2-element blocks.';
+        } else if (pmStep === 2) {
+          stage.innerHTML = `
+            <div class="space-y-3">
+              <div class="text-center text-xs font-mono text-emerald-300">Step 2: Uniform SIMD Operation (All Cores execute × 2 simultaneously)</div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                ${chunks.map((c, i) => `
+                  <div class="bg-emerald-950/70 border-2 border-emerald-400 rounded-xl p-3 text-center pulse-packet">
+                    <div class="text-xs font-bold text-emerald-300 mb-1">Processor ${i + 1}</div>
+                    <div class="text-[10px] font-mono text-emerald-200 mb-2">Running: x * 2</div>
+                    <div class="flex justify-center gap-1.5">
+                      ${c.map(n => `<span class="w-8 h-8 rounded bg-emerald-600 text-white flex items-center justify-center font-mono text-sm font-bold">${n * 2}</span>`).join('')}
+                    </div>
+                  </div>`).join('')}
+              </div>
+            </div>`;
+          status.innerHTML = '<strong>Step 2 (Uniform Operation):</strong> Every processor applies the exact same multiplication simultaneously!';
+        } else {
+          stage.innerHTML = `
+            <div class="text-center space-y-4 pulse-packet">
+              <div class="text-xs font-mono text-amber-300">Step 3: Synchronized Output Merged into Memory</div>
+              <div class="flex flex-wrap justify-center gap-2">
+                ${arr.map(n => `<span class="w-10 h-10 rounded-lg bg-emerald-600 border border-emerald-300 flex items-center justify-center font-mono font-bold text-white">${n * 2}</span>`).join('')}
+              </div>
+            </div>`;
+          status.innerHTML = '<strong>Step 3 (Synchronization Complete):</strong> All partial arrays are combined into the final result!';
+        }
+      }
+
+      else if (currentPM === 'taskgraph') {
+        // Handout Page 2 Exact DAG Example: min(23,12), min(9,30), min(37,27), min(8,17) -> min(12,9), min(27,8) -> min(9,8) -> 8
+        const l1Active = pmStep >= 1;
+        const l2Active = pmStep >= 2;
+        const l3Active = pmStep >= 3;
+        stage.innerHTML = `
+          <div class="space-y-4 text-center">
+            <!-- Root Level 3 -->
+            <div class="flex justify-center">
+              <div class="px-4 py-2 rounded-xl border-2 transition ${l3Active ? 'bg-emerald-600 border-emerald-300 text-white font-extrabold pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-400'}">
+                <div class="text-[10px] font-mono">Root Task (Depends on Level 2)</div>
+                <div class="text-sm font-mono">${l3Active ? 'min(9, 8) = 8 ✓' : 'min(?, ?)'}</div>
+              </div>
+            </div>
+            <!-- Level 2 -->
+            <div class="grid grid-cols-2 gap-4 max-w-md mx-auto">
+              <div class="px-3 py-2 rounded-xl border-2 transition ${l2Active ? 'bg-indigo-600 border-indigo-300 text-white font-bold pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-400'}">
+                <div class="text-[10px] font-mono">Task 5 (Waits for T1 &amp; T2)</div>
+                <div class="text-xs font-mono">${l2Active ? 'min(12, 9) = 9' : 'Waiting...'}</div>
+              </div>
+              <div class="px-3 py-2 rounded-xl border-2 transition ${l2Active ? 'bg-indigo-600 border-indigo-300 text-white font-bold pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-400'}">
+                <div class="text-[10px] font-mono">Task 6 (Waits for T3 &amp; T4)</div>
+                <div class="text-xs font-mono">${l2Active ? 'min(27, 8) = 8' : 'Waiting...'}</div>
+              </div>
+            </div>
+            <!-- Leaf Level 1 -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              ${[
+                { t: 'T1', expr: 'min(23, 12)', res: '12' },
+                { t: 'T2', expr: 'min(9, 30)', res: '9' },
+                { t: 'T3', expr: 'min(37, 27)', res: '27' },
+                { t: 'T4', expr: 'min(8, 17)', res: '8' }
+              ].map(item => `
+                <div class="p-2.5 rounded-xl border-2 transition ${l1Active ? 'bg-sky-700 border-sky-300 text-white pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-300'}">
+                  <div class="text-[10px] font-mono">${item.t} (Independent)</div>
+                  <div class="text-xs font-mono font-bold mt-0.5">${item.expr}${l1Active ? ' = ' + item.res : ''}</div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+
+        const msgs = [
+          '<strong>Ready:</strong> Notice how T1, T2, T3, and T4 have no prerequisites—they can run in parallel!',
+          '<strong>Step 1 (Leaf Tasks Execute Concurrently):</strong> Four processors compute min(23,12)=12, min(9,30)=9, min(37,27)=27, and min(8,17)=8 simultaneously.',
+          '<strong>Step 2 (Dependencies Unlocked):</strong> Now that prerequisites finished, Task 5 computes min(12,9)=9 while Task 6 computes min(27,8)=8 in parallel!',
+          '<strong>Step 3 (Final Root Task):</strong> The root node receives 9 and 8, computing the global minimum: <strong>8</strong>.'
+        ];
+        status.innerHTML = msgs[pmStep];
+      }
+
+      else if (currentPM === 'workpool') {
+        const states = [
+          { pool: ['T1 (Fast)', 'T2 (Slow)', 'T3 (Fast)', 'T4 (Fast)', 'T5 (Med)', 'T6 (Fast)'], p1: 'Idle', p2: 'Idle', p3: 'Idle', msg: '<strong>Ready:</strong> 6 tasks of different sizes sit in the shared Work Pool queue.' },
+          { pool: ['T4 (Fast)', 'T5 (Med)', 'T6 (Fast)'], p1: 'Running T1 (Fast)', p2: 'Running T2 (Slow...)', p3: 'Running T3 (Fast)', msg: '<strong>Step 1 (Initial Pull):</strong> All 3 processors pull one task each from the shared queue.' },
+          { pool: ['T6 (Fast)'], p1: 'Done T1 -> Pulled T4!', p2: 'Still on T2 (Slow...)', p3: 'Done T3 -> Pulled T5!', msg: '<strong>Step 2 (Dynamic Load Balancing):</strong> P1 and P3 finished their fast tasks early, so they immediately pull T4 and T5 while P2 is still busy with T2!' },
+          { pool: [], p1: 'Done T4 -> Pulled T6!', p2: 'Finished T2 ✓', p3: 'Finished T5 ✓', msg: '<strong>Step 3 (Pool Emptied):</strong> P1 grabs the final task T6. Nobody sat idle waiting for slow T2!' },
+          { pool: [], p1: 'All Done ✓', p2: 'All Done ✓', p3: 'All Done ✓', msg: '<strong>Step 4 (Complete):</strong> Work Pool is empty! Dynamic pulling balanced the uneven workload automatically.' }
+        ];
+        const s = states[pmStep];
+        stage.innerHTML = `
+          <div class="space-y-5">
+            <div class="bg-slate-800 border border-indigo-500/60 rounded-xl p-3.5 text-center">
+              <div class="text-xs font-mono text-indigo-300 mb-2">Shared Work Pool Queue (${s.pool.length} remaining)</div>
+              <div class="flex flex-wrap justify-center gap-2 min-h-[32px]">
+                ${s.pool.length ? s.pool.map(t => `<span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-xs font-mono font-bold">${t}</span>`).join('') : '<span class="text-xs text-emerald-400 font-mono">[ Queue Empty ]</span>'}
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="bg-slate-800 border border-slate-600 rounded-xl p-3">
+                <div class="text-xs font-bold text-emerald-400">Processor 1</div>
+                <div class="text-xs font-mono mt-1.5 text-slate-200">${s.p1}</div>
+              </div>
+              <div class="bg-slate-800 border border-slate-600 rounded-xl p-3">
+                <div class="text-xs font-bold text-amber-400">Processor 2</div>
+                <div class="text-xs font-mono mt-1.5 text-slate-200">${s.p2}</div>
+              </div>
+              <div class="bg-slate-800 border border-slate-600 rounded-xl p-3">
+                <div class="text-xs font-bold text-sky-400">Processor 3</div>
+                <div class="text-xs font-mono mt-1.5 text-slate-200">${s.p3}</div>
+              </div>
+            </div>
+          </div>`;
+        status.innerHTML = s.msg;
+      }
+
+      else if (currentPM === 'masterworker') {
+        const states = [
+          { master: 'Holding Full Problem', slaves: ['Waiting', 'Waiting', 'Waiting', 'Waiting'], msg: '<strong>Ready:</strong> The central Master Process prepares to split and assign tasks to 4 Slave Processes.' },
+          { master: 'Dispatched 4 Subtasks ↓', slaves: ['Received Part 1', 'Received Part 2', 'Received Part 3', 'Received Part 4'], msg: '<strong>Step 1 (Task Distribution):</strong> Master assigns a distinct slice of work to each Slave node.' },
+          { master: 'Waiting for Slaves...', slaves: ['Computing #1...', 'Computing #2...', 'Computing #3...', 'Computing #4...'], msg: '<strong>Step 2 (Concurrent Execution):</strong> All 4 Slave Processes compute their assigned workloads in parallel.' },
+          { master: 'Aggregated Final Output ✓', slaves: ['Returned Result 1', 'Returned Result 2', 'Returned Result 3', 'Returned Result 4'], msg: '<strong>Step 3 (Result Aggregation):</strong> Slaves send outputs back to the Master, which combines them into the final solution.' }
+        ];
+        const s = states[pmStep];
+        stage.innerHTML = `
+          <div class="space-y-6 text-center">
+            <div class="inline-block px-6 py-3.5 rounded-2xl bg-indigo-600 border-2 border-indigo-300 shadow-md">
+              <div class="font-extrabold text-sm">Master Process</div>
+              <div class="text-xs font-mono text-indigo-100 mt-1">${s.master}</div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              ${s.slaves.map((st, idx) => `
+                <div class="bg-slate-800 border border-slate-600 rounded-xl p-3">
+                  <div class="font-bold text-xs text-emerald-400">Slave Process ${idx + 1}</div>
+                  <div class="text-[11px] font-mono text-slate-200 mt-1.5">${st}</div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+        status.innerHTML = s.msg;
+      }
+
+      else if (currentPM === 'pipeline') {
+        // 4 items flowing through 3 stages over 5 ticks
+        const timeline = [
+          { s1: 'Empty', s2: 'Empty', s3: 'Empty', done: [], msg: '<strong>Ready:</strong> 4 Matrix Blocks (B1, B2, B3, B4) are ready to enter the 3-stage assembly line.' },
+          { s1: 'Block B1', s2: 'Empty', s3: 'Empty', done: [], msg: '<strong>Tick 1:</strong> Block B1 enters Stage 1 (Read &amp; Partition).' },
+          { s1: 'Block B2', s2: 'Block B1', s3: 'Empty', done: [], msg: '<strong>Tick 2:</strong> B1 moves to Stage 2 (Factorize) while B2 immediately enters Stage 1!' },
+          { s1: 'Block B3', s2: 'Block B2', s3: 'Block B1', done: [], msg: '<strong>Tick 3 (Pipeline Full!):</strong> All 3 stages are working simultaneously on B3, B2, and B1!' },
+          { s1: 'Block B4', s2: 'Block B3', s3: 'Block B2', done: ['B1 ✓'], msg: '<strong>Tick 4:</strong> B1 finishes! B4, B3, and B2 advance one stage in lockstep.' },
+          { s1: 'Empty', s2: 'Empty', s3: 'Empty', done: ['B1 ✓', 'B2 ✓', 'B3 ✓', 'B4 ✓'], msg: '<strong>Tick 5 (Complete):</strong> All blocks processed with maximum assembly-line throughput!' }
+        ];
+        const t = timeline[pmStep];
+        stage.innerHTML = `
+          <div class="space-y-4">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="bg-slate-800 border-2 border-sky-500 rounded-xl p-3">
+                <div class="text-[11px] font-mono text-sky-300">Stage 1 (Producer)</div>
+                <div class="font-bold text-sm mt-2 py-2 rounded bg-slate-900 text-white">${t.s1}</div>
+              </div>
+              <div class="bg-slate-800 border-2 border-indigo-500 rounded-xl p-3">
+                <div class="text-[11px] font-mono text-indigo-300">Stage 2 (Compute)</div>
+                <div class="font-bold text-sm mt-2 py-2 rounded bg-slate-900 text-white">${t.s2}</div>
+              </div>
+              <div class="bg-slate-800 border-2 border-emerald-500 rounded-xl p-3">
+                <div class="text-[11px] font-mono text-emerald-300">Stage 3 (Consumer)</div>
+                <div class="font-bold text-sm mt-2 py-2 rounded bg-slate-900 text-white">${t.s3}</div>
+              </div>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center text-xs font-mono">
+              Completed Outputs: <span class="text-emerald-400 font-bold">${t.done.length ? t.done.join('  ') : 'None yet'}</span>
+            </div>
+          </div>`;
+        status.innerHTML = t.msg;
+      }
+
+      else if (currentPM === 'hybrid') {
+        const phases = [
+          { active: 0, msg: '<strong>Ready:</strong> Modern heterogeneous workflow combining 3 parallel models in sequence (Handout Page 4).' },
+          { active: 1, msg: '<strong>Phase 1 (Master-Slave Model):</strong> Master distributes raw data transformation tasks across slave processors.' },
+          { active: 2, msg: '<strong>Phase 2 (Work Pool Model):</strong> Transformed data enters a shared queue for balanced parallel analysis.' },
+          { active: 3, msg: '<strong>Phase 3 (Data/Task Graph Model):</strong> Dependent graph nodes assemble the final visual output.' }
+        ];
+        const p = phases[pmStep];
+        stage.innerHTML = `
+          <div class="flex flex-col items-center space-y-3 max-w-sm mx-auto w-full">
+            <div class="w-full p-3.5 rounded-xl border-2 text-center transition ${p.active === 1 ? 'bg-indigo-600 border-indigo-300 font-bold pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-300'}">
+              <div class="text-[10px] font-mono uppercase">Phase 1: Data Transformation</div>
+              <div class="text-sm">Master-Slave Model</div>
+            </div>
+            <div class="text-slate-400 font-bold">&darr;</div>
+            <div class="w-full p-3.5 rounded-xl border-2 text-center transition ${p.active === 2 ? 'bg-emerald-600 border-emerald-300 font-bold pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-300'}">
+              <div class="text-[10px] font-mono uppercase">Phase 2: Data Analysis</div>
+              <div class="text-sm">Work Pool Model</div>
+            </div>
+            <div class="text-slate-400 font-bold">&darr;</div>
+            <div class="w-full p-3.5 rounded-xl border-2 text-center transition ${p.active === 3 ? 'bg-amber-600 border-amber-300 font-bold pulse-packet' : 'bg-slate-800 border-slate-600 text-slate-300'}">
+              <div class="text-[10px] font-mono uppercase">Phase 3: Visualization Assembly</div>
+              <div class="text-sm">Data Graph Model</div>
+            </div>
+          </div>`;
+        status.innerHTML = p.msg;
+      }
+    }
+
+    // =========================================================================
+    // MODULE 3: MULTITHREADING (RACE CONDITION & BLOCKING QUEUE LABS)
+    // =========================================================================
+    let isThreadSafeMode = false;
+
+    function setRaceMode(safe) {
+      isThreadSafeMode = safe;
+      const unsafeBtn = document.getElementById('race-unsafe-btn');
+      const safeBtn = document.getElementById('race-safe-btn');
+
+      if (safe) {
+        safeBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-sm transition';
+        unsafeBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold text-slate-700 hover:bg-white/60 transition';
+      } else {
+        unsafeBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-rose-600 text-white shadow-sm transition';
+        safeBtn.className = 'py-2 px-3 rounded-lg text-xs font-bold text-slate-700 hover:bg-white/60 transition';
+      }
+      document.getElementById('shared-balance-val').textContent = '100';
+      document.getElementById('thread-a-log').textContent = 'Ready (+50)';
+      document.getElementById('thread-b-log').textContent = 'Ready (+50)';
+    }
+
+    function runRaceSimulation() {
+      const balEl = document.getElementById('shared-balance-val');
+      const logA = document.getElementById('thread-a-log');
+      const logB = document.getElementById('thread-b-log');
+      const verdict = document.getElementById('race-verdict');
+
+      balEl.textContent = '100';
+      if (!isThreadSafeMode) {
+        // Simulate simultaneous read causing lost update
+        logA.textContent = '1. Read balance = 100';
+        logB.textContent = '1. Read balance = 100 (at same time!)';
+        setTimeout(() => {
+          logA.textContent = '2. Wrote 100 + 50 = 150';
+          logB.textContent = '2. Overwrote 100 + 50 = 150!';
+          balEl.textContent = '150';
+          balEl.className = 'text-rose-400';
+          verdict.className = 'p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900';
+          verdict.innerHTML = '<strong>Data Corruption (Race Condition)!</strong> Both threads read <code class="font-mono">100</code> before either saved its update, so one +50 deposit vanished!';
+        }, 700);
+      } else {
+        // Simulate synchronized lock/atomic execution
+        logA.textContent = '1. Acquired lock -> Read 100';
+        logB.textContent = '1. Waiting for Thread A...';
+        setTimeout(() => {
+          logA.textContent = '2. Wrote 150 & Released lock ✓';
+          balEl.textContent = '150';
+          balEl.className = 'text-emerald-400';
+        }, 650);
+        setTimeout(() => {
+          logB.textContent = '2. Read 150 -> Wrote 200 ✓';
+          balEl.textContent = '200';
+          verdict.className = 'p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900';
+          verdict.innerHTML = '<strong>Thread-Safe Success!</strong> Synchronization ensured Thread B waited for Thread A to finish, producing the accurate balance of <code class="font-mono">200</code>.';
+        }, 1350);
+      }
+    }
+
+    // Interactive BlockingQueue (Capacity = 3)
+    const bqCapacity = 3;
+    let bqItems = [];
+    let bqNextTaskId = 1;
+
+    function renderBlockingQueue() {
+      const slotsContainer = document.getElementById('bq-slots');
+      let html = '';
+      for (let i = 0; i < bqCapacity; i++) {
+        if (i < bqItems.length) {
+          html += `<div class="h-10 rounded-lg bg-indigo-600 border border-indigo-300 flex items-center justify-center text-xs font-mono font-bold text-white pulse-packet">${bqItems[i]}</div>`;
+        } else {
+          html += `<div class="h-10 rounded-lg border border-dashed border-slate-600 flex items-center justify-center text-[11px] text-slate-500">Empty</div>`;
+        }
+      }
+      slotsContainer.innerHTML = html;
+    }
+
+    function appendBqLog(msg, colorClass = 'text-slate-200') {
+      const consoleEl = document.getElementById('bq-console');
+      const line = document.createElement('div');
+      line.className = colorClass;
+      line.textContent = msg;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function producerPut() {
+      const prodState = document.getElementById('bq-producer-state');
+      const consState = document.getElementById('bq-consumer-state');
+
+      if (bqItems.length >= bqCapacity) {
+        prodState.textContent = 'BLOCKED (Queue Full 3/3!)';
+        prodState.className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-amber-600 text-white font-bold';
+        appendBqLog(`[Producer] BLOCKED on put(Task-${bqNextTaskId}) <-- waiting until consumer frees space`, 'text-amber-400');
+        return;
+      }
+
+      const taskName = `Task-${bqNextTaskId++}`;
+      bqItems.push(taskName);
+      prodState.textContent = `Added ${taskName} (Next: Task-${bqNextTaskId})`;
+      prodState.className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-emerald-950 text-emerald-200';
+      consState.textContent = `Ready (${bqItems.length} in queue)`;
+      consState.className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-sky-950 text-sky-200';
+
+      appendBqLog(`[Producer] Added: ${taskName}  (Queue size: ${bqItems.length}/3)`, 'text-emerald-300');
+      renderBlockingQueue();
+    }
+
+    function consumerTake() {
+      const prodState = document.getElementById('bq-producer-state');
+      const consState = document.getElementById('bq-consumer-state');
+
+      if (bqItems.length === 0) {
+        consState.textContent = 'BLOCKED (Queue Empty 0/3!)';
+        consState.className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-amber-600 text-white font-bold';
+        appendBqLog('[Consumer] BLOCKED on take() <-- waiting until producer adds a task', 'text-amber-400');
+        return;
+      }
+
+      const item = bqItems.shift();
+      consState.textContent = `Processed ${item} ✓`;
+      consState.className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-sky-950 text-sky-200';
+      prodState.textContent = `Space freed! (Next: Task-${bqNextTaskId})`;
+      prodState.className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-emerald-950 text-emerald-200';
+
+      appendBqLog(`   [Consumer] Processed: ${item}  (Queue size: ${bqItems.length}/3)`, 'text-sky-300');
+      renderBlockingQueue();
+    }
+
+    function resetBlockingQueue() {
+      bqItems = [];
+      bqNextTaskId = 1;
+      document.getElementById('bq-producer-state').textContent = 'Ready (Next: Task-1)';
+      document.getElementById('bq-producer-state').className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-emerald-950 text-emerald-200';
+      document.getElementById('bq-consumer-state').textContent = 'Ready to take()';
+      document.getElementById('bq-consumer-state').className = 'text-[11px] font-mono mt-1 px-2 py-0.5 rounded bg-sky-950 text-sky-200';
+      document.getElementById('bq-console').innerHTML = '<div class="text-slate-400">// Queue reset (capacity = 3).</div>';
+      renderBlockingQueue();
+    }
+
+    // =========================================================================
+    // MODULE 4: ALGORITHMIC COMPLEXITY & BIG O TIME COMPLEXITIES
+    // =========================================================================
+    const timeComplexities = [
+      {
+        id: 'o1',
+        notation: 'O(1)',
+        name: 'Constant Time',
+        color: '#10b981', // emerald
+        badgeBg: 'bg-emerald-100 text-emerald-800',
+        active: true,
+        fn: n => 1,
+        growth: 'Takes the exact same amount of time regardless of how huge input size n gets.',
+        analogy: 'Grabbing the very first book sitting on top of your desk—whether there are 10 books or 10,000 books in the library, grabbing the top one takes 1 second.',
+        examples: 'Accessing an array element by index (arr[5]), pushing/popping a stack, hash table insert (average case).'
+      },
+      {
+        id: 'ologn',
+        notation: 'O(log n)',
+        name: 'Logarithmic Time',
+        color: '#0ea5e9', // sky
+        badgeBg: 'bg-sky-100 text-sky-800',
+        active: true,
+        fn: n => Math.max(1, Math.round(Math.log2(n))),
+        growth: 'Time increases very slowly even as n grows massive; cuts the remaining problem in half each step.',
+        analogy: 'Guessing a secret number from 1 to 100 by always guessing the middle ("Is it higher or lower than 50?"). Even for 1,000 numbers, you only need ~10 guesses!',
+        examples: 'Binary search in a sorted array, balanced Binary Search Tree (BST) search/insert, heap insertion.'
+      },
+      {
+        id: 'on',
+        notation: 'O(n)',
+        name: 'Linear Time',
+        color: '#6366f1', // indigo
+        badgeBg: 'bg-indigo-100 text-indigo-800',
+        active: true,
+        fn: n => n,
+        growth: 'Time grows directly in proportion to input size n; the algorithm examines each item once.',
+        analogy: 'Reading every page of a book from page 1 to the end to find a specific quote. Double the pages = double the reading time.',
+        examples: 'Linear search, traversing a linked list, finding the minimum or maximum in an unsorted array.'
+      },
+      {
+        id: 'onlogn',
+        notation: 'O(n log n)',
+        name: 'Linearithmic Time',
+        color: '#8b5cf6', // violet
+        badgeBg: 'bg-violet-100 text-violet-800',
+        active: true,
+        fn: n => Math.max(1, Math.round(n * Math.log2(n))),
+        growth: 'Slightly steeper than linear; the gold-standard speed for efficient general-purpose sorting algorithms.',
+        analogy: 'Sorting a shuffled deck of cards by repeatedly splitting the deck in half, sorting each half, and zipping (merging) them back together.',
+        examples: 'Merge Sort, Heap Sort, Quick Sort (average case), divide-and-conquer algorithms.'
+      },
+      {
+        id: 'on2',
+        notation: 'O(n²)',
+        name: 'Quadratic Time',
+        color: '#f59e0b', // amber
+        badgeBg: 'bg-amber-100 text-amber-800',
+        active: true,
+        fn: n => n * n,
+        growth: 'Time grows with the square of input size n; typical when using two nested loops.',
+        analogy: 'A room of n people where everyone shakes hands with every other person. With 10 people, that’s 100 handshakes; with 100 people, 10,000 handshakes!',
+        examples: 'Bubble Sort, Insertion Sort, Selection Sort, comparing all pairs of elements.'
+      },
+      {
+        id: 'on3',
+        notation: 'O(n³)',
+        name: 'Cubic Time',
+        color: '#f97316', // orange
+        badgeBg: 'bg-orange-100 text-orange-800',
+        active: false,
+        fn: n => n * n * n,
+        growth: 'Grows with the cube of input size n; seen in algorithms with three nested loops.',
+        analogy: 'Testing every possible 3-person team combination out of n students to find the best trio.',
+        examples: 'Naïve Matrix Multiplication, Floyd-Warshall algorithm (all-pairs shortest paths in a graph).'
+      },
+      {
+        id: 'o2n',
+        notation: 'O(2ⁿ)',
+        name: 'Exponential Time',
+        color: '#ef4444', // rose
+        badgeBg: 'bg-rose-100 text-rose-800',
+        active: false,
+        fn: n => Math.pow(2, n),
+        growth: 'Time DOUBLES with every single +1 increase to input n; becomes impossible for large inputs.',
+        analogy: 'The chessboard wheat legend: 1 grain on square 1, 2 on square 2, 4 on square 3... doubling each square until it exceeds all the wheat on Earth!',
+        examples: 'Naïve Recursive Fibonacci, brute-force subset/permutation generation, brute-force Traveling Salesman.'
+      }
+    ];
+
+    function initBigOSection() {
+      // Render toggle buttons
+      const togglesEl = document.getElementById('bigo-toggles');
+      togglesEl.innerHTML = timeComplexities.map(tc => `
+        <button onclick="toggleComplexityCurve('${tc.id}')" id="toggle-${tc.id}"
+          class="px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold border transition flex items-center gap-1.5 ${tc.active ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}">
+          <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${tc.color}"></span>
+          ${tc.notation}
+        </button>`).join('');
+
+      // Render detailed complexity study cards
+      const cardsGrid = document.getElementById('complexity-cards-grid');
+      cardsGrid.innerHTML = timeComplexities.map(tc => `
+        <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/70 hover:border-indigo-300 transition flex flex-col justify-between space-y-2.5">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono font-extrabold text-sm px-2.5 py-0.5 rounded-lg ${tc.badgeBg}">${tc.notation}</span>
+              <span class="text-xs font-bold text-slate-700">${tc.name}</span>
+            </div>
+            <p class="text-xs text-slate-700 mt-2 leading-relaxed">${tc.growth}</p>
+            <div class="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900">
+              <strong>Analogy:</strong> ${tc.analogy}
+            </div>
+          </div>
+          <div class="text-[11px] text-slate-500 pt-2 border-t border-slate-200">
+            <strong>Examples:</strong> ${tc.examples}
+          </div>
+        </div>`).join('');
+
+      // Render 16-box array race grid
+      const raceGrid = document.getElementById('array-race-grid');
+      let boxesHtml = '';
+      for (let i = 0; i < 16; i++) {
+        boxesHtml += `
+          <div id="race-box-${i}" class="h-11 rounded-xl border border-slate-300 bg-slate-50 flex flex-col items-center justify-center transition-all duration-200">
+            <span class="text-[10px] font-mono text-slate-400">[${i}]</span>
+            <span class="text-xs font-mono font-bold text-slate-800">${(i + 1) * 5}</span>
+          </div>`;
+      }
+      raceGrid.innerHTML = boxesHtml;
+
+      updateBigOVisualizer(8);
+    }
+
+    function toggleComplexityCurve(id) {
+      const tc = timeComplexities.find(item => item.id === id);
+      if (!tc) return;
+      tc.active = !tc.active;
+      const btn = document.getElementById('toggle-' + id);
+      if (tc.active) {
+        btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold border transition flex items-center gap-1.5 bg-slate-800 text-white border-slate-700';
+      } else {
+        btn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold border transition flex items-center gap-1.5 bg-slate-100 text-slate-500 border-slate-200';
+      }
+      updateBigOVisualizer(document.getElementById('bigo-n-slider').value);
+    }
+
+    function updateBigOVisualizer(nVal) {
+      const n = parseInt(nVal, 10);
+      document.getElementById('bigo-n-display').textContent = n;
+      document.getElementById('table-n-label').textContent = n;
+
+      // Update Operations Count Table
+      const tbody = document.getElementById('bigo-steps-tbody');
+      tbody.innerHTML = timeComplexities.map(tc => {
+        const steps = tc.fn(n).toLocaleString();
+        return `
+          <tr class="${tc.active ? 'bg-white' : 'bg-slate-50 opacity-55'}">
+            <td class="py-2 px-3 font-mono font-bold" style="color:${tc.color}">${tc.notation}</td>
+            <td class="py-2 px-3 text-slate-700">${tc.name}</td>
+            <td class="py-2 px-3 text-right font-mono font-extrabold text-slate-900">${steps}</td>
+          </tr>`;
+      }).join('');
+
+      // Render SVG Chart (x from 1..16, y capped at 260 ops for clean visual comparison)
+      const svg = document.getElementById('bigo-svg');
+      const padL = 48, padR = 20, padT = 20, padB = 34;
+      const w = 600 - padL - padR;
+      const h = 320 - padT - padB;
+      const maxN = 16;
+      const maxY = 260;
+
+      const xPos = x => padL + ((x - 1) / (maxN - 1)) * w;
+      const yPos = y => padT + h - (Math.min(y, maxY) / maxY) * h;
+
+      let svgContent = `
+        <!-- Grid lines -->
+        <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + h}" stroke="#475569" stroke-width="1.5" />
+        <line x1="${padL}" y1="${padT + h}" x2="${padL + w}" y2="${padT + h}" stroke="#475569" stroke-width="1.5" />
+        <text x="${padL - 8}" y="${padT + 8}" fill="#94a3b8" font-size="10" text-anchor="end" font-family="JetBrains Mono">260+</text>
+        <text x="${padL - 8}" y="${padT + h / 2}" fill="#94a3b8" font-size="10" text-anchor="end" font-family="JetBrains Mono">130</text>
+        <text x="${padL - 8}" y="${padT + h}" fill="#94a3b8" font-size="10" text-anchor="end" font-family="JetBrains Mono">0</text>
+        <text x="${padL + w / 2}" y="${padT + h + 26}" fill="#cbd5e1" font-size="11" text-anchor="middle" font-weight="bold">Input Data Size (n = 1 to 16)</text>
+      `;
+
+      // Current n vertical indicator line
+      const curX = xPos(n);
+      svgContent += `<line x1="${curX}" y1="${padT}" x2="${curX}" y2="${padT + h}" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="4 4" />`;
+
+      // Draw each active curve
+      timeComplexities.forEach(tc => {
+        if (!tc.active) return;
+        let points = [];
+        for (let x = 1; x <= maxN; x++) {
+          points.push(`${xPos(x).toFixed(1)},${yPos(tc.fn(x)).toFixed(1)}`);
+        }
+        svgContent += `<polyline fill="none" stroke="${tc.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${points.join(' ')}" />`;
+
+        // Dot at current n
+        const dotY = yPos(tc.fn(n));
+        svgContent += `<circle cx="${curX}" cy="${dotY}" r="5" fill="${tc.color}" stroke="#0f172a" stroke-width="2" />`;
+      });
+
+      svg.innerHTML = svgContent;
+    }
+
+    function runComplexityDemo(mode) {
+      // Clear all 16 boxes
+      for (let i = 0; i < 16; i++) {
+        const box = document.getElementById(`race-box-${i}`);
+        box.className = 'h-11 rounded-xl border border-slate-300 bg-slate-50 flex flex-col items-center justify-center transition-all duration-200';
+      }
+
+      const statusEl = document.getElementById('array-race-status');
+
+      if (mode === 'o1') {
+        const box = document.getElementById('race-box-11');
+        box.className = 'h-11 rounded-xl border-2 border-emerald-600 bg-emerald-100 flex flex-col items-center justify-center scale-105 shadow-sm';
+        statusEl.innerHTML = '<strong>O(1) Constant Time — 1 Step:</strong> Jumped straight to index <code class="font-mono">[11]</code> (value 60) in a single operation without checking any other box!';
+      } else if (mode === 'ologn') {
+        // Binary search for index 11 (value 60) -> checks 7, 11 (or 7 -> 11 -> 13 -> 11 worst case 4 steps)
+        const steps = [7, 11];
+        steps.forEach((idx, stepNum) => {
+          setTimeout(() => {
+            const box = document.getElementById(`race-box-${idx}`);
+            box.className = 'h-11 rounded-xl border-2 border-sky-600 bg-sky-100 flex flex-col items-center justify-center scale-105 shadow-sm';
+          }, stepNum * 300);
+        });
+        statusEl.innerHTML = '<strong>O(log n) Logarithmic Time — Max 4 Steps for n=16:</strong> Checked middle <code class="font-mono">[7]</code>, threw away the left half, and found <code class="font-mono">[11]</code>! Even for 1,000 items, binary search takes at most 10 steps.';
+      } else if (mode === 'on') {
+        for (let i = 0; i < 16; i++) {
+          setTimeout(() => {
+            const box = document.getElementById(`race-box-${i}`);
+            box.className = 'h-11 rounded-xl border-2 border-indigo-600 bg-indigo-100 flex flex-col items-center justify-center';
+          }, i * 65);
+        }
+        statusEl.innerHTML = '<strong>O(n) Linear Time — 16 Steps:</strong> Visited every single element from <code class="font-mono">[0]</code> to <code class="font-mono">[15]</code> one by one.';
+      } else if (mode === 'on2') {
+        for (let i = 0; i < 16; i++) {
+          setTimeout(() => {
+            const box = document.getElementById(`race-box-${i}`);
+            box.className = 'h-11 rounded-xl border-2 border-amber-600 bg-amber-100 flex flex-col items-center justify-center';
+          }, i * 50);
+        }
+        statusEl.innerHTML = '<strong>O(n²) Quadratic Time — 256 Steps (16 × 16):</strong> For <em>each</em> of the 16 boxes, a nested loop compares it against all 16 boxes (<code class="font-mono">16 × 16 = 256</code> total checks)!';
+      }
+    }
+
+    // Initialize default views on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      updateGranularitySim(7);
+      selectParallelModel('data');
+      initBigOSection();
+    });
+  </script>
+</body>
+</html>
